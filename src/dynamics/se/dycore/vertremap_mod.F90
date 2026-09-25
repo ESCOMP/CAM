@@ -63,7 +63,7 @@ module vertremap_mod
 
       if (any(kord(:) >= 0)) then
         if (.not.qdp_mass) then
-          do itrac=1,qsize
+          do itrac=qstart,qstop
             if (kord(itrac) >= 0) then
               Qdp(:,:,:,itrac) = Qdp(:,:,:,itrac)*dp1(:,:,:)
             end if
@@ -71,7 +71,7 @@ module vertremap_mod
         end if
         call remap_Q_ppm(qdp,nx,qstart,qstop,qsize,dp1,dp2,kord)
         if (.not.qdp_mass) then
-          do itrac=1,qsize
+          do itrac=qstart,qstop
             if (kord(itrac) >= 0) then
               Qdp(:,:,:,itrac) = Qdp(:,:,:,itrac)/dp2(:,:,:)
             end if
@@ -100,7 +100,7 @@ module vertremap_mod
         !
         if (qdp_mass) then
           inv_dp = 1.0_r8/dp1
-          do itrac=1,qsize
+          do itrac=qstart,qstop
             if (kord(itrac)<0) then
               Qdp(:,:,:,itrac) = Qdp(:,:,:,itrac)*inv_dp(:,:,:)
             end if
@@ -124,7 +124,7 @@ module vertremap_mod
               end do
             end do
 
-            do itrac=1,qsize
+            do itrac=qstart,qstop
               if (kord(itrac)<0) then
                 call map1_ppm( nlev, pe1(:,:),   Qdp(:,:,:,itrac),   gz,   &
                      nlev, pe2(:,:),    Qdp(:,:,:,itrac),               &
@@ -145,7 +145,7 @@ module vertremap_mod
               end do
             end do
             pe1(:,nlev+1) = pe2(:,nlev+1)
-            do itrac=1,qsize
+            do itrac=qstart,qstop
               if (kord(itrac)<0) then
                 call map1_ppm( nlev, pe1(:,:),   Qdp(:,:,:,itrac),   gz,   &!phl
                      nlev, pe2(:,:),    Qdp(:,:,:,itrac),               &
@@ -157,7 +157,7 @@ module vertremap_mod
           end do
         end if
         if (qdp_mass) then
-          do itrac=1,qsize
+          do itrac=qstart,qstop
             if (kord(itrac)<0) then
               Qdp(:,:,:,itrac) = Qdp(:,:,:,itrac)*dp2(:,:,:)
             end if

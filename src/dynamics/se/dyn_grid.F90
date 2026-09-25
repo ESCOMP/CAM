@@ -42,6 +42,7 @@ use pio,                    only: file_desc_t
 
 use dimensions_mod,         only: globaluniquecols, nelem, nelemd, nelemdmax
 use dimensions_mod,         only: ne, np, npsq, fv_nphys, nlev, use_cslam
+use control_mod,            only: gll_advect_q
 use element_mod,            only: element_t
 use fvm_control_volume_mod, only: fvm_struct
 use hybvcoord_mod,          only: hvcoord_t
@@ -138,6 +139,7 @@ subroutine dyn_grid_init()
    use dimensions_mod,      only: fvm_supercycling
    use global_norms_mod,    only: auto_rsplit, set_global_max_normDinv
    use fvm_mod,             only: fvm_init2, fvm_init3, fvm_pg_init
+   use fvm_filter_mod,      only: cslam_q_filter_geom_init
    use dimensions_mod,      only: irecons_tracer
    use comp_gll_ctr_vol,    only: gll_grid_write
    use air_composition,     only: thermodynamic_active_species_num
@@ -187,7 +189,12 @@ subroutine dyn_grid_init()
       end if
 
       if (fv_nphys > 0) then
-         qsize_local = 3
+         if (gll_advect_q) then
+            ! FM, FT + FQ for the GLL-advected thermodynamic tracers
+            qsize_local = thermodynamic_active_species_num + 3
+         else
+            qsize_local = 3
+         end if
       else
          qsize_local = pcnst + 3
       end if
@@ -264,6 +271,9 @@ subroutine dyn_grid_init()
          call fvm_init2(elem, fvm, hybrid, nets, nete)
          call fvm_pg_init(elem, fvm, hybrid, nets, nete, irecons_tracer)
          call fvm_init3(elem, fvm, hybrid, nets, nete, irecons_tracer)
+         ! precompute face-metric weights for the CSLAM-grid del4 Q filter
+         ! (no-op when cslam_q_filter = .false.)
+         call cslam_q_filter_geom_init(elem, fvm, hybrid, nets, nete)
       end if
 
    end if

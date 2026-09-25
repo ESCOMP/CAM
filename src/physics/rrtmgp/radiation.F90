@@ -152,13 +152,6 @@ logical :: spectralflux     = .false. ! calculate fluxes (up and down) per band.
 logical :: graupel_in_rad   = .false. ! graupel in radiation code
 logical :: use_rad_uniform_angle = .false. ! if true, use the namelist rad_uniform_angle for the coszrs calculation
 
-! Gathered indices of day and night columns
-integer :: nday           ! Number of daylight columns
-integer :: nnite          ! Number of night columns
-integer :: idxday(pcols)   ! chunk indices of daylight columns
-integer :: idxnite(pcols) ! chunk indices of night columns
-real(r8) :: coszrs(pcols)   ! Cosine solar zenith angle
-real(r8) :: eccf            ! Earth orbit eccentricity factor
 
 integer :: band2gpt_sw(2,nswbands)
 
@@ -881,6 +874,12 @@ subroutine radiation_tend( &
    real(r8) :: clat(pcols)     ! current latitudes(radians)
    real(r8) :: clon(pcols)     ! current longitudes(radians)
    real(r8) :: coszrs(pcols)   ! Cosine solar zenith angle
+
+   ! Gathered indices of day and night columns.  These are per-chunk and must be local to the function
+   integer  :: nday            ! Number of daylight columns
+   integer  :: nnite           ! Number of night columns
+   integer  :: idxday(pcols)   ! chunk indices of daylight columns
+   integer  :: idxnite(pcols)  ! chunk indices of night columns
 
    integer :: itim_old
    integer :: nextsw_nstep

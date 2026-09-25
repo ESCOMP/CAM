@@ -3,14 +3,16 @@ module fvm_consistent_se_cslam
   use shr_kind_mod,           only: r8=>shr_kind_r8
   use dimensions_mod,         only: nc, nhe, nlev, ntrac, np, nhr, nhc, ngpc, ns, nht
   use dimensions_mod,         only: irecons_tracer
+  use control_mod,            only: cslam_q_filter
   use cam_abortutils,         only: endrun
   use cam_logfile,            only: iulog
 
   use se_dyn_time_mod,        only: timelevel_t
   use element_mod,            only: element_t
   use fvm_control_volume_mod, only: fvm_struct
-  use hybrid_mod,             only: hybrid_t, config_thread_region, get_loop_ranges, threadOwnsVertLevel
+  use hybrid_mod,             only: hybrid_t, config_thread_region, get_loop_ranges
   use perf_mod,               only: t_startf, t_stopf
+  use fvm_filter_mod,         only: apply_cslam_q_filter_del4
   implicit none
   private
   save
@@ -41,7 +43,7 @@ contains
     use hybvcoord_mod         , only: hvcoord_t
     use constituents          , only: qmin
     use dimensions_mod        , only: large_Courant_incr,irecons_tracer_lev
-    use thread_mod            , only: vert_num_threads, omp_set_nested
+    use thread_mod            , only: vert_num_threads, omp_set_max_active_levels
     implicit none
     type (element_t)      , intent(inout) :: elem(:)
     type (fvm_struct), target     , intent(inout) :: fvm(:)
@@ -86,10 +88,12 @@ contains
        region_num_threads = vert_num_threads
     endif
 
-    call omp_set_nested(.true.)
+    call omp_set_max_active_levels(2)
     !$OMP PARALLEL NUM_THREADS(region_num_threads), DEFAULT(SHARED), &
     !$OMP PRIVATE(hybridnew,kblk,ie,k,kmin,gspts,inv_dp_area,itr), &
-    !$OMP PRIVATE(kmin_jet_local,kmax,kmax_jet_local,kptr,q,ctracer,ActiveJetThread)
+    !$OMP PRIVATE(kmin_jet_local,kmax,kmax_jet_local,kptr,q,ctracer,ActiveJetThread), &
+    !$OMP PRIVATE(i,j,fcube,spherecentroid,gsweights,klev)
+
     call gauss_points(ngpc,gsweights,gspts) !set gauss points/weights
     gspts = 0.5_r8*(gspts+1.0_r8) !shift location so in [0:1] instead of [-1:1]
 
@@ -194,8 +198,9 @@ contains
     !
     if (large_Courant_incr) then
       if(FVM_TIMERS) call t_startf('fvm:fill_halo_fvm:large_Courant')
+      ! Every thread applies the increment to its own level block (kmin:kmax), so every thread is now active.
+      ActiveJetThread = .true.
       ! Determine the extent of the JET that is owned by this thread
-      ActiveJetThread = threadOwnsVertLevel(hybridnew,1) .or. threadOwnsVertLevel(hybridnew,nlev)
       kmin_jet_local = max(1,kmin)
       kmax_jet_local = min(nlev,kmax)
       klev = nlev
@@ -249,8 +254,14 @@ contains
       end do
     end do
     if(FVM_TIMERS) call t_stopf('fvm:end_of_reconstruct_subroutine')
+    if (cslam_q_filter) then
+      if(FVM_TIMERS) call t_startf('fvm:cslam_q_filter')
+      call apply_cslam_q_filter_del4(fvm, hybridnew, nets, nete, kmin, kmax, dt_fvm, &
+           limiter=.true., xdiff=.true.)
+      if(FVM_TIMERS) call t_stopf('fvm:cslam_q_filter')
+    end if
     !$OMP END PARALLEL
-    call omp_set_nested(.false.)
+    call omp_set_max_active_levels(1)
   end subroutine run_consistent_se_cslam
 
   subroutine swept_flux(elem,fvm,ilev,ctracer,irecons_tracer_actual,gsweights,gspts)
@@ -1330,6 +1341,12 @@ contains
        if (ib==seast) degenerate(nc+1,1   ) = 1
     end if
 
+    !
+    ! preset =1 and only ever clear to 0 below: the sgn loop runs sgn=-1 then
+    ! sgn=+1, so an else-branch reset on the sgn=+1 pass would wipe a
+    ! circular-flow detection made at sgn=-1.  Detection for either sign sticks.
+    !
+    circular_flow = 1
     do j=1,nc+1
        do i=1,nc+1
           do sgn=-1,1,2
@@ -1337,8 +1354,6 @@ contains
                   sgn*flux_sum(i-1,j,1)<0.0_r8.and.sgn*flux_sum(i,j-1,2)>0.0_r8.and.&
                   sgn*flux_sum(i  ,j,1)>0.0_r8.and.sgn*flux_sum(i,j  ,2)<0.0_r8) then
                 circular_flow(i,j) = 0
-             else
-                circular_flow(i,j) = 1
              end if
           end do
        end do

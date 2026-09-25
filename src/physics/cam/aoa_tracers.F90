@@ -5,14 +5,17 @@
 
 module aoa_tracers
 
-  use shr_kind_mod, only: r8 => shr_kind_r8
+  use shr_kind_mod, only: r8 => shr_kind_r8, cl => shr_kind_cl
   use spmd_utils,   only: masterproc
-  use ppgrid,       only: pcols, pver
+  use ppgrid,       only: pcols, pver, begchunk, endchunk
   use constituents, only: pcnst, cnst_add, cnst_name, cnst_longname
   use cam_logfile,  only: iulog
   use ref_pres,     only: pref_mid_norm
   use time_manager, only: get_curr_date, get_start_date
   use time_manager, only: is_leapyear, timemgr_get_calendar_cf, get_calday
+  use pio,          only: file_desc_t, var_desc_t, pio_double, pio_noerr
+  use pio,          only: pio_put_var, pio_def_var, pio_inq_varid, pio_get_var
+  use cam_abortutils, only: endrun
 
   implicit none
   private
@@ -25,6 +28,10 @@ module aoa_tracers
   public :: aoa_tracers_timestep_init    ! place to perform per timestep initialization
   public :: aoa_tracers_timestep_tend    ! calculate tendencies
   public :: aoa_tracers_readnl           ! read namelist options
+
+  public :: aoa_tracers_define_restart
+  public :: aoa_tracers_write_restart
+  public :: aoa_tracers_read_restart
 
   ! Private module data
 
@@ -72,6 +79,11 @@ module aoa_tracers
   real(r8) :: calday0 = -huge(1._r8)
   real(r8) :: years = -huge(1._r8)
 
+  real(r8), parameter :: NOTSET = -huge(1._r8)
+  real(r8) :: mmr0 = NOTSET   ! initial lower boundary mmr
+
+  type(var_desc_t) :: mmr0_desc
+
 !===============================================================================
 contains
 !===============================================================================
@@ -80,7 +92,6 @@ contains
   subroutine aoa_tracers_readnl(nlfile)
 
     use namelist_utils, only: find_group_name
-    use cam_abortutils, only: endrun
     use spmd_utils,     only: mpicom, masterprocid, mpi_logical, mpi_success
 
     character(len=*), intent(in) :: nlfile  ! filepath for file containing namelist input
@@ -114,6 +125,11 @@ contains
        call endrun(subname//': MPI_BCAST ERROR: aoa_read_from_ic_file')
     end if
 
+    if (masterproc) then
+       write(iulog,*) subname//' : aoa_tracers_flag: ',aoa_tracers_flag
+       write(iulog,*) subname//' : aoa_read_from_ic_file: ',aoa_read_from_ic_file
+    end if
+
   endsubroutine aoa_tracers_readnl
 
 !================================================================================
@@ -132,12 +148,11 @@ contains
     if (.not. aoa_tracers_flag) return
 
     call cnst_add(c_names(1), mwdry, cpair, 0._r8, ixaoa, readiv=aoa_read_from_ic_file, &
-                  longname='mixing ratio LB tracer', cam_outfld=.false.)
-
-    call cnst_add(c_names(2), mwdry, cpair, 1._r8, ixht,   readiv=aoa_read_from_ic_file, &
-                  longname='horizontal tracer', cam_outfld=.false.)
-    call cnst_add(c_names(3), mwdry, cpair, 0._r8, ixvt,   readiv=aoa_read_from_ic_file, &
-                  longname='vertical tracer', cam_outfld=.false.)
+                  longname='mixing ratio LB tracer', cam_outfld=.false., mixtype='dry')
+    call cnst_add(c_names(2), mwdry, cpair, 1._r8, ixht,  readiv=aoa_read_from_ic_file, &
+                  longname='horizontal tracer', cam_outfld=.false., mixtype='dry')
+    call cnst_add(c_names(3), mwdry, cpair, 0._r8, ixvt,  readiv=aoa_read_from_ic_file, &
+                  longname='vertical tracer', cam_outfld=.false., mixtype='dry')
 
     ifirst = ixaoa
 
@@ -194,9 +209,22 @@ contains
     real(r8),         intent(out) :: q(:,:)   ! kg tracer/kg dry air (gcol, plev)
 
     integer :: m
+    character(len=cl) :: errstr
     !-----------------------------------------------------------------------
 
     if (.not. aoa_tracers_flag) return
+
+    ! if aoa_read_from_ic_file is FALSE this routine is called
+    ! if aoa_read_from_ic_file is TRUE and the AOA tracer is not found in the IC file this routine is called
+    ! abort the run if the user expects the IC to include AOA tracers and not found in the IC file
+    if (aoa_read_from_ic_file) then
+       write(errstr,*) 'AGE_OF_AIR_CONSTITUENTS ERROR: '//trim(name)//' not found in IC file'
+       if (masterproc) then
+          write (iulog,*) trim(errstr)
+          write (iulog,*) ' --> Need to provide IC which includes AOA tracers or set aoa_read_from_ic_file to .FALSE.'
+       end if
+       call endrun(trim(errstr))
+    end if
 
     do m = 1, ncnst
        if (name ==  c_names(m))  then
@@ -253,14 +281,16 @@ contains
     ! Provides a place to reinitialize diagnostic constituents HORZ and VERT
     !-----------------------------------------------------------------------
 
-    use ppgrid,         only: begchunk, endchunk
     use physics_types,  only: physics_state
+    use gmean_mod,      only: gmean
+    use time_manager,   only: is_first_step, is_first_restart_step
 
     type(physics_state), intent(inout), dimension(begchunk:endchunk), optional :: phys_state
 
-    integer c, i, k, ncol
+    integer c, i, k, ncol, lchnk
     integer yr, mon, day, tod,  ymd
     real(r8) :: calday, dpy
+    real(r8) :: mmr_arr(pcols,begchunk:endchunk)
     !--------------------------------------------------------------------------
 
     if (.not. aoa_tracers_flag) return
@@ -293,6 +323,24 @@ contains
     end if
     years = (yr-yr0) + (calday-calday0)/dpy
 
+    ! if AOA1 is not found in the IC file mmr0 is set to small value
+    ! if AOA1 is initialized from IC file mmr0 is not set
+    ! --> set mmr0 to global mean in lowest layer
+    if (mmr0==NOTSET) then
+       do lchnk = begchunk, endchunk
+          ncol = phys_state(lchnk)%ncol
+          ! AOA1 mmr in lowest model layer
+          mmr_arr(:ncol,lchnk) = phys_state(lchnk)%q(:ncol,pver,ixaoa)
+       end do
+       call gmean(mmr_arr,mmr0) ! global mean
+    end if
+
+    if (is_first_step().or.is_first_restart_step()) then
+       if (masterproc) then
+         write(iulog,'(a,e20.12)') 'AGE_OF_AIR_CONSTITUENTS: mmr0 set to: ',mmr0
+       end if
+    end if
+
   end subroutine aoa_tracers_timestep_init
 
 !===============================================================================
@@ -321,7 +369,6 @@ contains
     real(r8) :: wsrc                          !  teul*wimp
 
     real(r8) :: xmmr
-    real(r8), parameter :: mmr0 = 1.0e-6_r8   ! initial lower boundary mmr
     real(r8), parameter :: per_yr = 0.02_r8   ! fractional increase per year
 
     real(r8) :: mmr_out(pcols,pver,ncnst)
@@ -349,7 +396,12 @@ contains
 
     ! AOA1
     xmmr = mmr0*(1._r8 + per_yr*years)
+
+    ! Lower boundary
     ptend%q(1:ncol,pver,ixaoa) = (xmmr - state%q(1:ncol,pver,ixaoa)) / dt
+
+    ! Set upper boundary AOA1 tendency so that upper boundary AOA1 state will end up 0.0 mmr
+    ptend%q(1:ncol,1,ixaoa) = -state%q(1:ncol,1,ixaoa) / dt
 
     do k = 1, pver
        do i = 1, ncol
@@ -398,13 +450,14 @@ contains
     !-----------------------------------------------------------------------
 
     if (masterproc) then
-       write(iulog,*) 'AGE-OF-AIR CONSTITUENTS: INITIALIZING ',cnst_name(m),m
+       write(iulog,*) 'AGE_OF_AIR CONSTITUENTS: INITIALIZING ',cnst_name(m),m
     end if
 
     if (m == ixaoa) then
 
        ! AOA1
-       q(:,:) = 0.0_r8
+       mmr0 = 1.e-6_r8 ! initial lower boundary mmr (small non-zero value)
+       q(:,:) = 0.0_r8 ! initialize AOA1 mixing ratios to zero
 
     else if (m == ixht) then
 
@@ -428,5 +481,62 @@ contains
   end subroutine init_cnst_3d
 
 !=====================================================================
+ subroutine aoa_tracers_define_restart(file)
+
+   ! define variables to be written to restart file
+
+   ! arguments
+   type(file_desc_t), intent(inout) :: file
+
+   ! local variables
+   integer :: ierr
+
+   ierr = pio_def_var(File, 'aoa_mmr0', pio_double, mmr0_desc)
+   if (ierr/=pio_noerr) then
+      call endrun('aoa_tracers_define_restart: ERROR pio_def_var aoa_mmr0')
+   end if
+
+ end subroutine aoa_tracers_define_restart
+
+!=====================================================================
+ subroutine aoa_tracers_write_restart(file)
+
+   ! write variables to restart file
+
+   ! arguments
+   type(file_desc_t), intent(inout) :: file
+
+   ! local variables
+   integer :: ierr
+
+   ierr = pio_put_var(File, mmr0_desc, mmr0)
+   if (ierr/=pio_noerr) then
+      call endrun('aoa_tracers_write_restart: ERROR pio_put_var aoa_mmr0')
+   end if
+
+ end subroutine aoa_tracers_write_restart
+
+ !===============================================================================
+ subroutine aoa_tracers_read_restart(file)
+
+   ! read variables from restart file
+
+   ! arguments
+   type(file_desc_t), intent(inout) :: file
+
+   ! local variables
+   integer :: ierr
+   type(var_desc_t) :: vardesc
+
+   ierr = pio_inq_varid(File, 'aoa_mmr0', vardesc)
+   if (ierr/=pio_noerr) then
+      call endrun('aoa_tracers_read_restart: ERROR pio_inq_varid aoa_mmr0')
+   end if
+
+   ierr = pio_get_var(File, vardesc, mmr0)
+   if (ierr/=pio_noerr) then
+      call endrun('aoa_tracers_read_restart: ERROR pio_get_var aoa_mmr0')
+   end if
+ end subroutine aoa_tracers_read_restart
 
 end module aoa_tracers
