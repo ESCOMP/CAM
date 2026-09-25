@@ -91,14 +91,12 @@ contains
       end if
 
       call cnst_get_ind('NH3', idx_nh3, .false.)
-      if (.not. ((idx_nh3 > 0) .and. (idx_nh3 <= pcnst))) idx_nh3 = 0
 
       if (.not. cam_chempkg_is('geoschem_mam4')) then
          call cnst_get_ind('MSA', idx_msa, .false.)
       else
          idx_msa = 0
       end if
-      if (.not. ((idx_msa > 0) .and. (idx_msa <= pcnst))) idx_msa = 0
 
       ! --- SOA gas-phase species indices (pcnst-space) ---
       do jsoa = 1, nsoa
