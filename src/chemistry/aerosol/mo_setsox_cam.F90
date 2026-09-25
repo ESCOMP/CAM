@@ -30,6 +30,7 @@ contains
       use sox_cldaero_mod, only : sox_cldaero_init
       use aerosol_properties_mod, only : aerosol_properties
       use mo_constants,   only : pi
+      use physconst,      only : avogad, r_universal, mwco2, mwdry
       use cam_abortutils, only : endrun
 
       class(aerosol_properties), target, intent(in) :: aero_props
@@ -163,7 +164,11 @@ contains
                        id_h2so4_in=id_h2so4, id_so4_in=id_so4,     id_msa_in=id_msa, &
                        heff_id_hno3_in=heff_id_hno3, heff_id_so2_in=heff_id_so2,   &
                        heff_id_nh3_in=heff_id_nh3,   heff_id_co2_in=heff_id_co2,   &
-                       heff_id_h2o2_in=heff_id_h2o2, heff_id_o3_in=heff_id_o3 )
+                       heff_id_h2o2_in=heff_id_h2o2, heff_id_o3_in=heff_id_o3,     &
+                       AVOGADRO_KMOL                  = avogad,      &
+                       GAS_CONSTANT_KMOL              = r_universal, &
+                       MOLECULAR_WEIGHT_CO2_G_MOL     = mwco2,       &
+                       MOLECULAR_WEIGHT_DRY_AIR_G_MOL = mwdry )
 
       call sox_cldaero_init(aero_props, &
                             id_msa_in=id_msa, id_h2so4_in=id_h2so4, id_so2_in=id_so2, &
@@ -204,7 +209,7 @@ contains
                      aqso4_o3_3d &
                      )
 
-      use physconst,    only : avogad, boltz, r_universal, mwco2, mwdry, gravit
+      use physconst,    only : boltz, gravit
       use ppgrid,       only : pver
       use shr_drydep_mod,  only : dheff
       use physics_buffer,  only : physics_buffer_desc
@@ -266,11 +271,7 @@ contains
          invariants = invariants, &
          co2_mass_mixing_ratio          = co2_mass_mixing_ratio, &
          dheff                          = dheff,       &
-         AVOGADRO_KMOL                  = avogad,      &
          BOLTZMANN                      = boltz,       &
-         GAS_CONSTANT_KMOL              = r_universal, &
-         MOLECULAR_WEIGHT_CO2_G_MOL     = mwco2,       &
-         MOLECULAR_WEIGHT_DRY_AIR_G_MOL = mwdry,       &
          gravit     = gravit,     &
          qcw        = qcw,        &
          qin        = qin,        &

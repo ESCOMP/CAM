@@ -125,8 +125,12 @@ contains
       do_adjust_default          = .false.
       do_aitacc_transfer_default = .false.
 #else
+      !  do_adjust_default allows adjustment to be turned on/off
       do_adjust_default = .true.
 
+      !  do_aitacc_transfer_default allows aitken <--> accum mode transfer to be turned on/off
+      !  *** it can only be true when aitken & accum modes are both present
+      !      and have prognosed number and diagnosed surface/sigmag
       nait = modeptr_aitken
       nacc = modeptr_accum
       do_aitacc_transfer_default = .false.
