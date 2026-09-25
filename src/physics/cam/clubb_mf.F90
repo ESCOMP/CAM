@@ -518,7 +518,7 @@ module clubb_mf
      ! rng seed
      real(r8), dimension(4)                 :: u_seed
 
-     ! alpha relates star qunataties to stddev Suselj etal 2019 DOI: 10.1175/JAS-D-18-0239.1
+     ! alpha relates star quantities to stddev Suselj etal 2019 DOI: 10.1175/JAS-D-18-0239.1
      real(r8),parameter                     :: alphw   = 0.572_r8,        &
                                                alphqt  = 2.890_r8,        &
                                                alphthv = 2.890_r8
@@ -555,14 +555,11 @@ module clubb_mf
      ! upent ~ 1/upw diverges, producing immense (finite) ratios
      real(r8),parameter                     :: mf_tiny = 1.e-12_r8
      !
-     ! to condensate or not to condensate
-     logical                                :: do_condensation = .true.
-     !
      ! use implicit method for plume updraft velocity
-     logical                                :: do_implicit = .false.
+     logical, parameter                     :: do_implicit = .false.
      !
      ! to scale surface fluxes
-     logical                                :: scalesrf = .false.
+     logical, parameter                     :: scalesrf = .false.
      !
      ! minimum downdraft speed
      real(r8),parameter                     :: mindnw = 1.E-2_r8
@@ -876,14 +873,17 @@ module clubb_mf
      ! same code path as a negatively buoyant (no-convection) one.
      mf_inhibit = do_clubb_mf_invswitch .and. (lts >= lts_inhibit_thresh) ! lts_inhibit_thresh = 20._r8
 
-     ! if no positive buoyancy and no moisture flux then return
+     ! Early return if no positive buoyancy and no moisture flux
      if (.not. (wthv > 0._r8 .and. wqt > 0._r8 .and. (.not. mf_inhibit) ) ) then
 
        ddcp(:) = 0._r8
        ztopm1(:) = zm(ksfcm)
+       cbm1 = zm(ksfcm)
        return
 
-     else ! we have positive surface buoyancy and moisture flux lets do mass-flux
+    end if
+
+    ! we have positive surface buoyancy and moisture flux lets do mass-flux
 
        if (do_clubb_mf_mixd) then
          convh = max(cbm1,pblhmin)
@@ -988,20 +988,15 @@ module clubb_mf
          upmf(kstart,i) = rho_zm(kstart)*upa(kstart,i)*upw(kstart,i)
 
          ! get cloud, lowest momentum level
-         if (do_condensation) then
-           call condensation_mf(upqt(kstart,i), upthl(kstart,i), p_zm(kstart), iexner_zm(kstart), &
-                                thvn, qcn, thn, qln, qin, qsn, lmixn)
-           upthv(kstart,i) = thvn
-           upqc(kstart,i)  = qcn
-           upql(kstart,i)  = qln
-           upqi(kstart,i)  = qin
-           upqs(kstart,i)  = qsn
-           upth(kstart,i)  = thn
-           if (qcn > 0._r8) zcb(i) = zm(kstart)
-         else
-           ! assume no cldliq
-           upqc(kstart,i)  = 0._r8
-         end if
+         call condensation_mf(upqt(kstart,i), upthl(kstart,i), p_zm(kstart), iexner_zm(kstart), &
+                              thvn, qcn, thn, qln, qin, qsn, lmixn)
+         upthv(kstart,i) = thvn
+         upqc(kstart,i)  = qcn
+         upql(kstart,i)  = qln
+         upqi(kstart,i)  = qin
+         upqs(kstart,i)  = qsn
+         upth(kstart,i)  = thn
+         if (qcn > 0._r8) zcb(i) = zm(kstart)
        end do
 
        ! if aloft extend the mass flux plume below kstart nbot levels
@@ -1051,7 +1046,7 @@ module clubb_mf
          ! --------------------------------------------------------- !
          call get_Lscale (nzt, nzm, zm, tke, wpthlp_env, dzt, iexner_zm, iexner_zt, p_zm, qt, thv, thl, th, &
                           wmax, wmin, sigmaw, sigmaqt, sigmathv, cwqt, cwthv, zcb_unset, wa, wb,  &
-                          do_condensation, qv, p_zt, zt, tpert, pblh, convh, rhinv, ztopm1(i), dynamic_L0(i), ztop(i), mcape(i))
+                          qv, p_zt, zt, tpert, pblh, convh, rhinv, ztopm1(i), dynamic_L0(i), ztop(i), mcape(i))
 
          ! cold pool feedback on the entrainmnet length scale
          dynamic_L0(i) = dynamic_L0(i) * cpfac(i)
@@ -1063,10 +1058,7 @@ module clubb_mf
          ! --------------------------------------------------------- !
          ! Stochastic entrainmnet calculation                        !
          ! From Suselj et al 2019 DOI: 10.1175/JAS-D-18-0239.1       !
-         ! after Romps and Kuang 2010                                !
-         ! (ideally we wouldn't fill the entire arrray w/ the RNG,   !
-         ! but the RNG doesn't work properly when it operates on     !
-         ! the entire array.                                         !
+         ! after Romps and Kuang 2010 DOI: 10.1175/2009JAS3307.1     !
          ! --------------------------------------------------------- !
          do k = ksfct, ktopt-kdir, kdir
            ! get entrainment coefficient, dz/L0
@@ -1082,6 +1074,8 @@ module clubb_mf
        u_seed(4) = u(ksfct + (clubb_mf_kseed + 2) * kdir)
 
        ! get poisson, P(dz/L0)
+       ! Ideally we would not fill the enti array above plume tops,
+       ! but plume tops have not yet been determined.
        call poisson( nzt, clubb_mf_nup, ksfct, ktopt, kdir, entf, enti, u_seed )
 
        ! --------------------------------------------------------- !
@@ -1129,10 +1123,10 @@ module clubb_mf
                thln0 = thln
                wn0 = wn
 
-               ! --------------------------------------------------------- !
-               ! Compute excess water to derive neutral mixing fraction    !
-               ! after Bretherton et al 2014                               !
-               ! --------------------------------------------------------- !
+               ! ---------------------------------------------------------------------------------
+               ! Compute excess water to derive neutral mixing fraction                           !
+               ! after Bretherton et al 2014 DOI 10.1175/1520-0493(2004)132<0864:ANPFSC>2.0.CO;2  !
+               ! -------------------------------------------------------------------------------- !
 
                ! qexcess of the envrionment
                tlm = thl_zm(kn)/iexner_zm(kn)
@@ -1243,13 +1237,9 @@ module clubb_mf
              supthl(kt,i) = supthl(kt,i)*upw(k,i)/dzt(kt)
 
              ! get cloud, momentum levels
-             if (do_condensation) then
-               call condensation_mf(qtn, thln, p_zm(kn), iexner_zm(kn), &
-                                    thvn, qcn, thn, qln, qin, qsn, lmixn)
-               if (zcb(i)==zcb_unset .and. qcn > 0._r8) zcb(i) = zm(kn)
-             else
-               thvn = thln*(1._r8+zvir*qtn)
-             end if
+             call condensation_mf(qtn, thln, p_zm(kn), iexner_zm(kn), &
+                                  thvn, qcn, thn, qln, qin, qsn, lmixn)
+             if (zcb(i)==zcb_unset .and. qcn > 0._r8) zcb(i) = zm(kn)
 
              ! get buoyancy
              B=gravit*(0.5_r8*(thvn + upthv(k,i))/thv(kt)-1._r8)
@@ -1915,6 +1905,7 @@ module clubb_mf
              sthl(k) = 0._r8
              ztopm1(:) = zm(ksfcm)
              ddcp(:) = 0._r8
+             cbm1 = zm(ksfcm)
              return
            end if
            ! height of the plume ensemble
@@ -1957,6 +1948,11 @@ module clubb_mf
            end do
          end if
 
+         ! Edge case where kdbarr is still 0, plume persists through the entire column;
+         if (kcbarr(i) == 0) then
+            kcbarr(i) = ktopm  ! use the model top as the cap
+         end if
+
          cbm1 = cbm1 + zm(kcbarr(i))
 
        end do
@@ -1965,42 +1961,14 @@ module clubb_mf
        ! --------------------------------------------------------- !
        ! bulk downdraft velocity for coldpool parameterization     !
        ! --------------------------------------------------------- !
-!+++ARH
-!       ! reset ddcp
-!       ddcp = 0._r8
-!       do i=1,clubb_mf_nup
-!         ! find cloud base
-!         kcb = 0
-!         do k=1,nz
-!           if (upqc(k,i) > 0._r8) then
-!             kcb = k
-!             exit
-!           end if
-!         end do
-!
-!         ! reset iddcp
-!         iddcp = 0._r8
-!         if (kcb == 0) then
-!           continue
-!         else if (kcb == 1) then
-!           iddcp = iddcp + dna(k,i)*dnw(k,i)
-!           continue
-!         else
-!           ddint = 0._r8
-!           do k=1,kcb-1
-!             ddint = ddint + dna(k,i)*dnw(k,i)*dzt(k+1)
-!           end do
-!           iddcp = iddcp + -1._r8*ddint/zm(kcb)
-!         end if
-!         ddcp = ddcp + iddcp
-!         !
-!       end do
-!
 
+       ! reset ddcp
        ddcp(:) = 0._r8
        if (do_clubb_mf_coldpool .and. clubb_mf_fdd > 0._r8) then
-         ! use single level for cold pool param.
-         ! reset ddcp
+         ! use single level for cold pool param. note this differs from the sub-cloud mean
+         ! in the original implementation (Suselj et al. 2019; DOI: 10.1175/JAS-D-18-0239.1)
+         ! because we've implemented a different boundary condition for the downdrafts
+         ! to ensure they smoothly decay towards the surface using an analytical function.
          do i=1,clubb_mf_nup
            if (ddbotm(i) == 0) then
              continue
@@ -2060,7 +2028,6 @@ module clubb_mf
          uflx(k)    = uflxup(k) + uflxdn(k)
          vflx(k)    = vflxup(k) + vflxdn(k)
        enddo
-     end if
 
   end subroutine integrate_mf
 
@@ -2103,7 +2070,7 @@ module clubb_mf
 
   subroutine get_Lscale(nzt, nzm, zm, tke, wpthlp_env, dzt, iexner_zm, iexner_zt, p_zm, qt, thv, thl, th, &
                         wmax, wmin, sigmaw, sigmaqt, sigmathv, cwqt, cwthv, zcb_unset, wa, wb,  &
-                        do_condensation, qv, p_zt, zt, tpert, pblh, convh, rhinv, ztopm1, dynamic_L0, ztop, mcape)
+                        qv, p_zt, zt, tpert, pblh, convh, rhinv, ztopm1, dynamic_L0, ztop, mcape)
   ! --------------------------------------------------------- !
   ! Calculate ztop and dynamic_L based on value of namelist   !
   ! --------------------------------------------------------- !
@@ -2122,8 +2089,6 @@ module clubb_mf
                                             cwqt,   cwthv,  zcb_unset, &
                                             wa,     wb,        ztopm1, &
                                             pblh,   convh,     rhinv
-
-     logical, intent(in) ::                 do_condensation
 
      real(r8), intent(out) ::               dynamic_L0, ztop, mcape
 
@@ -2239,7 +2204,7 @@ module clubb_mf
        !Test plume
        call oneplume( nzm, nzt, zm, dzt, iexner_zm, iexner_zt, p_zm, qt, thv, thl, &
                       wmax, wmin, sigmaw, sigmaqt, sigmathv, cwqt, cwthv, zcb_unset, &
-                      wa, wb, tke, do_condensation, do_clubb_mf_precip, ztop )
+                      wa, wb, tke, do_clubb_mf_precip, ztop )
 
        dynamic_L0 = clubb_mf_a0*(ztop**clubb_mf_b0)
      else if (clubb_mf_Lopt == 4 .or. clubb_mf_Lopt == 5) then
@@ -2607,7 +2572,7 @@ module clubb_mf
 
   subroutine oneplume( nzm, nzt, zm, dzt, iexner_zm, iexner_zt, p_zm, qt, thv, thl, &
                        wmax, wmin, sigmaw, sigmaqt, sigmathv, cwqt, cwthv, zcb_unset, &
-                       wa, wb, tke, do_condensation, do_precip, plumeheight )
+                       wa, wb, tke, do_precip, plumeheight )
   !**********************************************************************
   ! Calculate a single plume with fixed entrainment
   ! to be used for a dynamic mixing length calculation
@@ -2622,7 +2587,7 @@ module clubb_mf
 
     real(r8), intent(in)                :: wmax, wmin, sigmaw, sigmaqt, sigmathv, cwqt, &
                                            cwthv, zcb_unset, wa, wb
-    logical, intent(in)               :: do_condensation, do_precip
+    logical, intent(in)                 :: do_precip
 
     real(r8), intent(inout)             :: plumeheight
 
@@ -2692,20 +2657,15 @@ module clubb_mf
     upth(ksfcm)  = upthl(ksfcm)
 
     ! get cloud, lowest momentum level
-    if (do_condensation) then
-      call condensation_mf(upqt(ksfcm), upthl(ksfcm), p_zm(ksfcm), iexner_zm(ksfcm), &
-                           thvn, qcn, thn, qln, qin, qsn, lmixn)
-      upthv(ksfcm) = thvn
-      upqc(ksfcm)  = qcn
-      upql(ksfcm)  = qln
-      upqi(ksfcm)  = qin
-      upqs(ksfcm)  = qsn
-      upth(ksfcm)  = thn
-      if (qcn > 0._r8) zcb = zm(ksfcm)
-    else
-      ! assume no cldliq
-      upqc(ksfcm)  = 0._r8
-    end if
+    call condensation_mf(upqt(ksfcm), upthl(ksfcm), p_zm(ksfcm), iexner_zm(ksfcm), &
+                         thvn, qcn, thn, qln, qin, qsn, lmixn)
+    upthv(ksfcm) = thvn
+    upqc(ksfcm)  = qcn
+    upql(ksfcm)  = qln
+    upqi(ksfcm)  = qin
+    upqs(ksfcm)  = qsn
+    upth(ksfcm)  = thn
+    if (qcn > 0._r8) zcb = zm(ksfcm)
 
     do k = ksfcm, ktopm-kdir, kdir
       kt = k - (1-kdir)/2
@@ -2734,13 +2694,9 @@ module clubb_mf
       supthl(kt) = supthl(kt)*upw(k)/dzt(kt)
 
       ! get cloud, momentum levels
-      if (do_condensation) then
-        call condensation_mf(qtn, thln, p_zm(kn), iexner_zm(kn), &
-                             thvn, qcn, thn, qln, qin, qsn, lmixn)
-        if (zcb == zcb_unset .and. qcn > 0._r8) zcb = zm(kn)
-      else
-        thvn = thln*(1._r8+zvir*qtn)
-      end if
+      call condensation_mf(qtn, thln, p_zm(kn), iexner_zm(kn), &
+                           thvn, qcn, thn, qln, qin, qsn, lmixn)
+      if (zcb == zcb_unset .and. qcn > 0._r8) zcb = zm(kn)
       ! get buoyancy
       B=gravit*(0.5_r8*(thvn + upthv(k))/thv(kt)-1._r8)
 
