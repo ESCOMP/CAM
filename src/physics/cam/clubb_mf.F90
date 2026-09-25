@@ -130,6 +130,9 @@ module clubb_mf
       close(iunit)
     end if
 
+    if (clubb_mf_Lopt < 0 .or. clubb_mf_Lopt > 8 ) &
+         call endrun('clubb_mf_readnl: clubb_mf_Lopt value must be between 0 and 8')
+
     call mpi_bcast(clubb_mf_Lopt, 1, mpi_integer, mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_mf_Lopt")
     call mpi_bcast(clubb_mf_a0,   1, mpi_real8,   mstrid, mpicom, ierr)
@@ -515,23 +518,23 @@ module clubb_mf
      ! rng seed
      real(r8), dimension(4)                 :: u_seed
 
-     ! alpha relates star qunataties to stddev after Suselj etal 2019
+     ! alpha relates star qunataties to stddev Suselj etal 2019 DOI: 10.1175/JAS-D-18-0239.1
      real(r8),parameter                     :: alphw   = 0.572_r8,        &
                                                alphqt  = 2.890_r8,        &
                                                alphthv = 2.890_r8
-     ! w' covariance after Suselj etal 2019
+     ! w' covariance Suselj etal 2019 2019 DOI: 10.1175/JAS-D-18-0239.1
      real(r8),parameter                     :: cwqt  = 0.32_r8,           &
                                                cwthv = 0.58_r8
-     ! virtual mass coefficients for w-eqn after Suselj etal 2019
+     ! virtual mass coefficients for w-eqn Suselj etal 2019 DOI: 10.1175/JAS-D-18-0239.1
      real(r8),parameter                     :: wa = 1.0_r8,               &
                                                wb = 1.5_r8
      ! min values to avoid singularities
      real(r8),parameter                     :: wstarmin = 1.e-3_r8,       &
                                                pblhmin  = 100._r8
-     ! evaporation efficiency after Suselj etal 2019
+     ! evaporation efficiency Suselj etal 2019 DOI: 10.1175/JAS-D-18-0239.1
      real(r8),parameter                     :: ke = 2.5e-4_r8
      !
-     ! height here downdrafts feel the surface
+     ! height where downdrafts feel the surface
      real(r8),parameter                     :: z00dn = 1.e3_r8, &
                                                tinynum = 1.e-7_r8
      ! to fix entrainmnet rate
@@ -572,6 +575,79 @@ module clubb_mf
      !
      ! minimum depth of plume expressed as number of levels
      integer,parameter                      :: kspan_min = 4
+     !
+     ! threshold on surface buoyancy flux below which elevated ("aloft")
+     ! convection triggering is used instead of surface-based
+     real(r8), parameter :: aloft_wthv_thresh = 0.01_r8
+
+     ! reference pressure (Pa) used to locate the mid-troposphere level
+     ! for the aloft-triggering search, and as
+     ! the target level for RH interpolation in the rhinv predictor
+     real(r8), parameter :: p_midtrop = 50000._r8
+     !
+     ! floor on the RH-interpolation denominator (qsat)
+     real(r8), parameter :: qsat_floor = 1.e-30_r8
+     !
+     ! cap on interpolated relative humidity before inverting it into rhinv,
+     ! to avoid a singularity as RH -> 1
+     real(r8), parameter :: rh_cap = 0.990_r8
+     !
+     ! lower-tropospheric-stability threshold (K) above which the marine-Sc
+     ! inversion is judged strong enough to inhibit the MF plume ensemble
+     ! entirely (mirrors the CLUBB-core expldiff criterion)
+     real(r8), parameter :: lts_inhibit_thresh = 20._r8
+     !
+     ! vertical extension depth (m) used to stretch an aloft-triggered plume
+     ! back down toward the surface when its launch level is within this
+     ! depth of the surface
+     real(r8), parameter :: aloft_ext_depth = 1000._r8
+     !
+     ! coefficient and exponent in the RH-based dynamic entrainment-length
+     ! diagnostic: rh_L0 = rh_L0_coef * rhinv**rh_L0_exp
+     real(r8), parameter :: rh_L0_coef = 50._r8
+     real(r8), parameter :: rh_L0_exp  = 3._r8
+     !
+     ! rh_L0 threshold above which do_clubb_mf_rhtke forces eturb to 1
+     ! (TKE-entrainment enhancement switched off)
+     real(r8), parameter :: rh_L0_thresh = 733.34_r8
+     !
+     ! momentum entrains at a reduced rate relative to the thermodynamic
+     ! entrainment rate entn -- classic mass-flux assumption
+     real(r8), parameter :: ent_mom_reduction = 3._r8
+     !
+     ! sentinel "not yet reached" value for zcb (cloud-base height);
+     ! must be far above any physically possible height
+     real(r8), parameter :: zcb_unset_val = 9999999._r8
+     !
+     ! upper search bound (m) for locating the TKE-gradient or heat-flux-
+     ! gradient based L0 diagnostic (clubb_mf_Lopt 1/2) -- currently written
+     ! as 20000._r8 in one branch and 20000_r8 (no decimal) in the other
+     real(r8), parameter :: Lscale_search_top = 20000._r8
+     !
+     ! TKE vertical-gradient threshold (clubb_mf_Lopt==1) marking the
+     ! diagnosed top of the turbulent layer
+     real(r8), parameter :: tke_grad_thresh = 1.e-5_r8
+     !
+     ! heat-flux vertical-gradient threshold (clubb_mf_Lopt==2), same role
+     ! as tke_grad_thresh but for the heat-flux-based diagnostic
+     real(r8), parameter :: hflux_grad_thresh = 1.e-4_r8
+     !
+     ! minimum pressure (Pa) at which the dilute-CAPE calculation (Lopt 4/5)
+     ! is considered reliable; levels above this are excluded from the search
+     real(r8), parameter :: p_dilute_calc_top = 40.e2_r8
+     !
+     ! Pa -> hPa conversion, needed because buoyan_dilute expects hPa
+     real(r8), parameter :: pa_to_hpa = 0.01_r8
+     !
+     ! floor on the dilute-CAPE result (J/kg) used to derive ztop under
+     ! clubb_mf_Lopt==5
+     real(r8), parameter :: cape_floor = 25._r8
+     !
+     ! max fixed-point iterations for the qc/T condensation solve
+     integer,  parameter :: condensation_max_iter = 50
+     !
+     ! convergence tolerance on successive qc iterates
+     real(r8), parameter :: condensation_tol = 2.e-5_r8
 
      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
      !!!!!!!!!!!!!!!!!!!!!! BEGIN CODE !!!!!!!!!!!!!!!!!!!!!!!
@@ -739,7 +815,7 @@ module clubb_mf
      if (do_clubb_mf_aspd) limarea = .true.
 
      ! unique identifier
-     zcb_unset = 9999999._r8
+     zcb_unset = zcb_unset_val !zcb_unset_val = 9999999._r8
      zcb       = zcb_unset
 
      ! surface buoyancy flux
@@ -752,12 +828,12 @@ module clubb_mf
        kpbl = kpbl + kdir
      end do
 
-     if (do_clubb_mf_aloft .and. wthv_sfc < 0.01_r8) then
+     if (do_clubb_mf_aloft .and. wthv_sfc < aloft_wthv_thresh) then ! aloft_wthv_thresh = 0.01_r8
        aloft = .true.
 
        kmid = ksfcm
        ! Use a pressure-based criterion to locate the mid-level within the troposphere
-       do while (p_zm(kmid) > 500.E2_r8)
+       do while (p_zm(kmid) > p_midtrop) !p_midtrop = 50000._r8
          kmid = kmid + kdir
        end do
 
@@ -808,16 +884,16 @@ module clubb_mf
            tmpmq  = tmpmq  + rho_zt(k_rh)*dzt(k_rh)*qv(k_rh)
            tmpmqs = tmpmqs + rho_zt(k_rh)*dzt(k_rh)*qs_rh
          end do
-         rhlev = tmpmq/max(tmpmqs, 1.e-30_r8)
+         rhlev = tmpmq/max(tmpmqs, qsat_floor) !qsat_floor = 1.e-30_r8
        else
          do k_rh = 1, nzt
            tmpt_rh = th(k_rh)/iexner_zt(k_rh)
            call qsat(tmpt_rh, p_zt(k_rh), es_rh, qs_rh)
-           rhprof(k_rh) = qv(k_rh)/max(qs_rh, 1.e-30_r8)
+           rhprof(k_rh) = qv(k_rh)/max(qs_rh, qsat_floor) !qsat_floor = 1.e-30_r8
          end do
-         rhlev = mf_pinterp(nzt, p_zt, rhprof, 50000._r8)
+         rhlev = mf_pinterp(nzt, p_zt, rhprof, p_midtrop)  !p_midtrop = 50000._r8
        end if
-       if (rhlev >= 1._r8) rhlev = 0.990_r8
+       if (rhlev >= 1._r8) rhlev = rh_cap ! rh_cap = 0.990_r8
        if (rhlev > 0._r8) rhinv = 1._r8/((1._r8/rhlev) - 1._r8)
      end if
 
@@ -828,11 +904,16 @@ module clubb_mf
      ! ensemble is shut off entirely and CLUBB owns the boundary layer.  All
      ! plume outputs were zeroed above, so the inhibited column follows the
      ! same code path as a negatively buoyant (no-convection) one.
-     mf_inhibit = do_clubb_mf_invswitch .and. (lts >= 20._r8)
+     mf_inhibit = do_clubb_mf_invswitch .and. (lts >= lts_inhibit_thresh) ! lts_inhibit_thresh = 20._r8
 
-     ! if surface buoyancy is positive then do mass-flux
-     !if ( wthv > 0._r8 ) then
-     if ( wthv > 0._r8 .and. wqt > 0._r8 .and. (.not. mf_inhibit) ) then
+     ! if no positive buoyancy and no moisture flux then return
+     if (.not. (wthv > 0._r8 .and. wqt > 0._r8 .and. (.not. mf_inhibit) ) ) then
+
+       ddcp(:) = 0._r8
+       ztopm1(:) = zm(ksfcm)
+       return
+
+     else ! we have positive surface buoyancy and moisture flux lets do mass-flux
 
        if (do_clubb_mf_mixd) then
          convh = max(cbm1,pblhmin)
@@ -924,10 +1005,6 @@ module clubb_mf
          betathl = (thv(kt+2*kdir)-thv(kt))/(0.5_r8*(dzt(kt+2*kdir)+2._r8*dzt(kt+kdir)+dzt(kt)))
 
          if (.not.aloft) then
-!jt The following 2 lines I think are correct since the surface is .5 grid down from the surface dzt
-!jt           upqt(kstart,i)= qt(kt)-betaqt*0.5_r8*dzt(kt)+facqtu*upqt(kstart,i)
-!jt           upthv(kstart,i)= thv(kt)-betathl*0.5_r8*dzt(kt)+facthvu*upthv(kstart,i)
-!jt The following 2 lines are to restore bfb accuracy
            upqt(kstart,i)= qt(kt)-betaqt*dzt(kt)+facqtu*upqt(kstart,i)
            upthv(kstart,i)= thv(kt)-betathl*dzt(kt)+facthvu*upthv(kstart,i)
          else
@@ -960,7 +1037,7 @@ module clubb_mf
        ! if aloft extend the mass flux plume below kstart nbot levels
        if (aloft) then
          zsub = zm(kstart)
-         dzext = 1000._r8
+         dzext = aloft_ext_depth ! aloft_ext_depth = 1000._r8
          !if greater than dzext above the surface
          if (zsub > dzext) then
              ! find nbot levs below kstart
@@ -1015,10 +1092,11 @@ module clubb_mf
 
          ! --------------------------------------------------------- !
          ! Stochastic entrainmnet calculation                        !
-         ! From Suselj et al 2019, after Romps and Kuang 2010        !
+         ! From Suselj et al 2019 DOI: 10.1175/JAS-D-18-0239.1       !
+         ! after Romps and Kuang 2010                                !
          ! (ideally we wouldn't fill the entire arrray w/ the RNG,   !
          ! but the RNG doesn't work properly when it operates on     !
-         ! the entire array. I'm not sure why this is happening.)    !
+         ! the entire array.                                         !
          ! --------------------------------------------------------- !
          do k = ksfct, ktopt-kdir, kdir
            ! get entrainment coefficient, dz/L0
@@ -1035,7 +1113,6 @@ module clubb_mf
 
        ! get poisson, P(dz/L0)
        call poisson( nzt, clubb_mf_nup, ksfct, ktopt, kdir, entf, enti, u_seed )
-       ! call poisson( nzt, clubb_mf_nup, entf, enti, u(clubb_mf_kseed+1:clubb_mf_kseed+4))
 
        ! --------------------------------------------------------- !
        ! Main upward sweep to compute updraft properties           !
@@ -1108,9 +1185,6 @@ module clubb_mf
                ! ----------------------------------------------------------------- !
                if (excessm*excessn > 0._r8) then
                  xc = min(1._r8,max(0._r8,1._r8-2._r8*wa*gravit*cridis/wn**2._r8*(1._r8-thvn/thv_zm(kn))))
-                 aquad = 0._r8
-                 bquad = 0._r8
-                 cquad = 0._r8
                else
                  ! -------------------------------------------------- !
                  ! Case 2 : When either cumulus or env. is saturated. !
@@ -1124,7 +1198,7 @@ module clubb_mf
                  ! kk=1 : Cumulus Segment, kk=2 : Environment Segment !
                  ! -------------------------------------------------- !
                  do kk = 1, 2
-                   if( kk .eq. 1 ) then
+                   if( kk == 1 ) then
                      thv_x0 = thvn
                      thv_x1 = ( 1._r8 - 1._r8/xsat ) * thvn + ( 1._r8/xsat ) * thvxsat
                    else
@@ -1134,15 +1208,15 @@ module clubb_mf
                    aquad =  wn**2
                    bquad =  2._r8*wa*gravit*cridis*(thv_x1 - thv_x0)/thv_zm(kn) - 2._r8*wn**2
                    cquad =  2._r8*wa*gravit*cridis*(thv_x0 - thv_zm(kn))/thv_zm(kn)  + wn**2
-                   if( kk .eq. 1 ) then
-                     if( ( bquad**2-4._r8*aquad*cquad ) .ge. 0._r8 ) then
+                   if( kk == 1 ) then
+                     if( ( bquad**2-4._r8*aquad*cquad ) >= 0._r8 ) then
                        call roots(aquad,bquad,cquad,xs1,xs2,status)
                        x_cu = min(1._r8,max(0._r8,min(xsat,min(xs1,xs2))))
                      else
                        x_cu = xsat
                      endif
                    else
-                     if( ( bquad**2-4._r8*aquad*cquad) .ge. 0._r8 ) then
+                     if( ( bquad**2-4._r8*aquad*cquad) >= 0._r8 ) then
                        call roots(aquad,bquad,cquad,xs1,xs2,status)
                        x_en = min(1._r8,max(0._r8,max(xsat,min(xs1,xs2))))
                      else
@@ -1150,7 +1224,7 @@ module clubb_mf
                      endif
                    endif
                  enddo
-                 if( x_cu .eq. xsat ) then
+                 if( x_cu == xsat ) then
                    xc = max(x_cu, x_en)
                  else
                    xc = x_cu
@@ -1177,8 +1251,8 @@ module clubb_mf
              ! --------------------------------------------------------- !
              eturb = (1._r8 + clubb_mf_alphturb*sqrt(tke(k))/upw(k,i))
              if (do_clubb_mf_rhtke) then
-               rh_L0 = 50._r8*(rhinv**3._r8)
-               if (rh_L0 >= 733.34_r8) eturb = 1._r8
+               rh_L0 = rh_L0_coef * (rhinv**rh_L0_exp) ! rh_L0_coef = 50._r8, rh_L0_exp  = 3._r8
+               if (rh_L0 >= rh_L0_thresh) eturb = 1._r8 ! rh_L0_thresh = 733.34_r8
              else
                if (dynamic_L0(i) >= clubb_mf_max_L0) eturb = 1._r8
              end if
@@ -1186,7 +1260,7 @@ module clubb_mf
 
              ! integrate updraft
              entexp  = exp(-entn*eturb*dzt(kt))
-             entexpu = exp(-entn*dzt(kt)/3._r8)
+             entexpu = exp(-entn*dzt(kt)/ent_mom_reduction) ! ent_mom_reduction = 3._r8
 
              qtn  = qt(kt) *(1._r8-entexp ) + upqt (k,i)*entexp + supqt(kt,i)
              thln = thl(kt)*(1._r8-entexp ) + upthl(k,i)*entexp + supthl(kt,i)
@@ -1202,7 +1276,7 @@ module clubb_mf
              if (do_condensation) then
                call condensation_mf(qtn, thln, p_zm(kn), iexner_zm(kn), &
                                     thvn, qcn, thn, qln, qin, qsn, lmixn)
-               if (zcb(i).eq.zcb_unset .and. qcn > 0._r8) zcb(i) = zm(kn)
+               if (zcb(i)==zcb_unset .and. qcn > 0._r8) zcb(i) = zm(kn)
              else
                thvn = thln*(1._r8+zvir*qtn)
              end if
@@ -1337,7 +1411,7 @@ module clubb_mf
              kn = k - kdir
 
              ! get rain evaporation
-             if ((upqs(k,i) + upqs(kn,i)).le.0._r8) then
+             if ((upqs(k,i) + upqs(kn,i)) <=0._r8) then
                qtovqs = 0._r8
              else
                qtovqs = (upqt(k,i) + upqt(kn,i))/(upqs(k,i) + upqs(kn,i))
@@ -1472,15 +1546,15 @@ module clubb_mf
                ! compute the TKE entrainment enhancement locally for the downdraft.
                eturb = 1._r8 + clubb_mf_alphturb*sqrt(tke(k))/abs(dnw(k,i))
                if (do_clubb_mf_rhtke) then
-                 rh_L0 = 50._r8*(rhinv**3._r8)
-                 if (rh_L0 >= 733.34_r8) eturb = 1._r8
+                 rh_L0 = rh_L0_coef*(rhinv**rh_L0_exp)  ! rh_L0_coef = 50._r8, rh_L0_exp  = 3._r8
+                 if (rh_L0 >= rh_L0_thresh) eturb = 1._r8 ! rh_L0_thresh = 733.34_r8
                else
                  if (dynamic_L0(i) >= clubb_mf_max_L0) eturb = 1._r8
                end if
                eturb = min(eturb, max_eturb)
 
                entexp  = exp(-1._r8*entn*eturb*dzt(kt))
-               entexpu = exp(-1._r8*entn*dzt(kt)/3._r8)
+               entexpu = exp(-1._r8*entn*dzt(kt)/ent_mom_reduction) ! ent_mom_reduction = 3._r8
 
                ! integrate downward
                dnu(kn,i)   = u(kt)  *(1._r8-entexpu) + dnu  (k,i)*entexpu
@@ -1572,8 +1646,7 @@ module clubb_mf
 
          end do!i
 
-!+++ARH this should be changed to only zero out above the downdraft (dnw<-mindw)
-!+++ARH also this should zero out dna as well
+         ! this should be changed to only zero out above the downdraft (dnw<-mindw)
          ! zero out downdraft fluxes for dnw == -mindnw
          do i=1,clubb_mf_nup
            do k=ksfcm, ktopm, kdir
@@ -1755,7 +1828,7 @@ module clubb_mf
        ! --------------------------------------------------------- !
 
        ! 1. Momentum Grid Accumulations (Interfaces)
-       ! Iterates over all interfaces (1 to 59)
+       ! Iterates over all interfaces
        do k=ksfcm, ktopm, kdir
          do i=1,clubb_mf_nup
            awup(k) = awup(k) + upa(k,i)*upw(k,i)
@@ -1784,13 +1857,14 @@ module clubb_mf
          awv(k) = awvup(k)+ awvdn(k)
        enddo
 
+
        ! 2. Thermodynamic Grid Accumulations (Cells)
-       ! Iterates over active atmospheric cells only
-       ! Top-Down: 58 down to 1. Bottom-Up: 2 up to nzm.
+       ! loop counter k used to derive
+       ! kt_dn (the cell) and
+       ! kn (the interface immediately below the cell, toward ksfcm)
+       ! Loop counter k range:      Top-down: nzm-1 down to 1.  Bottom-up: 2 up to nzm.
+       ! Actual cell range (kt_dn): Top-down: nzm-1 down to 1.  Bottom-up: 1 up to nzm-1.
        do k = ksfcm+kdir, ktopm, kdir
-         ! The interface directly BELOW the current cell
-         ! In top-down (-1): cell 58 -> interface 59
-         ! In bottom-up (1): cell 2 -> interface 1
          kn = k - kdir
          kt_dn = k - (1+kdir)/2
 
@@ -2016,9 +2090,6 @@ module clubb_mf
          uflx(k)    = uflxup(k) + uflxdn(k)
          vflx(k)    = vflxup(k) + vflxdn(k)
        enddo
-     else
-       ddcp(:) = 0._r8
-       ztopm1(:) = zm(ksfcm)
      end if
 
   end subroutine integrate_mf
@@ -2146,44 +2217,38 @@ module clubb_mf
         kdir = -1
      end if
 
-     if (clubb_mf_Lopt==0) then
+     if (clubb_mf_Lopt == 0) then
        !Constant L0
        dynamic_L0 = clubb_mf_L0
        ztop = clubb_mf_L0
-     else if (clubb_mf_Lopt==1) then
+     else if (clubb_mf_Lopt == 1) then
        !TKE
        do k = ktop-2*kdir, ksfc+kdir, -kdir
-         if (zm(k) < 20000._r8 .and. tke(k) - tke(k+kdir) > 1e-5_r8) then
+         if (zm(k) < Lscale_search_top .and. tke(k) - tke(k+kdir) > tke_grad_thresh) then ! Lscale_search_top = 20000._r8,tke_grad_thresh = 1.e-5_r8
            ztop = zm(k)
            exit
          endif
        enddo
        dynamic_L0 = clubb_mf_a0*(ztop**clubb_mf_b0)
 
-     else if (clubb_mf_Lopt==2) then
+     else if (clubb_mf_Lopt == 2) then
        !Heat flux
        do k = ktop-2*kdir, ksfc+kdir, -kdir
-         if (zm(k) < 20000_r8 .and. abs(abs(wpthlp_env(k))-abs(wpthlp_env(k-kdir))) > 1e-4_r8) then
+         if (zm(k) < Lscale_search_top .and. abs(abs(wpthlp_env(k))-abs(wpthlp_env(k-kdir))) > hflux_grad_thresh) then !hflux_grad_thresh = 1.e-4_r8
            ztop = zm(k)
            exit
          endif
        enddo
        dynamic_L0 = clubb_mf_a0*(ztop**clubb_mf_b0)
 
-     else if (clubb_mf_Lopt==3) then
+     else if (clubb_mf_Lopt == 3) then
        !Test plume
        call oneplume( nzm, nzt, zm, dzt, iexner_zm, iexner_zt, p_zm, qt, thv, thl, &
                       wmax, wmin, sigmaw, sigmaqt, sigmathv, cwqt, cwthv, zcb_unset, &
                       wa, wb, tke, do_condensation, do_clubb_mf_precip, ztop )
 
        dynamic_L0 = clubb_mf_a0*(ztop**clubb_mf_b0)
-       !ztop = ztop - 1600._r8
-       !if (ztop < 1._r8) then
-       !  dynamic_L0 = clubb_mf_a0
-       !else
-       !  dynamic_L0 = min(35._r8,clubb_mf_a0*(ztop**clubb_mf_b0))
-       !end if
-     else if (clubb_mf_Lopt==4 .or. clubb_mf_Lopt==5) then
+     else if (clubb_mf_Lopt == 4 .or. clubb_mf_Lopt == 5) then
        !dilute cape calculation
        !dmpdz = -1._r8*ent_zt(2:nz,:)
        dmpdz(:,:) = -1.E-3_r8
@@ -2197,31 +2262,31 @@ module clubb_mf
        end do
 
        do k = ksfc, ktop, kdir
-         if (p_zt(k) > 40.e2_r8) then
+         if (p_zt(k) >  p_dilute_calc_top) then !  p_dilute_calc_top = 40.e2_r8
            msg = k
          end if
        end do
 
        call buoyan_dilute(nzt, nzm, 1          ,dmpdz , &
-                          qv         ,t_zt       ,p_zt*0.01_r8       ,zt       ,p_zm*0.01_r8 , &
+                          qv         ,t_zt       ,p_zt*pa_to_hpa ,zt   ,p_zm*pa_to_hpa , & ! pa_to_hpa = 0.01_r8
                           tp         ,qstp       ,tl         ,cape         ,cin  , &
                           kpbl-kdir  ,lcl        ,lel        ,lon      ,mx   , &
                           msg-kdir   ,tpert      ,landfrac )
 
-       mcape = max(cape(1),25._r8)
+       mcape = max(cape(1),cape_floor) ! cape_floor = 25._r8
 
-       if (clubb_mf_Lopt==4) then
+       if (clubb_mf_Lopt == 4) then
          ztop = max(zt(lel(1)+kdir),convh)
-       else if (clubb_mf_Lopt==5) then
+       else if (clubb_mf_Lopt == 5) then
          ztop = mcape
        end if
        dynamic_L0 = clubb_mf_a0*(ztop**clubb_mf_b0)
 
-     else if (clubb_mf_Lopt==6) then
+     else if (clubb_mf_Lopt == 6) then
        ! grab ztop from max height of ensemble in prior time-step(s)
        ztop = ztopm1
        dynamic_L0 = clubb_mf_a0*(ztop**clubb_mf_b0)
-     else if (clubb_mf_Lopt==7 .or. clubb_mf_Lopt==8) then
+     else if (clubb_mf_Lopt == 7 .or. clubb_mf_Lopt == 8) then
        ztop = rhinv
        dynamic_L0 = clubb_mf_a0*(ztop**clubb_mf_b0)
      end if
@@ -2243,9 +2308,9 @@ module clubb_mf
      real(r8) :: diff,t,qstmp,qcold,es,wf
      logical  :: noice = .true.
      ! max number of iterations
-     niter=50
+     niter = condensation_max_iter  ! condensation_max_iter = 50
      ! minimum difference
-     diff=2.e-5_r8
+     diff = condensation_tol ! condensation_tol = 2.e-5_r8
 
      qc=0._r8
      t=thl/iex
@@ -2324,7 +2389,7 @@ module clubb_mf
   subroutine precip_mf(qs,qt,w,dz,dzcld,Supqt)
   !**********************************************************************
   ! Precipitation microphysics
-  ! By Adam Herrington, after Kay Suselj
+  ! By Adam Herrington, algorithm from Kay Suselj DOI: 10.1175/JAS-D-18-0239.1
   !**********************************************************************
 
        real(r8),intent(in)  :: qs,qt,w,dz,dzcld
@@ -2356,7 +2421,7 @@ module clubb_mf
 
   subroutine poisson(nz, nup, ksfc, ktop, kdir, lambda, poi, state)
   !**********************************************************************
-  ! Set a unique (but reproduceble) seed for the kiss RNG
+  ! Set a unique (but reproducible) seed for the kiss RNG
   ! Call Poisson deviate
   ! By Adam Herrington
   !**********************************************************************
@@ -2507,23 +2572,23 @@ module clubb_mf
 
     status = 0
 
-    if( a .eq. 0._r8 ) then                     ! Form b*x + c = 0
-        if( b .eq. 0._r8 ) then                        ! Failure: c = 0
+    if( a == 0._r8 ) then                              ! Form b*x + c = 0
+        if( b == 0._r8 ) then                          ! Failure: c = 0
             status = 1
         else                                           ! b*x + c = 0
             r1 = -c/b
         endif
         r2 = r1
     else
-        if( b .eq. 0._r8 ) then                        ! Form a*x**2 + c = 0
-            if( a*c .gt. 0._r8 ) then                  ! Failure: x**2 = -c/a < 0
+        if( b == 0._r8 ) then                          ! Form a*x**2 + c = 0
+            if( a*c > 0._r8 ) then                     ! Failure: x**2 = -c/a < 0
                 status = 2
             else                                       ! x**2 = -c/a
                 r1 = sqrt(-c/a)
             endif
             r2 = -r1
        else                                            ! Form a*x**2 + b*x + c = 0
-            if( (b**2 - 4._r8*a*c) .lt. 0._r8 ) then   ! Failure, no real roots
+            if( (b**2 - 4._r8*a*c) < 0._r8 ) then      ! Failure, no real roots
                  status = 3
             else
                  q  = -0.5_r8*(b + sign(1.0_r8,b)*sqrt(b**2 - 4._r8*a*c))
@@ -2670,7 +2735,7 @@ module clubb_mf
       if (do_condensation) then
         call condensation_mf(qtn, thln, p_zm(kn), iexner_zm(kn), &
                              thvn, qcn, thn, qln, qin, qsn, lmixn)
-        if (zcb.eq.zcb_unset .and. qcn > 0._r8) zcb = zm(kn)
+        if (zcb == zcb_unset .and. qcn > 0._r8) zcb = zm(kn)
       else
         thvn = thln*(1._r8+zvir*qtn)
       end if
@@ -2888,7 +2953,7 @@ subroutine buoyan_dilute( nzt, nzm, nup, dmpdz, q, t, p, z, pf, &
 ! skipped and cape retains initialized value of zero).
 !
    do i = 1,nup
-      plge600(i) = pl(i).ge.600._r8 ! Just change to always allow buoy calculation.
+      plge600(i) = pl(i)>=600._r8 ! Just change to always allow buoy calculation.
    end do
 
 ! Main buoyancy calculation.
