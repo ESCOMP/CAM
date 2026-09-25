@@ -618,36 +618,6 @@ module clubb_mf
      ! sentinel "not yet reached" value for zcb (cloud-base height);
      ! must be far above any physically possible height
      real(r8), parameter :: zcb_unset_val = 9999999._r8
-     !
-     ! upper search bound (m) for locating the TKE-gradient or heat-flux-
-     ! gradient based L0 diagnostic (clubb_mf_Lopt 1/2) -- currently written
-     ! as 20000._r8 in one branch and 20000_r8 (no decimal) in the other
-     real(r8), parameter :: Lscale_search_top = 20000._r8
-     !
-     ! TKE vertical-gradient threshold (clubb_mf_Lopt==1) marking the
-     ! diagnosed top of the turbulent layer
-     real(r8), parameter :: tke_grad_thresh = 1.e-5_r8
-     !
-     ! heat-flux vertical-gradient threshold (clubb_mf_Lopt==2), same role
-     ! as tke_grad_thresh but for the heat-flux-based diagnostic
-     real(r8), parameter :: hflux_grad_thresh = 1.e-4_r8
-     !
-     ! minimum pressure (Pa) at which the dilute-CAPE calculation (Lopt 4/5)
-     ! is considered reliable; levels above this are excluded from the search
-     real(r8), parameter :: p_dilute_calc_top = 40.e2_r8
-     !
-     ! Pa -> hPa conversion, needed because buoyan_dilute expects hPa
-     real(r8), parameter :: pa_to_hpa = 0.01_r8
-     !
-     ! floor on the dilute-CAPE result (J/kg) used to derive ztop under
-     ! clubb_mf_Lopt==5
-     real(r8), parameter :: cape_floor = 25._r8
-     !
-     ! max fixed-point iterations for the qc/T condensation solve
-     integer,  parameter :: condensation_max_iter = 50
-     !
-     ! convergence tolerance on successive qc iterates
-     real(r8), parameter :: condensation_tol = 2.e-5_r8
 
      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
      !!!!!!!!!!!!!!!!!!!!!! BEGIN CODE !!!!!!!!!!!!!!!!!!!!!!!
@@ -2201,6 +2171,30 @@ module clubb_mf
                                                lon,      mx,           &
                                                k
 
+     ! upper search bound (m) for locating the TKE-gradient or heat-flux-
+     ! gradient based L0 diagnostic (clubb_mf_Lopt 1/2) -- currently written
+     ! as 20000._r8 in one branch and 20000_r8 (no decimal) in the other
+     real(r8), parameter :: Lscale_search_top = 20000._r8
+     !
+     ! TKE vertical-gradient threshold (clubb_mf_Lopt==1) marking the
+     ! diagnosed top of the turbulent layer
+     real(r8), parameter :: tke_grad_thresh = 1.e-5_r8
+     !
+     ! heat-flux vertical-gradient threshold (clubb_mf_Lopt==2), same role
+     ! as tke_grad_thresh but for the heat-flux-based diagnostic
+     real(r8), parameter :: hflux_grad_thresh = 1.e-4_r8
+     !
+     ! minimum pressure (Pa) at which the dilute-CAPE calculation (Lopt 4/5)
+     ! is considered reliable; levels above this are excluded from the search
+     real(r8), parameter :: p_dilute_calc_top = 40.e2_r8
+     !
+     ! Pa -> hPa conversion, needed because buoyan_dilute expects hPa
+     real(r8), parameter :: pa_to_hpa = 0.01_r8
+     !
+     ! floor on the dilute-CAPE result (J/kg) used to derive ztop under
+     ! clubb_mf_Lopt==5
+     real(r8), parameter :: cape_floor = 25._r8
+
      ! intialize local variables
      cape      = 0._r8
      mcape     = 0._r8
@@ -2307,6 +2301,14 @@ module clubb_mf
      integer  :: niter,i
      real(r8) :: diff,t,qstmp,qcold,es,wf
      logical  :: noice = .true.
+
+     !
+     ! max fixed-point iterations for the qc/T condensation solve
+     integer,  parameter :: condensation_max_iter = 50
+     !
+     ! convergence tolerance on successive qc iterates
+     real(r8), parameter :: condensation_tol = 2.e-5_r8
+
      ! max number of iterations
      niter = condensation_max_iter  ! condensation_max_iter = 50
      ! minimum difference
