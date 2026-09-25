@@ -25,9 +25,9 @@ use shr_kind_mod,     only: r8=>shr_kind_r8
 use spmd_utils,       only: masterproc
 use ppgrid,           only: pcols, pver, pverp
 use ref_pres,         only: top_lev => trop_cloud_top_lev
-use physconst,        only: rair, gravit, tmelt, cpair, rh2o, rhoh2o, latvap, &
+use physconst,        only: pi, rair, gravit, tmelt, cpair, rh2o, rhoh2o, latvap, &
                             r_universal, mwh2o
-use constituents,     only: cnst_get_ind
+use constituents,     only: pcnst, cnst_get_ind
 use physics_types,    only: physics_state, physics_ptend, physics_ptend_init, physics_ptend_sum, &
                             physics_state_copy, physics_update
 use physics_buffer,   only: physics_buffer_desc, pbuf_get_index, pbuf_old_tim_idx, pbuf_get_field
@@ -43,8 +43,7 @@ use nucleate_ice_cam, only: use_preexisting_ice, nucleate_ice_cam_readnl, nuclea
                             nucleate_ice_cam_init, nucleate_ice_cam_calc
 
 use ndrop,            only: ndrop_init, dropmixnuc
-use ndrop_bam,        only: ndrop_bam_init, ndrop_bam_calc, &
-                            aername, psat, ccn_name
+use ndrop_bam,        only: ndrop_bam_init, ndrop_bam_calc, aername
 
 use hetfrz_classnuc_cam, only: hetfrz_classnuc_cam_readnl, hetfrz_classnuc_cam_register, hetfrz_classnuc_cam_init, &
                                hetfrz_classnuc_cam_calc
@@ -54,7 +53,7 @@ use compute_subgrid_vertical_velocity, only: compute_subgrid_vertical_velocity_t
                                              compute_subgrid_vertical_velocity_clubb_run
 use scale_subgrid_vertical_velocity,   only: scale_subgrid_vertical_velocity_run
 
-use cam_history,      only: addfld, add_default, outfld
+use cam_history,      only: addfld, add_default, horiz_only, fieldname_len, outfld
 use cam_logfile,      only: iulog
 use cam_abortutils,       only: endrun
 
@@ -128,6 +127,25 @@ integer :: coarse_so4_idx = -1  ! index of sulfate in coarse mode
 integer :: naer_all = 0
 integer :: npccn_idx, rndst_idx, nacon_idx
 
+! dropmixnuc CAM interface data
+integer, parameter :: psat = 6   ! number of supersaturations used to calc ccn concentration
+character(len=8) :: ccn_name(psat)= &
+                    (/'CCN1','CCN2','CCN3','CCN4','CCN5','CCN6'/)
+
+logical :: history_aerosol      ! Output the aerosol tendencies
+character(len=fieldname_len), allocatable :: fieldname(:)    ! names for drop nuc tendency output fields
+character(len=fieldname_len), allocatable :: fieldname_cw(:) ! names for drop nuc tendency output fields
+
+! Indices for aerosol species in the ptend%q array.
+integer, allocatable :: aer_cnst_idx(:,:)
+
+logical :: lq(pcnst) = .false. ! set flags true for constituents with non-zero tendencies
+                               ! in the ptend object
+
+! true for aerosol elements resolving to advected constituents
+! (dropmixnuc returns tendencies)
+logical, allocatable :: dotend(:)
+
 logical  :: separate_dust = .false.
 
 class(aerosol_properties), pointer :: aero_props_obj=>null()
@@ -178,10 +196,16 @@ subroutine microp_aero_init(phys_state,pbuf2d)
    integer  :: iaer
    integer  :: m, n, nspec
    integer  :: iaermod
+   integer  :: l, mm
+   integer  :: idxtmp = -1
 
    character(len=32) :: str32
    character(len=*), parameter :: routine = 'microp_aero_init'
    logical :: history_amwg
+   character(len=32)   :: tmpname
+   character(len=32)   :: tmpname_cw
+   character(len=128)  :: long_name
+   character(len=8)    :: unit
 
    character(len=512) :: errmsg
    integer            :: errflg
@@ -192,7 +216,8 @@ subroutine microp_aero_init(phys_state,pbuf2d)
 
    ! Query the PBL eddy scheme
    call phys_getopts(eddy_scheme_out          = eddy_scheme,  &
-                     history_amwg_out         = history_amwg )
+                     history_amwg_out         = history_amwg, &
+                     history_aerosol_out      = history_aerosol )
 
    ! Access the physical properties of the aerosols that are affecting the climate
    ! by using routines from the rad_constituents module.
@@ -233,7 +258,85 @@ subroutine microp_aero_init(phys_state,pbuf2d)
             end if
          end if
       end do
-      call ndrop_init(aero_props_obj)
+      call ndrop_init(aero_props_obj, pi, rhoh2o, mwh2o, r_universal, &
+                      rh2o, gravit, latvap, cpair, rair)
+
+      ! dropmixnuc CAM interface init (moved from ndrop_init).
+      ! dropmixnuc needs kvh from pbuf regardless of the eddy scheme.
+      kvh_idx = pbuf_get_index('kvh')
+
+      allocate( &
+         aer_cnst_idx(aero_props_obj%nbins(),0:maxval(aero_props_obj%nmasses())), &
+         fieldname(aero_props_obj%ncnst_tot()),                 &
+         fieldname_cw(aero_props_obj%ncnst_tot()),              &
+         dotend(aero_props_obj%ncnst_tot())                     )
+
+      ! Add dropmixnuc tendencies for all modal aerosol species
+
+      do m = 1, aero_props_obj%nbins()
+         do l = 0, aero_props_obj%nmasses(m)
+
+            mm = aero_props_obj%indexer(m,l)
+
+            unit = 'kg/m2/s'
+            if (l == 0) then   ! number
+               unit = '#/m2/s'
+            end if
+
+            if (l == 0) then   ! number
+               call aero_props_obj%num_names( m, tmpname, tmpname_cw)
+            else
+               call aero_props_obj%mmr_names( m,l, tmpname, tmpname_cw)
+            end if
+
+            fieldname(mm)    = trim(tmpname) // '_mixnuc1'
+            fieldname_cw(mm) = trim(tmpname_cw) // '_mixnuc1'
+
+            ! To set tendencies in the ptend object need to get the constituent indices
+            ! for the prognostic species
+
+            call cnst_get_ind(tmpname, idxtmp, abort=.false.)
+            aer_cnst_idx(m,l) = idxtmp
+            dotend(mm) = idxtmp > 0
+
+            if (idxtmp>0) then
+               lq(idxtmp) = .true.
+            end if
+
+            ! Add tendency fields to the history only when prognostic MAM is enabled.
+            long_name = trim(tmpname) // ' dropmixnuc mixnuc column tendency'
+            call addfld(fieldname(mm),    horiz_only, 'A', unit, long_name, sampled_on_subcycle=.true.)
+
+            long_name = trim(tmpname_cw) // ' dropmixnuc mixnuc column tendency'
+            call addfld(fieldname_cw(mm), horiz_only, 'A', unit, long_name, sampled_on_subcycle=.true.)
+
+            if (history_aerosol) then
+               call add_default(fieldname(mm), 1, ' ')
+               call add_default(fieldname_cw(mm), 1, ' ')
+            end if
+
+         end do
+      end do
+
+      call addfld('CCN1',(/ 'lev' /), 'A','#/cm3','CCN concentration at S=0.02%', sampled_on_subcycle=.true.)
+      call addfld('CCN2',(/ 'lev' /), 'A','#/cm3','CCN concentration at S=0.05%', sampled_on_subcycle=.true.)
+      call addfld('CCN3',(/ 'lev' /), 'A','#/cm3','CCN concentration at S=0.1%',  sampled_on_subcycle=.true.)
+      call addfld('CCN4',(/ 'lev' /), 'A','#/cm3','CCN concentration at S=0.2%',  sampled_on_subcycle=.true.)
+      call addfld('CCN5',(/ 'lev' /), 'A','#/cm3','CCN concentration at S=0.5%',  sampled_on_subcycle=.true.)
+      call addfld('CCN6',(/ 'lev' /), 'A','#/cm3','CCN concentration at S=1.0%',  sampled_on_subcycle=.true.)
+
+
+      call addfld('WTKE',     (/ 'lev' /), 'A', 'm/s', 'Standard deviation of updraft velocity', sampled_on_subcycle=.true.)
+      call addfld('NDROPMIX', (/ 'lev' /), 'A', '#/kg/s', 'Droplet number mixing', sampled_on_subcycle=.true.)
+      call addfld('NDROPSRC', (/ 'lev' /), 'A', '#/kg/s', 'Droplet number source', sampled_on_subcycle=.true.)
+      call addfld('NDROPSNK', (/ 'lev' /), 'A', '#/kg/s', 'Droplet number loss by microphysics', sampled_on_subcycle=.true.)
+      call addfld('NDROPCOL', horiz_only,  'A', '#/m2', 'Column droplet number', sampled_on_subcycle=.true.)
+
+      ! set the add_default fields
+      if (history_amwg) then
+         call add_default('CCN3', 1, ' ')
+         call add_default('CCN4', 1, ' ')
+      endif
    end if
 
    if (clim_modal_aero) then
@@ -554,6 +657,17 @@ subroutine microp_aero_run ( &
 
    real(r8), allocatable :: factnum(:,:,:) ! activation fraction for aerosol number
 
+   ! dropmixnuc work arrays and diagnostics
+   real(r8), allocatable :: raertend_out(:,:,:) ! tendency of interstitial aerosol mass, number mixing ratios
+   real(r8), allocatable :: coltend(:,:)       ! column tendency for diagnostic output
+   real(r8), allocatable :: coltend_cw(:,:)    ! column tendency
+   real(r8) :: wtke(pcols,pver)     ! turbulent vertical velocity at base of layer k (m/s)
+   real(r8) :: nsource(pcols,pver)            ! droplet number source (#/kg/s)
+   real(r8) :: ndropmix(pcols,pver)           ! droplet number mixing (#/kg/s)
+   real(r8) :: ndropcol(pcols)               ! column droplet number (#/m2)
+   real(r8) :: ccn(pcols,pver,psat)    ! number conc of aerosols activated at supersat
+   integer  :: mm, lptr
+
    class(aerosol_state), pointer :: aero_state1_obj
    type(aero_state_entry_t), allocatable :: aero_states1(:)
    integer :: nstates1, iaermod
@@ -739,21 +853,138 @@ subroutine microp_aero_run ( &
       if (astat/=0) then
          call endrun('microp_aero_run: not able to allocate factnum')
       endif
+      allocate(raertend_out(pcols,pver,aero_props_obj%ncnst_tot()), &
+               coltend(pcols,aero_props_obj%ncnst_tot()),           &
+               coltend_cw(pcols,aero_props_obj%ncnst_tot()),stat=astat)
+      if (astat/=0) then
+         call endrun('microp_aero_run: not able to allocate dropmixnuc work arrays')
+      endif
+
+      call pbuf_get_field(pbuf, kvh_idx, kvh)
+
+      ! initialize aerosol tendencies
+      call physics_ptend_init(ptend_loc, state1%psetcols, 'ndrop', lq=lq)
+
+      !REMOVECAM - no longer need this when CAM is retired and pcols no longer exists
+      nctend_mixnuc(:,:) = 0._r8
+      factnum(:,:,:) = 0._r8
+      raertend_out(:,:,:) = 0._r8
+      wtke(:,:) = 0._r8
+      nsource(:,:) = 0._r8
+      ndropmix(:,:) = 0._r8
+      ndropcol(:) = 0._r8
+      ccn(:,:,:) = 0._r8
+      coltend(:,:) = 0._r8
+      coltend_cw(:,:) = 0._r8
+      !REMOVECAM_END
 
       ! If not using preexsiting ice, then only use cloudbourne aerosol for the
       ! liquid clouds. This is the same behavior as CAM5.
-      !
-      ! ptend_loc is initialized inside dropmixnuc
       if (use_preexisting_ice) then
-         call dropmixnuc( aero_props_obj, aero_state1_obj, &
-              state1, ptend_loc, deltatin, pbuf, wsub, wsub_min_asf, &
-              cldn, cldo, cldliqf, nctend_mixnuc, factnum)
+         call dropmixnuc( &
+            aero_props   = aero_props_obj,                &
+            aero_state   = aero_state1_obj,               &
+            ncol         = ncol,                          &
+            pver         = pver,                          &
+            top_lev      = top_lev,                       &
+            dtmicro      = deltatin,                      &
+            temp         = state1%t(1:ncol,:),            &
+            pmid         = state1%pmid(1:ncol,:),         &
+            pint         = state1%pint(1:ncol,:),         &
+            pdel         = state1%pdel(1:ncol,:),         &
+            rpdel        = state1%rpdel(1:ncol,:),        &
+            zm           = state1%zm(1:ncol,:),           &
+            kvh          = kvh(1:ncol,:),                 &
+            ncldwtr      = state1%q(1:ncol,:,numliq_idx), &
+            wsub         = wsub(1:ncol,:),                &
+            wmixmin      = wsub_min_asf,                  &
+            cldn         = cldn(1:ncol,:),                &
+            cldo         = cldo(1:ncol,:),                &
+            cldliqf      = cldliqf(1:ncol,:),             &
+            dotend       = dotend,                        &
+            raertend_out = raertend_out(1:ncol,:,:),      &
+            tendnd       = nctend_mixnuc(1:ncol,:),       &
+            factnum      = factnum(1:ncol,:,:),           &
+            wtke         = wtke(1:ncol,:),                &
+            nsource      = nsource(1:ncol,:),             &
+            ndropmix     = ndropmix(1:ncol,:),            &
+            ndropcol     = ndropcol(1:ncol),              &
+            ccn          = ccn(1:ncol,:,:),               &
+            coltend      = coltend(1:ncol,:),             &
+            coltend_cw   = coltend_cw(1:ncol,:),          &
+            errmsg       = errmsg,                        &
+            errflg       = errflg)
       else
          cldliqf = 1._r8
-         call dropmixnuc( aero_props_obj, aero_state1_obj, &
-              state1, ptend_loc, deltatin, pbuf, wsub, wsub_min_asf, &
-              lcldn, lcldo, cldliqf, nctend_mixnuc, factnum)
+         call dropmixnuc( &
+            aero_props   = aero_props_obj,                &
+            aero_state   = aero_state1_obj,               &
+            ncol         = ncol,                          &
+            pver         = pver,                          &
+            top_lev      = top_lev,                       &
+            dtmicro      = deltatin,                      &
+            temp         = state1%t(1:ncol,:),            &
+            pmid         = state1%pmid(1:ncol,:),         &
+            pint         = state1%pint(1:ncol,:),         &
+            pdel         = state1%pdel(1:ncol,:),         &
+            rpdel        = state1%rpdel(1:ncol,:),        &
+            zm           = state1%zm(1:ncol,:),           &
+            kvh          = kvh(1:ncol,:),                 &
+            ncldwtr      = state1%q(1:ncol,:,numliq_idx), &
+            wsub         = wsub(1:ncol,:),                &
+            wmixmin      = wsub_min_asf,                  &
+            cldn         = lcldn(1:ncol,:),               &
+            cldo         = lcldo(1:ncol,:),               &
+            cldliqf      = cldliqf(1:ncol,:),             &
+            dotend       = dotend,                        &
+            raertend_out = raertend_out(1:ncol,:,:),      &
+            tendnd       = nctend_mixnuc(1:ncol,:),       &
+            factnum      = factnum(1:ncol,:,:),           &
+            wtke         = wtke(1:ncol,:),                &
+            nsource      = nsource(1:ncol,:),             &
+            ndropmix     = ndropmix(1:ncol,:),            &
+            ndropcol     = ndropcol(1:ncol),              &
+            ccn          = ccn(1:ncol,:,:),               &
+            coltend      = coltend(1:ncol,:),             &
+            coltend_cw   = coltend_cw(1:ncol,:),          &
+            errmsg       = errmsg,                        &
+            errflg       = errflg)
       end if
+      if (errflg /= 0) then
+         call endrun('microp_aero_run: dropmixnuc: '//trim(errmsg))
+      end if
+
+      ! set ptend tendencies for the advected interstitial aerosol elements
+      ! (non-advected interstitial elements and cloud-borne aerosol were
+      !  updated in place by dropmixnuc through the aero_state pointers)
+      do m = 1, aero_props_obj%nbins()
+         do l = 0, aero_props_obj%nmasses(m)
+            mm = aero_props_obj%indexer(m,l)
+            lptr = aer_cnst_idx(m,l)
+            if (lptr > 0) then ! advected aerosol parts
+               ptend_loc%q(1:ncol,:,lptr) = raertend_out(1:ncol,:,mm)
+            end if
+         end do
+      end do
+
+      ! dropmixnuc history output (moved from ndrop)
+      call outfld('NDROPCOL', ndropcol, pcols, lchnk)
+      call outfld('NDROPSRC', nsource,  pcols, lchnk)
+      call outfld('NDROPMIX', ndropmix, pcols, lchnk)
+      call outfld('WTKE    ', wtke,     pcols, lchnk)
+
+      do l = 1, psat
+         call outfld(ccn_name(l), ccn(1,1,l), pcols, lchnk)
+      enddo
+
+      ! do column tendencies
+      do m = 1, aero_props_obj%nbins()
+         do l = 0, aero_props_obj%nmasses(m)
+            mm = aero_props_obj%indexer(m,l)
+            call outfld(fieldname(mm),    coltend(:,mm),    pcols, lchnk)
+            call outfld(fieldname_cw(mm), coltend_cw(:,mm), pcols, lchnk)
+         end do
+      end do
 
       npccn(:ncol,:) = nctend_mixnuc(:ncol,:)
 
@@ -896,7 +1127,7 @@ subroutine microp_aero_run ( &
    end if
 
    if (clim_modal_aero.or.clim_carma_aero) then
-      deallocate(factnum)
+      deallocate(factnum, raertend_out, coltend, coltend_cw)
    end if
 
    ! destroy all aerosol state objects created for this chunk

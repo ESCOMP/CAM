@@ -110,6 +110,8 @@
 
       logical, public, protected :: soa_multi_species = .false.
 
+      logical, public :: modal_strat_sulfate = .false.
+
       character(len=16), allocatable :: xname_massptr(:,:)     ! names of species in each mode
       character(len=16), allocatable :: xname_massptrcw(:,:)   ! names of cloud-borne species in each mode
 
