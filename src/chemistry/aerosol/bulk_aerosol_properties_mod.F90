@@ -64,39 +64,41 @@ contains
     integer, optional, intent(in) :: list_idx ! radiation list index (0=climate)
     type(bulk_aerosol_properties), pointer :: newobj
 
-    integer,allocatable :: nspecies(:)
-    real(r8),allocatable :: alogsig(:)
-    real(r8),allocatable :: f1(:)
+    integer,  allocatable :: nspecies(:)
+    real(r8), allocatable :: alogsig(:)
+    real(r8), allocatable :: f1(:)
     integer :: ierr, naero, i
+    character(len=256) :: alloc_errmsg
     integer :: list_idx_loc
     real(r8) :: dispersion_val
+    character(len=*), parameter :: subname = 'bulk_aerosol_properties::constructor'
 
     list_idx_loc = 0
     if (present(list_idx)) list_idx_loc = list_idx
 
-    allocate(newobj,stat=ierr)
+    allocate(newobj, stat=ierr, errmsg=alloc_errmsg)
     if( ierr /= 0 ) then
        nullify(newobj)
-       return
+       call endrun(subname//': ' // alloc_errmsg)
     end if
 
     call rad_aer_get_info(list_idx_loc, naero=naero)
 
     ! Here treat each aerosol as a separate bin
-    allocate( nspecies(naero),stat=ierr )
+    allocate(nspecies(naero), stat=ierr, errmsg=alloc_errmsg)
     if( ierr /= 0 ) then
        nullify(newobj)
-       return
+       call endrun(subname//': ' // alloc_errmsg)
     end if
-    allocate( alogsig(naero),stat=ierr )
+    allocate(alogsig(naero), stat=ierr, errmsg=alloc_errmsg)
     if( ierr /= 0 ) then
        nullify(newobj)
-       return
+       call endrun(subname//': ' // alloc_errmsg)
     end if
-    allocate( f1(naero),stat=ierr )
+    allocate(f1(naero), stat=ierr, errmsg=alloc_errmsg)
     if( ierr /= 0 ) then
        nullify(newobj)
-       return
+       call endrun(subname//': ' // alloc_errmsg)
     end if
 
     ! Bulk aerosols have 1 chemical species in each bin
@@ -120,7 +122,7 @@ contains
 
     if( ierr /= 0 ) then
        nullify(newobj)
-       return
+       call endrun(subname//': failed to initialize object')
     end if
 
   end function constructor

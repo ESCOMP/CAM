@@ -697,12 +697,12 @@ end subroutine boundarydata_read
        call lininterp_init(bndydata%zi,size(bndydata%zi),zo,pver,bndydata%vertextrap,lev_wgts)
        if(.not. associated(bndydata%fields)) then
           allocate(bndydata%fields(maxlatcnt,pver,begchunk:endchunk,bndydata%fieldcnt,timesize))
-          bndydata%fields=0_r8
+          bndydata%fields=0._r8
        end if
     else
        if(.not. associated(bndydata%fields)) then
           allocate(bndydata%fields(maxlatcnt,bndydata%levsiz,begchunk:endchunk,bndydata%fieldcnt,timesize))
-          bndydata%fields=0_r8
+          bndydata%fields=0._r8
        end if
     endif
     do lchnk=begchunk,endchunk

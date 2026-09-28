@@ -76,6 +76,13 @@ module fvm_control_volume_mod
     real (kind=r8)           :: dalpha, dbeta             ! central-angle for gnomonic coordinates
     type (spherical_polar_t) :: center_cart(nc,nc)        ! center of fvm cell in gnomonic coordinates
     real (kind=r8)           :: area_sphere(nc,nc)        ! spherical area of fvm cell
+    !
+    ! Precomputed face-metric weights for the CSLAM-grid del4 Q filter
+    ! (filled at init by cslam_q_filter_geom_init; unset when filter off)
+    !
+    real (kind=r8)           :: qfilter_w_ew (0:nc,1:nc), qfilter_w_ns (1:nc,0:nc)
+    real (kind=r8)           :: qfilter_xw_ew(0:nc,1:nc), qfilter_xt_ew(0:nc,1:nc)
+    real (kind=r8)           :: qfilter_xw_ns(1:nc,0:nc), qfilter_xt_ns(1:nc,0:nc)
     real (kind=r8)           :: spherecentroid(irecons_tracer-1,1-nhc:nc+nhc,1-nhc:nc+nhc) ! centroids
     !
     ! pre-computed metric terms (for efficiency)
