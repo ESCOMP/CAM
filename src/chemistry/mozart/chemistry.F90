@@ -1262,7 +1262,7 @@ end function chem_is_active
     call pbuf_get_field(pbuf, ndx_fsds,       fsds)
     call pbuf_get_field(pbuf, ndx_pblh,       pblh)
     call pbuf_get_field(pbuf, ndx_prain,      prain,  start=(/1,1/), kount=(/ncol,pver/))
-    call pbuf_get_field(pbuf, ndx_cld,        cldfr )
+    call pbuf_get_field(pbuf, ndx_cld,        cldfr,  start=(/1,1/), kount=(/ncol,pver/) )
     call pbuf_get_field(pbuf, ndx_cmfdqr,     cmfdqr, start=(/1,1/),         kount=(/ncol,pver/))
     call pbuf_get_field(pbuf, ndx_nevapr,     nevapr, start=(/1,1/),         kount=(/ncol,pver/))
     call pbuf_get_field(pbuf, ndx_cldtop,     cldtop )
