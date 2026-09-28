@@ -909,11 +909,11 @@ CONTAINS
             'ATLID Total Cloud Fraction (355 nm)', flag_xyfill=.true., fill_value=R_UNDEF)
        call addfld('CLD_ATLID', (/'cosp_ht'/), 'A', 'percent', &
             'ATLID Cloud Fraction (355 nm)', flag_xyfill=.true., fill_value=R_UNDEF)
-       call addfld('CFAD_SR355_ATLID', (/'cosp_355sr','cosp_ht'/), 'A', 'fraction', &
+       call addfld('CFAD_SR355_ATLID', (/'cosp_355sr','cosp_ht   '/), 'A', 'fraction', &
             'ATLID Scattering Ratio CFAD (355 nm)', flag_xyfill=.true., fill_value=R_UNDEF)
        call addfld('BETAMOL_ATLID', (/'cosp_ht'/), 'A', 'm-1 sr-1', &
             'ATLID Molecular Backscatter (355 nm)', flag_xyfill=.true., fill_value=R_UNDEF)
-       call addfld('BETATOT_ATLID', (/'cosp_scol','cosp_ht'/), 'I', 'm-1 sr-1', &
+       call addfld('BETATOT_ATLID', (/'cosp_scol','cosp_ht  '/), 'I', 'm-1 sr-1', &
             'ATLID Total Backscatter (355 nm) in each Subcolumn', flag_xyfill=.true., fill_value=R_UNDEF)
 
        call add_default('CLDLOW_ATLID',cosp_histfile_num,' ')
@@ -3107,7 +3107,7 @@ CONTAINS
        end if
        call outfld('CLD_ATLID',        cld_atlid,       pcols,lchnk)
        call outfld('BETAMOL_ATLID',    betamol_atlid,   pcols,lchnk)
-       
+
        if (cospIN%cospswathsIN(4)%N_inst_swaths < 1) then
           where (cfad_sr355_atlid(:ncol,:nht_cosp*nsr_cosp) == R_UNDEF)
              cfad_sr355_atlid(:ncol,:nht_cosp*nsr_cosp) = 0.0_r8
@@ -3854,18 +3854,18 @@ CONTAINS
     endif
 
     if (LgrLidar532) then
-       allocate(y%beta_mol_grLidar532(npoints,          nlevels),& 
-                y%betatot_grLidar532(npoints,  ncolumns,nlevels),& 
-                y%tau_mol_grLidar532(npoints,           nlevels),& 
-                y%tautot_grLidar532(npoints,   ncolumns,nlevels), stat=istat) 
+       allocate(y%beta_mol_grLidar532(npoints,          nlevels),&
+                y%betatot_grLidar532(npoints,  ncolumns,nlevels),&
+                y%tau_mol_grLidar532(npoints,           nlevels),&
+                y%tautot_grLidar532(npoints,   ncolumns,nlevels), stat=istat)
     endif
 
     if (Latlid_sim) then
-       allocate(y%beta_mol_atlid(npoints,             nlevels),& 
-                y%betatot_atlid(npoints,     ncolumns,nlevels),& 
-                y%tau_mol_atlid(npoints,              nlevels),& 
+       allocate(y%beta_mol_atlid(npoints,             nlevels),&
+                y%betatot_atlid(npoints,     ncolumns,nlevels),&
+                y%tau_mol_atlid(npoints,              nlevels),&
                 y%tautot_atlid(npoints,      ncolumns,nlevels), stat=istat)
-    endif 
+    endif
 
     if (Lradar_sim) then
        allocate(y%z_vol_cloudsat(npoints,  ncolumns,nlevels),&
