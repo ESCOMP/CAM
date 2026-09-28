@@ -2662,7 +2662,7 @@ contains
     CALL pbuf_get_field( pbuf, NDX_PBLH,     PblH   )
     CALL pbuf_get_field( pbuf, NDX_FSDS,     Fsds   )
     CALL pbuf_get_field( pbuf, NDX_CLDTOP,   cldTop )
-    CALL pbuf_get_field( pbuf, NDX_CLDFRC,   cldFrc )
+    CALL pbuf_get_field( pbuf, NDX_CLDFRC,   cldFrc,   START=(/1,1/),         KOUNT=(/NCOL,PVER/))
     CALL pbuf_get_field( pbuf, NDX_NEVAPR,   NEvapr,   START=(/1,1/),         KOUNT=(/NCOL,PVER/))
     CALL pbuf_get_field( pbuf, NDX_PRAIN,    PRain,    START=(/1,1/),         KOUNT=(/NCOL,PVER/))
     CALL pbuf_get_field( pbuf, NDX_LSFLXPRC, LsFlxPrc, START=(/1,1/),         KOUNT=(/NCOL,PVERP/))
