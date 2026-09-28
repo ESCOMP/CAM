@@ -323,7 +323,7 @@ contains
     use mo_chm_diags,      only : chm_diags, het_diags
     use perf_mod,          only : t_startf, t_stopf
     use gas_wetdep_opts,   only : gas_wetdep_method
-    use physics_buffer,    only : physics_buffer_desc, pbuf_get_field, pbuf_old_tim_idx
+    use physics_buffer,    only : physics_buffer_desc, pbuf_get_field
     use physics_types,     only : physics_state
     use infnan,            only : nan, assignment(=)
     use rate_diags,        only : rate_diags_calc, rate_diags_o3s_loss
@@ -398,7 +398,6 @@ contains
     real(r8),       pointer    :: cldtop(:)
 
     integer      ::  i, k, m, n
-    integer      ::  tim_ndx
     real(r8)     ::  delt_inverse
     real(r8)     ::  esfact
     real(r8)     ::  invariants(ncol,pver,nfs)
@@ -530,9 +529,8 @@ contains
     !-----------------------------------------------------------------------
     call get_rlat_all_p( lchnk, ncol, rlats )
     call get_rlon_all_p( lchnk, ncol, rlons )
-    tim_ndx = pbuf_old_tim_idx()
     call pbuf_get_field(pbuf, ndx_prain,      prain,  start=(/1,1/), kount=(/ncol,pver/))
-    call pbuf_get_field(pbuf, ndx_cldfr,        cldfr, start=(/1,1,tim_ndx/), kount=(/ncol,pver,1/) )
+    call pbuf_get_field(pbuf, ndx_cldfr,        cldfr )
     call pbuf_get_field(pbuf, ndx_cmfdqr,     cmfdqr, start=(/1,1/), kount=(/ncol,pver/))
     call pbuf_get_field(pbuf, ndx_nevapr,     nevapr, start=(/1,1/), kount=(/ncol,pver/))
     call pbuf_get_field(pbuf, ndx_cldtop,     cldtop )
