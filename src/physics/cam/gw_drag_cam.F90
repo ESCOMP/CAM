@@ -113,12 +113,10 @@ module gw_drag_cam
 
   integer :: vort4gw_idx  = -1
 
-  ! Surface precipitation components, summed to PRECT for the moving
-  ! mountain source. Any of these may be absent (index stays -1).
+  ! Surface precipitation components, summed to PRECT for the moving mountain source.
   integer :: prec_dp_idx  = -1
   integer :: prec_sh_idx  = -1
-  integer :: prec_sed_idx = -1
-  integer :: prec_pcw_idx = -1
+  integer :: prec_str_idx = -1
 
   integer :: sgh_idx      = -1
 
@@ -453,7 +451,6 @@ subroutine gw_drag_cam_init()
   !---------------------------Local storage-------------------------------
 
   integer          :: i, l, k, lchnk
-  integer          :: ierr_prec
   character(len=1) :: cn
 
   ! output tendencies and state variables for CAM4 temperature,
@@ -554,11 +551,10 @@ subroutine gw_drag_cam_init()
      wpthlp_clubb_gw_idx = pbuf_get_index('WPTHLP_CLUBB_GW')
      vort4gw_idx         = pbuf_get_index('VORT4GW')
 
-     ! Precipitation components for PRECT (optional; -1 if absent).
-     prec_dp_idx  = pbuf_get_index('PREC_DP',  errcode=ierr_prec)
-     prec_sh_idx  = pbuf_get_index('PREC_SH',  errcode=ierr_prec)
-     prec_sed_idx = pbuf_get_index('PREC_SED', errcode=ierr_prec)
-     prec_pcw_idx = pbuf_get_index('PREC_PCW', errcode=ierr_prec)
+     ! Precipitation components for PRECT.
+     prec_dp_idx  = pbuf_get_index('PREC_DP')
+     prec_sh_idx  = pbuf_get_index('PREC_SH')
+     prec_str_idx = pbuf_get_index('PREC_STR')
   endif
 
   if (use_gw_oro .or. use_gw_rdg_beta .or. use_gw_rdg_gamma) then
@@ -1274,6 +1270,7 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
   ! CCPPized subroutines
   use gravity_wave_drag_interstitials, only: gravity_wave_drag_prepare_profiles_run
   use gravity_wave_drag_moving_mountain,  only: gravity_wave_drag_moving_mountain_run
+  use compute_total_precipitation_rate,   only: compute_total_precipitation_rate_run
   use gravity_wave_drag_convection,      only: gravity_wave_drag_convection_deep_run
   use gravity_wave_drag_convection,      only: gravity_wave_drag_convection_shallow_run
   use gravity_wave_drag_frontogenesis,   only: gravity_wave_drag_frontogenesis_run
@@ -1389,7 +1386,9 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
   real(r8) :: p_steer(pcols)       ! steering level pressure [Pa]
   real(r8) :: p_launch(pcols)      ! launch level pressure [Pa]
   real(r8) :: prect(pcols)         ! total precipitation rate [m s-1]
-  real(r8), pointer :: prec_ptr(:)
+  real(r8), pointer :: prec_dp(:)
+  real(r8), pointer :: prec_sh(:)
+  real(r8), pointer :: prec_str(:)
   ! Moving mountain directional Reynolds stress diagnostics (MMTAUE/W/S/N)
   real(r8) :: mm_taucd_west (pcols,pverp)
   real(r8) :: mm_taucd_east (pcols,pverp)
@@ -1461,26 +1460,18 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
      ! Coupling from SE dycore only.
      call pbuf_get_field(pbuf, vort4gw_idx, vort4gw)
 
-     ! Total precipitation rate, assembled as in cam_diagnostics (PRECT):
-     ! deep + shallow convective + sedimentation + prognostic cloud water.
-     ! Fields are set in tphysbc, so these are current-timestep values.
-     prect(:) = 0._r8
-     if (prec_dp_idx > 0) then
-        call pbuf_get_field(pbuf, prec_dp_idx, prec_ptr)
-        prect(:ncol) = prect(:ncol) + prec_ptr(:ncol)
-     end if
-     if (prec_sh_idx > 0) then
-        call pbuf_get_field(pbuf, prec_sh_idx, prec_ptr)
-        prect(:ncol) = prect(:ncol) + prec_ptr(:ncol)
-     end if
-     if (prec_sed_idx > 0) then
-        call pbuf_get_field(pbuf, prec_sed_idx, prec_ptr)
-        prect(:ncol) = prect(:ncol) + prec_ptr(:ncol)
-     end if
-     if (prec_pcw_idx > 0) then
-        call pbuf_get_field(pbuf, prec_pcw_idx, prec_ptr)
-        prect(:ncol) = prect(:ncol) + prec_ptr(:ncol)
-     end if
+     ! Total precipitation rate (deep + shallow convective + stratiform).
+     call pbuf_get_field(pbuf, prec_dp_idx, prec_dp)
+     call pbuf_get_field(pbuf, prec_sh_idx, prec_sh)
+     call pbuf_get_field(pbuf, prec_str_idx, prec_str)
+     call compute_total_precipitation_rate_run( &
+          ncol     = ncol, &
+          prec_dp  = prec_dp(:ncol), &
+          prec_sh  = prec_sh(:ncol), &
+          prec_str = prec_str(:ncol), &
+          prect    = prect(:ncol), &
+          errmsg   = errmsg, &
+          errflg   = errflg)
   end if
 
   ttend_sh_arr(:,:) = 0._r8
