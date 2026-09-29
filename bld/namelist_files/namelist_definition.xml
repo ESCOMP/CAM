@@ -4715,8 +4715,6 @@ Dynamic entrainment length scale option:
 1: tke_clubb L0
 2: wpthlp_clubb L0
 3: test plume L0
-4: lel
-5: cape
 6: ztopm1
 7: rel.hum. at 500 hPa
 8: column int. rel.hum.

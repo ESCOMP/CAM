@@ -1809,7 +1809,7 @@ end subroutine clubb_init_cnst
     if ( trim(subcol_scheme) == 'SILHS' ) then
       clubb_config_flags%saturation_formula = saturation_flatau
     else
-      clubb_config_flags%saturation_formula = saturation_gfdl     ! Goff & Gratch (1946) approximation for SVP
+      clubb_config_flags%saturation_formula = saturation_gfdl     ! Goff & Gratch (1946) approx for Sat Vap Pres
     end if
 
     !  Set up CLUBB core.  Note that some of these inputs are overwritten

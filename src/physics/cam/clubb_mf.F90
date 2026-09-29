@@ -36,8 +36,6 @@ module clubb_mf
   !      1 = tke_clubb L0
   !      2 = wpthlp_clubb L0
   !      3 = test plume L0
-  !      4 = lel
-  !      5 = cape
   !      6 = ztopm1
   !      7 = rel.hum. at 500 hPa
   !      8 = column int. rel.hum.
@@ -130,8 +128,8 @@ module clubb_mf
       close(iunit)
     end if
 
-    if (clubb_mf_Lopt < 0 .or. clubb_mf_Lopt > 8 ) &
-         call endrun('clubb_mf_readnl: clubb_mf_Lopt value must be between 0 and 8')
+    if (clubb_mf_Lopt < 0 .or. clubb_mf_Lopt == 4 .or. clubb_mf_Lopt ==5 .or. clubb_mf_Lopt > 8 ) &
+         call endrun('clubb_mf_readnl: clubb_mf_Lopt value must be one of 0,1,2,3,6,7,8')
 
     call mpi_bcast(clubb_mf_Lopt, 1, mpi_integer, mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_mf_Lopt")
@@ -499,17 +497,11 @@ module clubb_mf
      logical                                :: bsort = .false.
      real(r8),parameter                     :: rle = 0.1_r8
      integer                                :: niter_xc = 1
-     integer                                :: kk,      status,  iter_xc
-     real(r8)                               :: tlm,     excessm, qsm,     &
-                                               tln,     excessn, es,      &
-                                               xc,      xsat,    x_en,    &
-                                               x_cu,    xs1,     xs2,     &
-                                               aquad,   bquad,   cquad,   &
-                                               thlxsat, thvxsat, qtxsat,  &
-                                               thv_x0,  thv_x1,  cridis,  &
-                                               thln0,   qtn0,    wn0,     &
-                                               entn,    detn,    mfn,     &
-                                               ee2,     ud2
+     integer                                :: iter_xc
+     real(r8)                               :: es, entn, detn, mfn, ee2, ud2
+     real(r8)                               :: thln0,   qtn0,    wn0
+
+
      ! aloft trigger flag
      logical                                :: aloft = .false.
 
@@ -1105,103 +1097,33 @@ module clubb_mf
              mix(kt,i) = real( enti(kt,i),r8)*clubb_mf_ent0/dzt(kt)
            end if
 
+           !ee2 and the plume's post-entrainment state are mutually dependent
+           !iterate for ee2 a few times using successive substitution
            do iter_xc = 1, niter_xc
 
+             if (iter_xc==1) then
+               qtn  = upqt(k,i)
+               thln = upthl(k,i)
+               wn   = upw(k,i)
+             else
+               qtn  = 0.5_r8*(qtn + qtn0)
+               thln = 0.5_r8*(thln + thln0)
+               wn = 0.5_r8*(wn + wn0)
+             end if
+
+             qtn0  = qtn
+             thln0 = thln
+             wn0   = wn
+
              if (bsort) then
-               if (iter_xc==1) then
-                 qtn  = upqt(k,i)
-                 thln = upthl(k,i)
-                 wn   = upw(k,i)
-               else
-                 qtn  = 0.5_r8*(qtn + qtn0)
-                 thln = 0.5_r8*(thln + thln0)
-                 wn = 0.5_r8*(wn + wn0)
-               end if
-
-               ! save this iteration
-               qtn0  = qtn
-               thln0 = thln
-               wn0 = wn
-
-               ! ---------------------------------------------------------------------------------
-               ! Compute excess water to derive neutral mixing fraction                           !
-               ! after Bretherton et al 2014 DOI 10.1175/1520-0493(2004)132<0864:ANPFSC>2.0.CO;2  !
-               ! -------------------------------------------------------------------------------- !
-
-               ! qexcess of the envrionment
-               tlm = thl_zm(kn)/iexner_zm(kn)
-               call qsat(tlm,p_zm(kn),es,qsm)
-               excessm = qt_zm(kn) - qsm
-
-               ! qexcess in plume
-               tln  = thln/iexner_zm(kn)
-               call qsat(tln,p_zm(kn),es,qsn)
-               excessn = qtn - qsn
-
-               call condensation_mf(qtn, thln, p_zm(kn), iexner_zm(kn), &
-                                    thvn, qcn, thn, qln, qin, qsn, lmixn)
-
-               ! critical stopping distance
-               cridis = rle*ztopm1(i)
-
-               ! ----------------------------------------------------------------- !
-               ! Case 1 : When both cumulus and env. are unsaturated or saturated. !
-               ! ----------------------------------------------------------------- !
-               if (excessm*excessn > 0._r8) then
-                 xc = min(1._r8,max(0._r8,1._r8-2._r8*wa*gravit*cridis/wn**2._r8*(1._r8-thvn/thv_zm(kn))))
-               else
-                 ! -------------------------------------------------- !
-                 ! Case 2 : When either cumulus or env. is saturated. !
-                 ! -------------------------------------------------- !
-                 xsat    = excessn / ( excessn - excessm );
-                 thlxsat = thln + xsat * ( thl_zm(kn) - thln );
-                 qtxsat  = qtn  + xsat * ( qt_zm(kn) - qtn );
-                 call condensation_mf(qtxsat, thlxsat, p_zm(kn), iexner_zm(kn), &
-                                      thvxsat, qcn, thn, qln, qin, qsn, lmixn)
-                 ! -------------------------------------------------- !
-                 ! kk=1 : Cumulus Segment, kk=2 : Environment Segment !
-                 ! -------------------------------------------------- !
-                 do kk = 1, 2
-                   if( kk == 1 ) then
-                     thv_x0 = thvn
-                     thv_x1 = ( 1._r8 - 1._r8/xsat ) * thvn + ( 1._r8/xsat ) * thvxsat
-                   else
-                     thv_x1 = thv_zm(kn)
-                     thv_x0 = ( xsat / ( xsat - 1._r8 ) ) * thv_zm(kn) + ( 1._r8/( 1._r8 - xsat ) ) * thvxsat
-                   endif
-                   aquad =  wn**2
-                   bquad =  2._r8*wa*gravit*cridis*(thv_x1 - thv_x0)/thv_zm(kn) - 2._r8*wn**2
-                   cquad =  2._r8*wa*gravit*cridis*(thv_x0 - thv_zm(kn))/thv_zm(kn)  + wn**2
-                   if( kk == 1 ) then
-                     if( ( bquad**2-4._r8*aquad*cquad ) >= 0._r8 ) then
-                       call roots(aquad,bquad,cquad,xs1,xs2,status)
-                       x_cu = min(1._r8,max(0._r8,min(xsat,min(xs1,xs2))))
-                     else
-                       x_cu = xsat
-                     endif
-                   else
-                     if( ( bquad**2-4._r8*aquad*cquad) >= 0._r8 ) then
-                       call roots(aquad,bquad,cquad,xs1,xs2,status)
-                       x_en = min(1._r8,max(0._r8,max(xsat,min(xs1,xs2))))
-                     else
-                       x_en = 1._r8
-                     endif
-                   endif
-                 enddo
-                 if( x_cu == xsat ) then
-                   xc = max(x_cu, x_en)
-                 else
-                   xc = x_cu
-                 endif
-               endif
-
-               ee2 = xc**2
-               ud2 = 1._r8 - 2._r8*xc + xc**2
-
-               ! detrainment rate
+               !calculate mixing fractions (ee2, ud2) given a plumes thermodynamic state
+               call buoyancy_sort_mixfrac( qtn, thln, wn,                      &
+                                           thl_zm(kn), qt_zm(kn), thv_zm(kn),  &
+                                           iexner_zm(kn), p_zm(kn), ztopm1(i), &
+                                           rle, wa,                            &
+                                           ee2, ud2 )
                detn  = mix(kt,i) * ud2
-
-             else !no bsort
+             else !simple closure, mixing fractions are constants.
                ee2 = 1._r8
                ud2 = 1._r8
              end if
@@ -2031,6 +1953,112 @@ module clubb_mf
 
   end subroutine integrate_mf
 
+  subroutine buoyancy_sort_mixfrac( qtn, thln, wn,                     &
+                                    thl_zm_kn, qt_zm_kn, thv_zm_kn,    &
+                                    iexner_zm_kn, p_zm_kn, ztopm1_i,   &
+                                    rle, wa,                           &
+                                    ee2, ud2 )
+  ! =============================================================================== !
+  ! Buoyancy-sorting neutral mixing fraction, after Bretherton et al 2014.          !
+  ! Iterates the trial (qtn,thln,wn) state internally and returns only the final    !
+  ! entrainment/detrainment area-fraction terms (ee2, ud2).                         !
+  ! =============================================================================== !
+
+    use wv_saturation, only: qsat
+
+    real(r8), intent(in)  :: qtn, thln, wn   ! this iteration's trial plume state -- caller's job to pick it
+    real(r8), intent(in)  :: thl_zm_kn, qt_zm_kn, thv_zm_kn
+    real(r8), intent(in)  :: iexner_zm_kn, p_zm_kn
+    real(r8), intent(in)  :: ztopm1_i
+    real(r8), intent(in)  :: rle, wa
+
+    real(r8), intent(out) :: ee2, ud2
+
+    ! local variables
+    integer  :: kk, status
+    real(r8) :: qtn0, thln0, wn0, xc
+    real(r8) :: tlm, es, qsm, excessm, tln, qsn, excessn
+    real(r8) :: thvn, qcn, thn, qln, qin, lmixn
+    real(r8) :: cridis, xsat, thlxsat, qtxsat, thvxsat
+    real(r8) :: thv_x0, thv_x1, aquad, bquad, cquad, xs1, xs2, x_cu, x_en
+
+
+    ! --------------------------------------------------------- !
+    ! Compute excess water to derive neutral mixing fraction    !
+    ! after Bretherton et al 2014                               !
+    ! --------------------------------------------------------- !
+
+    ! qexcess of the envrionment
+    tlm = thl_zm_kn/iexner_zm_kn
+    call qsat(tlm,p_zm_kn,es,qsm)
+    excessm = qt_zm_kn - qsm
+
+    ! qexcess in plume
+    tln  = thln/iexner_zm_kn
+    call qsat(tln,p_zm_kn,es,qsn)
+    excessn = qtn - qsn
+
+    call condensation_mf(qtn, thln, p_zm_kn, iexner_zm_kn, &
+                         thvn, qcn, thn, qln, qin, qsn, lmixn)
+
+    ! critical stopping distance
+    cridis = rle*ztopm1_i
+
+    ! ----------------------------------------------------------------- !
+    ! Case 1 : When both cumulus and env. are unsaturated or saturated. !
+    ! ----------------------------------------------------------------- !
+    if (excessm*excessn > 0._r8) then
+      xc = min(1._r8,max(0._r8,1._r8-2._r8*wa*gravit*cridis/wn**2._r8*(1._r8-thvn/thv_zm_kn)))
+    else
+      ! -------------------------------------------------- !
+      ! Case 2 : When either cumulus or env. is saturated. !
+      ! -------------------------------------------------- !
+      xsat    = excessn / ( excessn - excessm );
+      thlxsat = thln + xsat * ( thl_zm_kn - thln );
+      qtxsat  = qtn  + xsat * ( qt_zm_kn - qtn );
+      call condensation_mf(qtxsat, thlxsat, p_zm_kn, iexner_zm_kn, &
+                           thvxsat, qcn, thn, qln, qin, qsn, lmixn)
+      ! -------------------------------------------------- !
+      ! kk=1 : Cumulus Segment, kk=2 : Environment Segment !
+      ! -------------------------------------------------- !
+      do kk = 1, 2
+        if( kk == 1 ) then
+          thv_x0 = thvn
+          thv_x1 = ( 1._r8 - 1._r8/xsat ) * thvn + ( 1._r8/xsat ) * thvxsat
+        else
+          thv_x1 = thv_zm_kn
+          thv_x0 = ( xsat / ( xsat - 1._r8 ) ) * thv_zm_kn + ( 1._r8/( 1._r8 - xsat ) ) * thvxsat
+        endif
+        aquad =  wn**2
+        bquad =  2._r8*wa*gravit*cridis*(thv_x1 - thv_x0)/thv_zm_kn - 2._r8*wn**2
+        cquad =  2._r8*wa*gravit*cridis*(thv_x0 - thv_zm_kn)/thv_zm_kn  + wn**2
+        if( kk == 1 ) then
+          if( ( bquad**2-4._r8*aquad*cquad ) >= 0._r8 ) then
+            call roots(aquad,bquad,cquad,xs1,xs2,status)
+            x_cu = min(1._r8,max(0._r8,min(xsat,min(xs1,xs2))))
+          else
+            x_cu = xsat
+          endif
+        else
+          if( ( bquad**2-4._r8*aquad*cquad) >= 0._r8 ) then
+            call roots(aquad,bquad,cquad,xs1,xs2,status)
+            x_en = min(1._r8,max(0._r8,max(xsat,min(xs1,xs2))))
+          else
+            x_en = 1._r8
+          endif
+        endif
+      enddo
+      if( x_cu == xsat ) then
+        xc = max(x_cu, x_en)
+      else
+        xc = x_cu
+      endif
+    endif
+
+    ee2 = xc**2
+    ud2 = 1._r8 - 2._r8*xc + xc**2
+
+  end subroutine buoyancy_sort_mixfrac
 
   ! clamped linear-in-pressure interpolation of a column field
   ! to a target pressure level, mirroring the CLUBB-core pvertinterp
@@ -2066,7 +2094,6 @@ module clubb_mf
     end if
 
   end function mf_pinterp
-
 
   subroutine get_Lscale(nzt, nzm, zm, tke, wpthlp_env, dzt, iexner_zm, iexner_zt, p_zm, qt, thv, thl, th, &
                         wmax, wmin, sigmaw, sigmaqt, sigmathv, cwqt, cwthv, zcb_unset, wa, wb,  &
@@ -2149,17 +2176,9 @@ module clubb_mf
      ! as tke_grad_thresh but for the heat-flux-based diagnostic
      real(r8), parameter :: hflux_grad_thresh = 1.e-4_r8
      !
-     ! minimum pressure (Pa) at which the dilute-CAPE calculation (Lopt 4/5)
-     ! is considered reliable; levels above this are excluded from the search
-     real(r8), parameter :: p_dilute_calc_top = 40.e2_r8
-     !
      ! Pa -> hPa conversion, needed because buoyan_dilute expects hPa
      real(r8), parameter :: pa_to_hpa = 0.01_r8
      !
-     ! floor on the dilute-CAPE result (J/kg) used to derive ztop under
-     ! clubb_mf_Lopt==5
-     real(r8), parameter :: cape_floor = 25._r8
-
      ! intialize local variables
      cape      = 0._r8
      mcape     = 0._r8
@@ -2207,40 +2226,6 @@ module clubb_mf
                       wa, wb, tke, do_clubb_mf_precip, ztop )
 
        dynamic_L0 = clubb_mf_a0*(ztop**clubb_mf_b0)
-     else if (clubb_mf_Lopt == 4 .or. clubb_mf_Lopt == 5) then
-       !dilute cape calculation
-       !dmpdz = -1._r8*ent_zt(2:nz,:)
-       dmpdz(:,:) = -1.E-3_r8
-       t_zt = th/iexner_zt
-       landfrac = 1._r8
-
-       do k = ksfc+kdir, ktop, kdir
-         if (zt(k-kdir) <= pblh) then
-           kpbl = k
-         end if
-       end do
-
-       do k = ksfc, ktop, kdir
-         if (p_zt(k) >  p_dilute_calc_top) then !  p_dilute_calc_top = 40.e2_r8
-           msg = k
-         end if
-       end do
-
-       call buoyan_dilute(nzt, nzm, 1          ,dmpdz , &
-                          qv         ,t_zt       ,p_zt*pa_to_hpa ,zt   ,p_zm*pa_to_hpa , & ! pa_to_hpa = 0.01_r8
-                          tp         ,qstp       ,tl         ,cape         ,cin  , &
-                          kpbl-kdir  ,lcl        ,lel        ,lon      ,mx   , &
-                          msg-kdir   ,tpert      ,landfrac )
-
-       mcape = max(cape(1),cape_floor) ! cape_floor = 25._r8
-
-       if (clubb_mf_Lopt == 4) then
-         ztop = max(zt(lel(1)+kdir),convh)
-       else if (clubb_mf_Lopt == 5) then
-         ztop = mcape
-       end if
-       dynamic_L0 = clubb_mf_a0*(ztop**clubb_mf_b0)
-
      else if (clubb_mf_Lopt == 6) then
        ! grab ztop from max height of ensemble in prior time-step(s)
        ztop = ztopm1
@@ -2298,7 +2283,7 @@ module clubb_mf
        end if
        t = thl/iex+get_alhl(wf)/cpair*qc   !as in (4)
 
-       ! qsat, p is in pascal (check!)
+       ! qsat, p is in pascal
        call qsat(t,p,es,qstmp)
        qcold = qc
        qc = max(0.5_r8*qc+0.5_r8*(qt-qstmp),0._r8)
@@ -2727,902 +2712,5 @@ module clubb_mf
     enddo
 
   end subroutine oneplume
-
-
-subroutine buoyan_dilute( nzt, nzm, nup, dmpdz, q, t, p, z, pf, &
-                          tp, qstp, tl, cape, cin, pblt, lcl, lel, lon, mx, &
-                          msg, tpert, landfrac )
-!-----------------------------------------------------------------------
-! Calculates CAPE the lifting condensation level and the convective top
-! where buoyancy is first -ve.
-! Method: Calculates the parcel temperature based on a simple constant
-! entraining plume model. CAPE is integrated from buoyancy.
-! 09/09/04 - Simplest approach using an assumed entrainment rate for
-!            testing (dmpdp).
-! 08/04/05 - Swap to convert dmpdz to dmpdp
-!
-! SCAM Logical Switches - DILUTE:RBN - Now Disabled
-! ---------------------
-! switch(1) = .T. - Uses the dilute parcel calculation to obtain tendencies.
-! switch(2) = .T. - Includes entropy/q changes due to condensate loss and freezing.
-! switch(3) = .T. - Adds the PBL Tpert for the parcel temperature at all levels.
-!
-! References:
-! Raymond and Blythe (1992) JAS
-!
-! Author:
-! Richard Neale - September 2004
-!
-!-----------------------------------------------------------------------
-   implicit none
-!-----------------------------------------------------------------------
-! input arguments
-!
-   integer, intent(in) :: nzt, nzm            ! vertical grid sizes
-   integer, intent(in) :: nup           ! number of plumes
-
-   real(r8), intent(in) :: dmpdz(nzt,nup)! Parcel fractional mass entrainment rate (/m) 3D
-
-   real(r8), intent(in) :: q(nzt)        ! spec. humidity
-   real(r8), intent(in) :: t(nzt)        ! temperature
-   real(r8), intent(in) :: p(nzt)        ! pressure
-   real(r8), intent(in) :: z(nzt)        ! height
-   real(r8), intent(in) :: pf(nzm)       ! pressure at interfaces
-   integer,  intent(in) :: pblt         ! index of pbl depth
-   integer,  intent(in) :: msg
-   real(r8), intent(in) :: tpert        ! perturbation temperature by pbl processes
-   real(r8), intent(in) :: landfrac
-
-! output arguments
-   real(r8), intent(out) :: tp(nzt,nup)       ! parcel temperature
-   real(r8), intent(out) :: qstp(nzt,nup)     ! saturation mixing ratio of parcel (only above lcl, just q below).
-   real(r8), intent(out) :: tl(nup)          ! parcel temperature at lcl
-   real(r8), intent(out) :: cape(nup)        ! convective aval. pot. energy.
-   real(r8), intent(out) :: cin (nup)        ! CIN
-   integer,  intent(out) :: lcl(nup)         !
-   integer,  intent(out) :: lel(nup)         !
-   integer,  intent(out) :: lon              ! level of onset of deep convection
-   integer,  intent(out) :: mx               ! level of max moist static energy
-
-   !--------------------------Local Variables------------------------------
-
-   ! =============================================================================== !
-   ! GRID ORIENTATION GENERALIZATION VARIABLES
-   ! ------------------------------------------------------------------------------- !
-   ! To support both top-down (CAM) and bottom-up (CLUBB) grid orientations without
-   ! duplicating code, these variables abstract the vertical loop bounds and slices.
-   !
-   ! ksfcm / ksfct : Index of the surface for momentum (m) and thermodynamic (t) grids.
-   ! ktopm / ktopt : Index of the model top for momentum (m) and thermodynamic (t) grids.
-   ! kdir          : Directional step (+1 for moving up, -1 for moving down).
-   !
-   ! STAGGERED GRID INDEXING
-   ! Because momentum (zm) and thermodynamic (zt) grids are staggered, the relative
-   ! index of the cell center (zt) to the interface (zm) flips depending on whether
-   ! memory is loaded top-down or bottom-up. These variables dynamically map them:
-   !
-   ! kt    : The active thermodynamic cell center associated with the current step.
-   !         Upward Sweep:   kt = k - (1-kdir)/2
-   !         Downward Sweep: kt = k - (1+kdir)/2
-   !
-   ! kn    : The NEXT momentum interface in the direction of the current sweep.
-   !         Upward Sweep:   kn = k + kdir
-   !         Downward Sweep: kn = k - kdir
-   !
-   ! kt_up : The thermodynamic cell center physically ABOVE momentum interface k.
-   !         kt_up = k - (1-kdir)/2
-   !
-   ! kt_dn : The thermodynamic cell center physically BELOW momentum interface k.
-   !         kt_dn = k - (1+kdir)/2
-   ! =============================================================================== !
-   integer :: ksfct, ktopt, kdir, kn
-   integer lelten(nup,mf_num_cin)
-   real(r8) capeten(nup,mf_num_cin)     ! provisional value of cape
-   real(r8) cinten(nup,mf_num_cin)      ! provisional value of CIN
-   real(r8) tv(nzt)
-   real(r8) tpv(nzt,nup)
-   real(r8) buoy(nzt,nup)
-   real(r8) pl(nup)
-
-   real(r8) a1, a2, estp, plexp, hmax, hmn, y
-   logical plge600(nup)
-   integer knt(nup)
-   real(r8) e
-   integer i, k, n
-
-   real(r8), parameter :: tiedke_add = 0.5_r8
-!-----------------------------------------------------------------------
-   if (z(1) < z(nzt)) then
-      ksfct = 1
-      ktopt = nzt
-      kdir = 1
-   else
-      ksfct = nzt
-      ktopt = 1
-      kdir = -1
-   end if
-
-   do n = 1,mf_num_cin
-      do i = 1,nup
-         lelten(i,n)  = ksfct
-         capeten(i,n) = 0._r8
-         cinten (i,n) = 0._r8
-      end do
-   end do
-
-   lon = ksfct
-   mx   = lon
-   hmax = 0._r8
-
-   do i = 1,nup
-      knt(i) = 0
-      lel(i) = ksfct
-      cape(i) = 0._r8
-      tp(:,i) = t(:)
-      qstp(:,i) = q(:)
-   end do
-
-!!! RBN - Initialize tv and buoy for output.
-!!! tv=tv : tpv=tpv : qstp=q : buoy=0.
-   if (tht_tweaks) then
-    tv  (:) = t(:) *(1._r8+q(:)/epsilo)/ (1._r8+q(:))
-   else
-    tv  (:) = t(:) *(1._r8+1.608_r8*q(:))/ (1._r8+q(:))
-   endif
-!-tht
-   do i = 1,nup
-     tpv (:,i) = tv(:)
-   end do
-   buoy(:,:) = 0._r8
-
-! set "launching" level(mx) to be at maximum moist static energy.
-! search for this level stops at planetary boundary layer top.
-   do k = ksfct, msg-kdir, kdir
-       hmn =(cpair+q(k)*cpliq)*t(k)/(1._r8+q(k)) + (1._r8+q(k)/epsilo)/(1._r8+q(k))*gravit*z(k) &
-              +(latvap-(cpliq-cpwv)*(t(k)-tmelt))*q(k)
-       if ((k - pblt)*kdir <= 0 .and. (k - lon)*kdir >= 0 .and. hmn > hmax) then
-          hmax = hmn
-          mx = k
-       end if
-   end do
-
-! LCL dilute calculation - initialize to mx(i)
-! Determine lcl in parcel_dilute and get pl,tl after parcel_dilute
-! Original code actually sets LCL as level above wher condensate forms.
-! Therefore in parcel_dilute lcl(i) will be at first level where qsmix < qtmix.
-
-   do i = 1,nup ! Initialise LCL variables.
-      lcl(i) = mx
-      tl(i) = t(mx)
-      pl(i) = p(mx)
-   end do
-
-!
-! main buoyancy calculation.
-!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!!! DILUTE PLUME CALCULATION USING ENTRAINING PLUME !!!
-   call parcel_dilute(nzt, nzm, nup, msg, mx, p, z, t, q, &
-                      tpert, tp, tpv, qstp, pl, tl, lcl, &
-                      landfrac, dmpdz)
-
-! If lcl is above the nominal level of non-divergence (600 mbs),
-! no deep convection is permitted (ensuing calculations
-! skipped and cape retains initialized value of zero).
-!
-   do i = 1,nup
-      plge600(i) = pl(i)>=600._r8 ! Just change to always allow buoy calculation.
-   end do
-
-! Main buoyancy calculation.
-   do k = ksfct, msg-kdir, kdir
-      do i=1,nup
-         if ((k - mx)*kdir >= 0 .and. plge600(i)) then
-          if (tht_tweaks) then
-            tv(k) = t(k)* (1._r8+q(k)/epsilo)/ (1._r8+q(k))     !+tht
-          else
-            tv(k) = t(k)* (1._r8+1.608_r8*q(k))/ (1._r8+q(k)) !orig
-          endif
-! +0.5K or not? (arbitrary at this point - introduce in parcel_dilute instead? tht)
-            buoy(k,i) = tpv(k,i) - tv(k) + tiedke_add  ! +0.5K or not?
-         else
-            qstp(k,i) = q(k)
-            tp(k,i)   = t(k)
-            tpv(k,i)  = tv(k)
-         endif
-      end do
-   end do
-
-!-------------------------------------------------------------------------------
-! beginning from one below top (first level p>40hPa, msg) check for at most
-! num_cin levels of neutral buoyancy (LELten) and compute CAPEten between LCL
-   do k = msg-2*kdir, ksfct, -kdir
-      do i = 1,nup
-         if ((k - lcl(i))*kdir > 0 .and. plge600(i)) then
-            if (buoy(k-kdir,i) > 0._r8 .and. buoy(k,i) <= 0._r8) then
-               knt(i) = min(mf_num_cin,knt(i) + 1)
-               lelten(i,knt(i)) = k
-            end if
-         end if
-      end do
-   end do
-
-! calculate convective available potential energy (cape).
-   do n = 1,mf_num_cin
-      do k = msg-kdir, ksfct, -kdir
-         do i = 1,nup
-            if (plge600(i) .and. (k - mx)*kdir >= 0 .and. (k - lelten(i,n))*kdir < 0) then
-               ! Using pf(k) and pf(k+kdir). Since pf is on momentum grid (nzm=nzt+1),
-               ! if k ranges from 1 to nzt, k+1 ranges from 2 to nzm (valid).
-               ! For top-down (kdir=-1), k-1 ranges from nzt-1 to 0.
-               ! The interface pressure above thermo layer k is k - (1-kdir)/2
-               kn = k - (1-kdir)/2
-               capeten(i,n) = capeten(i,n) + rair*buoy(k,i)*abs(log(pf(kn)/pf(kn+kdir)))
-               cinten (i,n) = cinten (i,n) - rair*min(buoy(k,i),0._r8)*abs(log(pf(kn)/pf(kn+kdir)))
-            end if
-         end do
-      end do
-   end do
-
-! find maximum cape from all possible tentative capes from one sounding
-   do n = 1,mf_num_cin
-      do i = 1,nup
-         if (capeten(i,n) > cape(i)) then
-            cape(i) = capeten(i,n)
-            cin (i) = cinten (i,n) !+tht CIN
-            lel(i) = lelten(i,n)
-         end if
-      end do
-   end do
-
-! put lower bound on cape for diagnostic purposes.
-   do i = 1,nup
-      cape(i) = max(cape(i), 0._r8)
-   end do
-
-return
-end subroutine buoyan_dilute
-
-
- subroutine parcel_dilute (nzt, nzm, nup, msg, klaunch, p, z, t, q, &
-                           tpert, tp, tpv, qstp, pl, tl, lcl, &
-                           landfrac, dmpdz)
-!-tht
-
-! Routine  to determine
-!   1. Tp   - Parcel temperature
-!   2. qstp - Saturated mixing ratio at the parcel temperature.
-
-!--------------------
-implicit none
-!--------------------
-
-integer, intent(in) :: nzt, nzm
-integer, intent(in) :: nup
-integer, intent(in) :: msg
-integer, intent(in) :: klaunch
-
-real(r8), intent(in)                 :: tpert ! PBL temperature perturbation.
-real(r8), intent(in)                 :: landfrac
-real(r8), intent(in), dimension(nzt) :: p
-real(r8), intent(in), dimension(nzt) :: z
-real(r8), intent(in), dimension(nzt) :: t
-real(r8), intent(in), dimension(nzt) :: q
-
-real(r8), intent(inout), dimension(nzt,nup) :: tp    ! Parcel temp.
-real(r8), intent(inout), dimension(nzt,nup) :: qstp  ! Parcel water vapour (sat value above lcl).
-real(r8), intent(inout), dimension(nup)     :: tl    ! Actual temp of LCL.
-real(r8), intent(inout), dimension(nup)     :: pl    ! Actual pressure of LCL.
-integer,  intent(inout), dimension(nup)     :: lcl   ! Lifting condesation level (first model level with saturation).
-
-real(r8), intent(out), dimension(nzt,nup)   :: tpv   ! Define tpv within this routine.
-
-real(r8), dimension(nzt,nup) :: dmpdz ! Parcel fractional mass entrainment rate (/m) 3D
-
-! =============================================================================== !
-! GRID ORIENTATION GENERALIZATION VARIABLES
-! ------------------------------------------------------------------------------- !
-! To support both top-down (CAM) and bottom-up (CLUBB) grid orientations without
-! duplicating code, these variables abstract the vertical loop bounds and slices.
-!
-! ksfcm / ksfct : Index of the surface for momentum (m) and thermodynamic (t) grids.
-! ktopm / ktopt : Index of the model top for momentum (m) and thermodynamic (t) grids.
-! kdir          : Directional step (+1 for moving up, -1 for moving down).
-!
-! STAGGERED GRID INDEXING
-! Because momentum (zm) and thermodynamic (zt) grids are staggered, the relative
-! index of the cell center (zt) to the interface (zm) flips depending on whether
-! memory is loaded top-down or bottom-up. These variables dynamically map them:
-!
-! kt    : The active thermodynamic cell center associated with the current step.
-!         Upward Sweep:   kt = k - (1-kdir)/2
-!         Downward Sweep: kt = k - (1+kdir)/2
-!
-! kn    : The NEXT momentum interface in the direction of the current sweep.
-!         Upward Sweep:   kn = k + kdir
-!         Downward Sweep: kn = k - kdir
-!
-! kt_up : The thermodynamic cell center physically ABOVE momentum interface k.
-!         kt_up = k - (1-kdir)/2
-!
-! kt_dn : The thermodynamic cell center physically BELOW momentum interface k.
-!         kt_dn = k - (1+kdir)/2
-! =============================================================================== !
-integer :: ksfct, ktopt, kdir
-
-real(r8) tmix(nzt,nup)        ! Tempertaure of the entraining parcel.
-real(r8) qtmix(nzt,nup)       ! Total water of the entraining parcel.
-real(r8) qsmix(nzt,nup)       ! Saturated mixing ratio at the tmix.
-real(r8) smix(nzt,nup)        ! Entropy of the entraining parcel.
-real(r8) xsh2o(nzt,nup)       ! Precipitate lost from parcel.
-real(r8) ds_xsh2o(nzt,nup)    ! Entropy change due to loss of condensate.
-real(r8) ds_freeze(nzt,nup)   ! Entropy change sue to freezing of precip.
-real(r8) dmpdz2d(nzt,nup)     ! variable detrainment rate
-
-real(r8) zl(nup) ! lcl
-
-real(r8) mp(nup)    ! Parcel mass flux.
-real(r8) qtp(nup)   ! Parcel total water.
-real(r8) sp(nup)    ! Parcel entropy.
-real(r8) sp0(nup)   ! Parcel launch entropy.
-real(r8) qtp0(nup)  ! Parcel launch total water.
-real(r8) mp0(nup)   ! Parcel launch relative mass flux.
-
-real(r8) lwmax      ! Maximum condesate that can be held in cloud before rainout.
-real(r8) dmpdp      ! Parcel fractional mass entrainment rate (/mb).
-real(r8) dpdz,dzdp  ! Hydrstatic relation and inverse of.
-real(r8) senv       ! Environmental entropy at each grid point.
-real(r8) qtenv      ! Environmental total water "   "   ".
-real(r8) penv       ! Environmental total pressure "   "   ".
-real(r8) zenv
-real(r8) tenv       ! Environmental total temperature "   "   ".
-real(r8) new_s      ! Hold value for entropy after condensation/freezing adjustments.
-real(r8) new_q      ! Hold value for total water after condensation/freezing adjustments.
-real(r8) dp         ! Layer thickness (center to center)
-real(r8) tfguess    ! First guess for entropy inversion - crucial for efficiency!
-real(r8) tscool     ! Super cooled temperature offset (in degC) (eg -35).
-
-real(r8) qxsk, qxskp1        ! LCL excess water (k, k+1)
-real(r8) dsdp, dqtdp, dqxsdp ! LCL s, qt, p gradients (k, k+1)
-real(r8) slcl,qtlcl,qslcl    ! LCL s, qt, qs values.
-real(r8) dmpdz_lnd, dmpdz_mask
-
-integer rcall       ! Number of ientropy call for errors recording
-integer nit_lheat   ! Number of iterations for condensation/freezing loop.
-integer i,k,ii      ! Loop counters.
-
-real(r8) est
-
-if (z(1) < z(nzt)) then
-   ksfct = 1
-   ktopt = nzt
-   kdir = 1
-else
-   ksfct = nzt
-   ktopt = 1
-   kdir = -1
-end if
-
-nit_lheat = 2 ! iterations for ds,dq changes from condensation freezing.
-
-lwmax    = 1.e10_r8   ! tht: don't precipitate
-tscool   =-10._r8     ! tht: allow even just mild supercooling?!
-
-qtmix=0._r8
-smix=0._r8
-
-qtenv = 0._r8
-senv = 0._r8
-tenv = 0._r8
-penv = 0._r8
-zenv = 0._r8
-
-qtp0 = 0._r8
-sp0  = 0._r8
-mp0 = 0._r8
-
-qtp = 0._r8
-sp = 0._r8
-mp = 0._r8
-
-new_q = 0._r8
-new_s = 0._r8
-
-zl(:)=0._r8
-
-! **** Begin loops ****
-
-do k = ksfct, msg-kdir, kdir
-   do i=1,nup
-
-! Initialize parcel values at launch level.
-
-      if (k == klaunch) then
-         qtp0(i) = q(k)   ! Parcel launch total water (assuming subsaturated) - OK????.
-
-!+tht: formulate dilution on enthalpy not on entropy
-         if (tht_tweaks) then
-          sp0(i)  = enthalpy(t(k),p(k),qtp0(i),z(k))  ! Parcel launch enthalpy.
-         else
-          sp0(i)  = entropy (t(k),p(k),qtp0(i))         ! Parcel launch entropy.
-         endif
-!-tht
-         mp0(i)  = 1._r8       ! Parcel launch relative mass (=1 for dmpdp=0 i.e. undilute).
-         smix(k,i)  = sp0(i)
-         qtmix(k,i) = qtp0(i)
-!+tht: since the function to invert for T is *identical* with sp0(i)=entropy(t), unless there is
-! a coding error (likely, given the mess) the result must be t(i,k) (verified 21/2/2014)
-         if (tht_tweaks) then
-          tmix(k,i) = t(k)
-          call qsat_hPa(tmix(k,i),p(k), est, qsmix(k,i))
-         else
-          tfguess = t(k)
-          rcall = 1
-          call ientropy (rcall,smix(k,i),p(k),qtmix(k,i),tmix(k,i),qsmix(k,i),tfguess)
-         endif
-!-tht
-      end if
-
-      if ((k - klaunch)*kdir > 0) then
-
-         dp = -abs(p(k)-p(k-kdir))
-         qtenv = 0.5_r8*(q(k)+q(k-kdir))
-         tenv  = 0.5_r8*(t(k)+t(k-kdir))
-         penv  = 0.5_r8*(p(k)+p(k-kdir))
-         zenv  = 0.5_r8*(z(k)+z(k-kdir))
-
-         if (tht_tweaks) then
-          senv  = enthalpy(tenv,penv,qtenv,zenv) ! Enthalpy of environment.
-         else
-          senv  = entropy (tenv,penv,qtenv)      ! Entropy  of environment.
-         endif
-
-! Determine fractional entrainment rate /pa given value /m.
-
-         dpdz = -(penv*gravit)/(rair*tenv) ! in mb/m since  p in mb.
-         dzdp = 1._r8/dpdz                  ! in m/mb
-!+tht
-! NB: land fudge makes no sense to me - make dmpdz_lnd=dmpdz (as per default code, hard-wired to 1e-3)
-        !dmpdp = dmpdz*dzdp
-        !dmpdp = dmpdz(i)*dzdp              ! /mb Fractional entrainment 2D
-         dmpdp = dmpdz(k,i)*dzdp            ! /mb Fractional entrainment 3D
-!-tht
-
-! Sum entrainment to current level
-! entrains q,s out of intervening dp layers, in which linear variation is assumed
-! so really it entrains the mean of the 2 stored values.
-
-         sp(i)  = sp(i)  - dmpdp*dp*senv
-         qtp(i) = qtp(i) - dmpdp*dp*qtenv
-         mp(i)  = mp(i)  - dmpdp*dp
-
-! Entrain s and qt to next level.
-
-         smix(k,i)  = (sp0(i)  +  sp(i)) / (mp0(i) + mp(i))
-         qtmix(k,i) = (qtp0(i) + qtp(i)) / (mp0(i) + mp(i))
-
-         tfguess = tmix(k-kdir,i)
-         rcall = 2
-
-         if (tht_tweaks) then
-          call ienthalpy(rcall,smix(k,i),p(k),z(k),qtmix(k,i),tmix(k,i),qsmix(k,i),tfguess)
-         else
-          call ientropy (rcall,smix(k,i),p(k),qtmix(k,i),tmix(k,i),qsmix(k,i),tfguess)
-         endif
-
-         if (qsmix(k,i) <= qtmix(k,i) .and. qsmix(k-kdir,i) > qtmix(k-kdir,i)) then
-            lcl(i) = k
-            qxsk   = qtmix(k,i) - qsmix(k,i)
-            qxskp1 = qtmix(k-kdir,i) - qsmix(k-kdir,i)
-            dqxsdp = (qxsk - qxskp1)/dp
-            pl(i)  = p(k-kdir) - qxskp1/dqxsdp
-            zl(i)  = z(k-kdir) - qxskp1/dqxsdp *dzdp
-            dsdp   = (smix(k,i)  - smix(k-kdir,i))/dp
-            dqtdp  = (qtmix(k,i) - qtmix(k-kdir,i))/dp
-            slcl   = smix(k-kdir,i)  +  dsdp* (pl(i)-p(k-kdir))
-            qtlcl  = qtmix(k-kdir,i) +  dqtdp*(pl(i)-p(k-kdir))
-
-            tfguess = tmix(k,i)
-            rcall = 3
-
-            if (tht_tweaks) then
-               call ienthalpy(rcall,slcl,pl(i),zl(i),qtlcl,tl(i),qslcl,tfguess)
-            else
-               call ientropy (rcall,slcl,pl(i),qtlcl,tl(i),qslcl,tfguess)
-            endif
-         endif
-!
-      end if !  k < klaunch
-
-
-   end do ! Levels loop
-end do ! Columns loop
-
-
-!   if ( masterproc ) then
-!     do k = 1,msg-1
-!         do i = 1,nup
-!            write(iulog,*) "after, k, nup, dmpdz ", k, i, dmpdz(k,i)
-!         end do
-!     end do
-!   end if
-
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!END ENTRAINMENT LOOP!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-!! Could stop now and test with this as it will provide some estimate of buoyancy
-!! without the effects of freezing/condensation taken into account for tmix.
-
-!! So we now have a profile of entropy and total water of the entraining parcel
-!! Varying with height from the launch level klaunch parcel=environment. To the
-!! top allowed level for the existence of convection.
-
-!! Now we have to adjust these values such that the water held in vaopor is < or
-!! = to qsmix. Therefore, we assume that the cloud holds a certain amount of
-!! condensate (lwmax) and the rest is rained out (xsh2o). This, obviously
-!! provides latent heating to the mixed parcel and so this has to be added back
-!! to it. But does this also increase qsmix as well? Also freezing processes
-
-
-xsh2o = 0._r8
-ds_xsh2o = 0._r8
-ds_freeze = 0._r8
-
-!!!!!!!!!!!!!!!!!!!!!!!!!PRECIPITATION/FREEZING LOOP!!!!!!!!!!!!!!!!!!!!!!!!!!
-!! Iterate solution twice for accuracy
-
-
-do k = ksfct, msg-kdir, kdir
-   do i=1,nup
-
-! Initialize variables at k=klaunch
-
-      if (k == klaunch) then
-
-! Set parcel values at launch level assume no liquid water.
-
-         tp(k,i)    = tmix(k,i)
-         qstp(k,i)  = q(k)
-         if (tht_tweaks) then
-           tpv(k,i)   =  (tp(k,i) + tpert) * (1._r8+qstp(k,i)/epsilo) / (1._r8+qstp(k,i)) !+tht OK with mx ratio
-         else
-           tpv(k,i)   =  (tp(k,i) + tpert) * (1._r8+1.608_r8*qstp(k,i)) / (1._r8+qstp(k,i))
-         endif
-      end if
-
-      if ((k - klaunch)*kdir > 0) then
-
-         if (tht_tweaks) then
-           smix(k,i)=entropy(tmix(k,i),p(k),qtmix(k,i)) !+tht make sure to use entropy here
-         endif
-
-!----
-! Initiate loop if switch(2) = .T. - RBN:DILUTE - TAKEN OUT BUT COULD BE RETURNED LATER.
-! Iterate nit_lheat times for s,qt changes.
-         do ii=0,nit_lheat-1
-
-! Rain (xsh2o) is excess condensate, bar LWMAX (Accumulated loss from qtmix).
-            xsh2o(k,i) = max (0._r8, qtmix(k,i) - qsmix(k,i) - lwmax)
-            ds_xsh2o(k,i) = ds_xsh2o(k-kdir,i) - cpliq * log (tmix(k,i)/tmelt) * max(0._r8,(xsh2o(k,i)-xsh2o(k-kdir,i)))
-
-            if (tmix(k,i) <= tmelt+tscool .and. ds_freeze(k-kdir,i) == 0._r8) then
-               ds_freeze(k,i) = (latice/tmix(k,i)) * max(0._r8,qtmix(k,i)-qsmix(k,i)-xsh2o(k,i))
-            end if
-
-            if (tmix(k,i) <= tmelt+tscool .and. ds_freeze(k-kdir,i) /= 0._r8) then
-               ds_freeze(k,i) = ds_freeze(k-kdir,i)+(latice/tmix(k,i)) * max(0._r8,(qsmix(k-kdir,i)-qsmix(k,i)))
-            end if
-
-! Adjust entropy and accordingly to sum of ds (be careful of signs).
-            new_s = smix(k,i) + ds_xsh2o(k,i) + ds_freeze(k,i)
-
-! Adjust liquid water and accordingly to xsh2o.
-            new_q = qtmix(k,i) - xsh2o(k,i)
-
-! Invert entropy to get updated Tmix and qsmix of parcel.
-
-            tfguess = tmix(k,i)
-            rcall =4
-            call ientropy (rcall,new_s, p(k), new_q, tmix(k,i), qsmix(k,i), tfguess)
-
-         end do  ! Iteration loop for freezing processes.
-
-! tp  - Parcel temp is temp of mixture.
-! tpv - Parcel v. temp should be density temp with new_q total water.
-
-         tp(k,i)    = tmix(k,i)
-
-! tpv = tprho in the presence of condensate (i.e. when new_q > qsmix)
-         if (new_q > qsmix(k,i)) then  ! Super-saturated so condensate present - reduces buoyancy.
-            qstp(k,i) = qsmix(k,i)
-         else                          ! Just saturated/sub-saturated - no condensate virtual effects.
-            qstp(k,i) = new_q
-         end if
-
-         if (tht_tweaks) then
-           tpv(k,i) = (tp(k,i)+tpert)* (1._r8+qstp(k,i)/epsilo) / (1._r8+ new_q) !+tht
-         else
-           tpv(k,i) = (tp(k,i)+tpert)* (1._r8+1.608_r8*qstp(k,i)) / (1._r8+ new_q)
-         endif
-
-      end if ! k > klaunch
-
-   end do ! Loop for columns
-
-end do  ! Loop for vertical levels.
-
-
-return
-end subroutine parcel_dilute
-
-!-----------------------------------------------------------------------------------------
-real(r8) function entropy(TK,p,qtot)
-!-----------------------------------------------------------------------------------------
-!
-! TK(K),p(mb),qtot(kg/kg)
-! from Raymond and Blyth 1992
-!
-     real(r8), intent(in) :: p,qtot,TK
-     real(r8) :: qv,qst,e,est,L
-     real(r8), parameter :: pref = 1000._r8
-
-L = latvap - (cpliq - cpwv)*(TK-tmelt)         ! T IN CENTIGRADE
-
-call qsat_hPa(TK, p, est, qst)
-
-qv = min(qtot,qst)                         ! Partition qtot into vapor part only.
-e = qv*p / (epsilo +qv)
-
-entropy = (cpair + qtot*cpliq)*log( TK/tmelt) - rair*log( (p-e)/pref ) + &
-        L*qv/TK - qv*rh2o*log(qv/qst)
-
-end FUNCTION entropy
-
-!-----------------------------------------------------------------------------------------
-SUBROUTINE ientropy (rcall,s,p,qt,T,qst,Tfg)
-!-----------------------------------------------------------------------------------------
-!
-! p(mb), Tfg/T(K), qt/qv(kg/kg), s(J/kg).
-! Inverts entropy, pressure and total water qt
-! for T and saturated vapor mixing ratio
-!
-
-  integer, intent(in) :: rcall
-  real(r8), intent(in)  :: s, p, Tfg, qt
-  real(r8), intent(out) :: qst, T
-  real(r8) :: est
-  real(r8) :: a,b,c,d,ebr,fa,fb,fc,pbr,qbr,rbr,sbr,tol1,xm,tol
-  integer :: i
-
-  logical :: converged
-
-  ! Max number of iteration loops.
-  integer, parameter :: LOOPMAX = 100
-  real(r8), parameter :: EPS = 3.e-8_r8
-
-  converged = .false.
-
-  ! Invert the entropy equation -- use Brent's method
-  ! Brent, R. P. Ch. 3-4 in Algorithms for Minimization Without Derivatives. Englewood Cliffs, NJ: Prentice-Hall, 1973.
-
-  T = Tfg                  ! Better first guess based on Tprofile from conv.
-
-  a = Tfg-10    !low bracket
-  b = Tfg+10    !high bracket
-
-  fa = entropy(a, p, qt) - s
-  fb = entropy(b, p, qt) - s
-
-  c=b
-  fc=fb
-  tol=0.001_r8
-
-  converge: do i=0, LOOPMAX
-     if ((fb > 0.0_r8 .and. fc > 0.0_r8) .or. &
-          (fb < 0.0_r8 .and. fc < 0.0_r8)) then
-        c=a
-        fc=fa
-        d=b-a
-        ebr=d
-     end if
-     if (abs(fc) < abs(fb)) then
-        a=b
-        b=c
-        c=a
-        fa=fb
-        fb=fc
-        fc=fa
-     end if
-
-     tol1=2.0_r8*EPS*abs(b)+0.5_r8*tol
-     xm=0.5_r8*(c-b)
-     converged = (abs(xm) <= tol1 .or. fb == 0.0_r8)
-     if (converged) exit converge
-
-     if (abs(ebr) >= tol1 .and. abs(fa) > abs(fb)) then
-        sbr=fb/fa
-        if (a == c) then
-           pbr=2.0_r8*xm*sbr
-           qbr=1.0_r8-sbr
-        else
-           qbr=fa/fc
-           rbr=fb/fc
-           pbr=sbr*(2.0_r8*xm*qbr*(qbr-rbr)-(b-a)*(rbr-1.0_r8))
-           qbr=(qbr-1.0_r8)*(rbr-1.0_r8)*(sbr-1.0_r8)
-        end if
-        if (pbr > 0.0_r8) qbr=-qbr
-        pbr=abs(pbr)
-        if (2.0_r8*pbr  <  min(3.0_r8*xm*qbr-abs(tol1*qbr),abs(ebr*qbr))) then
-           ebr=d
-           d=pbr/qbr
-        else
-           d=xm
-           ebr=d
-        end if
-     else
-        d=xm
-        ebr=d
-     end if
-     a=b
-     fa=fb
-     b=b+merge(d,sign(tol1,xm), abs(d) > tol1 )
-
-     fb = entropy(b, p, qt) - s
-
-  end do converge
-
-  T = b
-  call qsat_hPa(T, p, est, qst)
-
-  if (.not. converged) then
-     call endrun('**** ZM_CONV IENTROPY: Tmix did not converge ****')
-  end if
-
-100 format (A,I1,I4,I4,7(A,F6.2))
-
-end SUBROUTINE ientropy
-
-! Wrapper for qsat_water that does translation between Pa and hPa
-! qsat_water uses Pa internally, so get it right, need to pass in Pa.
-! Afterward, set es back to hPa.
-subroutine qsat_hPa(t, p, es, qm)
-  use wv_saturation, only: qsat_water
-
-  ! Inputs
-  real(r8), intent(in) :: t    ! Temperature (K)
-  real(r8), intent(in) :: p    ! Pressure (hPa)
-  ! Outputs
-  real(r8), intent(out) :: es  ! Saturation vapor pressure (hPa)
-  real(r8), intent(out) :: qm  ! Saturation mass mixing ratio
-                               ! (vapor mass over dry mass, kg/kg)
-
-  call qsat_water(t, p*100._r8, es, qm)
-
-  es = es*0.01_r8
-
-end subroutine qsat_hPa
-
-!-----------------------------------------------------------------------------------------
-real(r8) function enthalpy(TK,p,qtot,z)
-!-----------------------------------------------------------------------------------------
-!
-! TK(K),p(mb),qtot(kg/kg)
-!
-     real(r8), intent(in) :: p,qtot,TK,z
-     real(r8) :: qv,qst,e,est,L
-
-L = latvap - (cpliq - cpwv)*(TK-tmelt)
-
-call qsat_hPa(TK, p, est, qst)
-qv = min(qtot,qst)                         ! Partition qtot into vapor part only.
-
- enthalpy = (cpair + qtot*cpliq)* TK         + L*qv + (1._r8+qtot)*gravit*z
-
-return
-end FUNCTION enthalpy
-
-!-----------------------------------------------------------------------------------------
- SUBROUTINE ienthalpy (rcall,s,p,z,qt,T,qst,Tfg) !identical with iENTROPY, only function calls swapped
-!-----------------------------------------------------------------------------------------
-!
-! p(mb), Tfg/T(K), qt/qv(kg/kg), s(J/kg).
-! Inverts entropy, pressure and total water qt
-! for T and saturated vapor mixing ratio
-!
-
-  integer, intent(in) :: rcall
-  real(r8), intent(in)  :: s, p, z, Tfg, qt
-  real(r8), intent(out) :: qst, T
-  real(r8) :: est
-  real(r8) :: a,b,c,d,ebr,fa,fb,fc,pbr,qbr,rbr,sbr,tol1,xm,tol
-  integer :: i
-
-  logical :: converged
-
-  ! Max number of iteration loops.
-  integer, parameter :: LOOPMAX = 100
-  real(r8), parameter :: EPS = 3.e-8_r8
-
-  converged = .false.
-
-  ! Invert the entropy equation -- use Brent's method
-  ! Brent, R. P. Ch. 3-4 in Algorithms for Minimization Without Derivatives. Englewood Cliffs, NJ: Prentice-Hall, 1973.
-
-  T = Tfg                  ! Better first guess based on Tprofile from conv.
-
-  a = Tfg-10    !low bracket
-  b = Tfg+10    !high bracket
-
-  fa = enthalpy(a, p, qt,z) - s
-  fb = enthalpy(b, p, qt,z) - s
-
-  c=b
-  fc=fb
-  tol=0.001_r8
-
-  converge: do i=0, LOOPMAX
-     if ((fb > 0.0_r8 .and. fc > 0.0_r8) .or. &
-          (fb < 0.0_r8 .and. fc < 0.0_r8)) then
-        c=a
-        fc=fa
-        d=b-a
-        ebr=d
-     end if
-     if (abs(fc) < abs(fb)) then
-        a=b
-        b=c
-        c=a
-        fa=fb
-        fb=fc
-        fc=fa
-     end if
-
-     tol1=2.0_r8*EPS*abs(b)+0.5_r8*tol
-     xm=0.5_r8*(c-b)
-     converged = (abs(xm) <= tol1 .or. fb == 0.0_r8)
-     if (converged) exit converge
-
-     if (abs(ebr) >= tol1 .and. abs(fa) > abs(fb)) then
-        sbr=fb/fa
-        if (a == c) then
-           pbr=2.0_r8*xm*sbr
-           qbr=1.0_r8-sbr
-        else
-           qbr=fa/fc
-           rbr=fb/fc
-           pbr=sbr*(2.0_r8*xm*qbr*(qbr-rbr)-(b-a)*(rbr-1.0_r8))
-           qbr=(qbr-1.0_r8)*(rbr-1.0_r8)*(sbr-1.0_r8)
-        end if
-        if (pbr > 0.0_r8) qbr=-qbr
-        pbr=abs(pbr)
-        if (2.0_r8*pbr  <  min(3.0_r8*xm*qbr-abs(tol1*qbr),abs(ebr*qbr))) then
-           ebr=d
-           d=pbr/qbr
-        else
-           d=xm
-           ebr=d
-        end if
-     else
-        d=xm
-        ebr=d
-     end if
-     a=b
-     fa=fb
-     b=b+merge(d,sign(tol1,xm), abs(d) > tol1 )
-
-     fb = enthalpy(b, p, qt,z) - s
-
-  end do converge
-
-  T = b
-  call qsat_hPa(T, p, est, qst)
-
-  if (.not. converged) then
-     call endrun('**** ZM_CONV IENTHALPY: Tmix did not converge ****')
-  end if
-
-100 format (A,I1,I4,I4,7(A,F6.2))
-
- end SUBROUTINE ienthalpy
 
 end module clubb_mf
