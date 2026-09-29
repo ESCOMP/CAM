@@ -1,6 +1,123 @@
 
 ===============================================================
 
+Tag name: cam6_4_204
+Originator(s): cacraigucar, jimmielin, hingong, peverwhee, johnpaulalex, fvitt, briandobbins, jshaw35
+Date: Sept 29, 2026
+One-line Summary: Misc PRs
+Github PR URL: https://github.com/ESCOMP/CAM/pull/1690
+
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+  - Add COSP's EarthCARE lidar simulator to CAM output - https://github.com/ESCOMP/CAM/pull/1574
+  - Remove incorrect use of CASEROOT in bld/configure - https://github.com/ESCOMP/CAM/pull/1641
+  - Initial removal of leapfrogging pbuf dimensions - https://github.com/ESCOMP/CAM/pull/1644
+  - Remove use of deprecated perl smartmatch - https://github.com/ESCOMP/CAM/pull/1658
+  - refactor(utils): allow optional errmsg in handle_allocate_error - https://github.com/ESCOMP/CAM/pull/1671
+  - Add clubb_a_const into the namelist - https://github.com/ESCOMP/CAM/pull/1676
+  - Recreate config_cache.xml when in a cloned case - https://github.com/ESCOMP/CAM/pull/1681
+
+Describe any changes made to build system: N/A
+
+Describe any changes made to the namelist: N/A
+
+List any changes to the defaults for the boundary datasets: N/A
+
+Describe any substantial timing or memory changes: N/A
+
+Code reviewed by: jimmielin, cacraigucar
+
+List all files eliminated: N/A
+
+List all files added and what they do: N/A
+
+List all existing files that have been modified, and describe the changes:
+M       bld/namelist_files/namelist_definition.xml
+M       bld/build-namelist
+           - mods for several changes listed above
+
+M       src/physics/cam/cospsimulator_intr.F90
+M       src/physics/cosp2/optics/cosp_optics.F90
+           - COSP changes
+
+M       bld/configure
+           - remove incorrect CASEROOT
+
+M       bld/perl5lib/Build/ChemNamelist.pm
+           - remove perl smartmatch
+
+M       src/utils/cam_abortutils.F90
+           - allow optional errmsg in handle_allocate_error
+
+M       bld/namelist_files/namelist_defaults_cam.xml
+M       src/physics/cam/clubb_intr.F90
+           - add clubb_a_const
+
+M       cime_config/buildnml
+           - recreate config_cache.xml when in a cloned case
+
+M       src/chemistry/aerosol/wetdep.F90
+M       src/chemistry/geoschem/chemistry.F90
+M       src/chemistry/mozart/chemistry.F90
+M       src/chemistry/mozart/mo_gas_phase_chemdr.F90
+M       src/chemistry/utils/modal_aero_calcsize.F90
+M       src/chemistry/utils/modal_aero_wateruptake.F90
+M       src/dynamics/fv/dyn_grid.F90
+M       src/dynamics/mpas/dycore
+M       src/dynamics/mpas/dyn_grid.F90
+M       src/dynamics/se/dyn_grid.F90
+M       src/physics/cam/cam_diagnostics.F90
+M       src/physics/cam/check_energy.F90
+M       src/physics/cam/cloud_diagnostics.F90
+M       src/physics/cam/cloud_rad_props.F90
+M       src/physics/cam/conv_water.F90
+M       src/physics/cam/convect_shallow.F90
+M       src/physics/cam/ebert_curry_ice_optics.F90
+M       src/physics/cam/hetfrz_classnuc_cam.F90
+M       src/physics/cam/macrop_driver.F90
+M       src/physics/cam/micro_pumas_cam.F90
+M       src/physics/cam/microp_aero.F90
+M       src/physics/cam/nucleate_ice_cam.F90
+M       src/physics/cam/oldcloud_optics.F90
+M       src/physics/cam/physics_buffer.F90.in
+M       src/physics/cam/physpkg.F90
+M       src/physics/cam/radiation_data.F90
+M       src/physics/cam/rk_stratiform_cam.F90
+M       src/physics/cam/slingo_liq_optics.F90
+M       src/physics/cam/ssatcontrail.F90
+M       src/physics/cam/zm_conv_intr.F90
+M       src/physics/cam7/micro_pumas_cam.F90
+M       src/physics/cam7/physpkg.F90
+M       src/physics/camrt/radiation.F90
+M       src/physics/carma/cam/carma_intr.F90
+M       src/physics/carma/models/cirrus/carma_model_mod.F90
+M       src/physics/carma/models/cirrus_dust/carma_model_mod.F90
+M       src/physics/rrtmg/radiation.F90
+M       src/physics/rrtmgp/radiation.F90
+M       src/physics/simple/kessler_cam.F90
+M       src/physics/simple/physpkg.F90
+          - remove leapfrog
+
+If there were any failures reported from running test_driver.sh on any test
+platform, and checkin with these failures has been OK'd by the gatekeeper,
+then copy the lines from the td.*.status files for the failed tests to the
+appropriate machine below.  All failed tests must be justified.
+
+derecho/intel/aux_cam: all pass except:
+  SMS_D_Ln9_P1536x1.ne0CONUSne30x8_ne0CONUSne30x8_mt12.FCHIST.derecho_intel.cam-outfrq9s (Overall: FAIL)
+    - intermittent failure in CTSM code (lnd_set_decomp_and_domain.F90)  - It failed this time
+
+derecho/nvhpc/aux_cam: all BFB
+
+izumi/nag/aux_cam: all pass except:
+
+  FAIL ERC_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_nag.cam-outfrq3s_subcol
+  - pre-existing failure -- see https://github.com/ESCOMP/CAM/issues/1514
+
+izumi/gnu/aux_cam: all BFB
+
+===============================================================
+===============================================================
+
 Tag name: cam6_4_203
 Originator(s): cacraigucar, hannay, PeterHjortLauritzen, peverwhee
 Date: Sept 18, 2026
