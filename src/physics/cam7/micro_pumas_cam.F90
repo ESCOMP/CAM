@@ -24,8 +24,8 @@ use physics_types,  only: physics_state, physics_ptend, &
                           physics_update, physics_state_dealloc, &
                           physics_ptend_sum, physics_ptend_scale
 
-use physics_buffer, only: physics_buffer_desc, pbuf_add_field, dyn_time_lvls, &
-                          pbuf_old_tim_idx, pbuf_get_index, dtype_r8, dtype_i4, &
+use physics_buffer, only: physics_buffer_desc, pbuf_add_field, &
+                          pbuf_get_index, dtype_r8, dtype_i4, &
                           pbuf_get_field, pbuf_set_field, col_type_subcol, &
                           pbuf_register_subcol
 use constituents,   only: cnst_add, cnst_get_ind, &
@@ -626,7 +626,7 @@ subroutine micro_pumas_cam_register
 
    ! Request physics buffer space for fields that persist across timesteps.
 
-   call pbuf_add_field('CLDO','global',dtype_r8,(/pcols,pver,dyn_time_lvls/), cldo_idx)
+   call pbuf_add_field('CLDO','global',dtype_r8,(/pcols,pver/), cldo_idx)
 
    ! Physics buffer variables for convective cloud properties.
 
@@ -660,7 +660,7 @@ subroutine micro_pumas_cam_register
    ! In cloud snow water path for radiation
    call pbuf_add_field('ICSWP',      'physpkg',dtype_r8,(/pcols,pver/), icswp_idx)
    ! Cloud fraction for liquid drops + snow
-   call pbuf_add_field('CLDFSNOW ',  'physpkg',dtype_r8,(/pcols,pver,dyn_time_lvls/), cldfsnow_idx)
+   call pbuf_add_field('CLDFSNOW ',  'physpkg',dtype_r8,(/pcols,pver/), cldfsnow_idx)
 
    if (micro_mg_version > 2) then
       ! Graupel effective diameter for radiation
@@ -688,13 +688,13 @@ subroutine micro_pumas_cam_register
    call pbuf_add_field('CV_REFFICE', 'physpkg',dtype_r8,(/pcols,pver/), cv_reffice_idx)
 
    ! CC_* Fields needed by Park macrophysics
-   call pbuf_add_field('CC_T',     'global',  dtype_r8, (/pcols,pver,dyn_time_lvls/), cc_t_idx)
-   call pbuf_add_field('CC_qv',    'global',  dtype_r8, (/pcols,pver,dyn_time_lvls/), cc_qv_idx)
-   call pbuf_add_field('CC_ql',    'global',  dtype_r8, (/pcols,pver,dyn_time_lvls/), cc_ql_idx)
-   call pbuf_add_field('CC_qi',    'global',  dtype_r8, (/pcols,pver,dyn_time_lvls/), cc_qi_idx)
-   call pbuf_add_field('CC_nl',    'global',  dtype_r8, (/pcols,pver,dyn_time_lvls/), cc_nl_idx)
-   call pbuf_add_field('CC_ni',    'global',  dtype_r8, (/pcols,pver,dyn_time_lvls/), cc_ni_idx)
-   call pbuf_add_field('CC_qlst',  'global',  dtype_r8, (/pcols,pver,dyn_time_lvls/), cc_qlst_idx)
+   call pbuf_add_field('CC_T',     'global',  dtype_r8, (/pcols,pver/), cc_t_idx)
+   call pbuf_add_field('CC_qv',    'global',  dtype_r8, (/pcols,pver/), cc_qv_idx)
+   call pbuf_add_field('CC_ql',    'global',  dtype_r8, (/pcols,pver/), cc_ql_idx)
+   call pbuf_add_field('CC_qi',    'global',  dtype_r8, (/pcols,pver/), cc_qi_idx)
+   call pbuf_add_field('CC_nl',    'global',  dtype_r8, (/pcols,pver/), cc_nl_idx)
+   call pbuf_add_field('CC_ni',    'global',  dtype_r8, (/pcols,pver/), cc_ni_idx)
+   call pbuf_add_field('CC_qlst',  'global',  dtype_r8, (/pcols,pver/), cc_qlst_idx)
 
    ! Register subcolumn pbuf fields
    if (use_subcol_microp) then
@@ -1489,7 +1489,7 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
 
    integer :: lchnk, ncol, psetcols, ngrdcol
 
-   integer :: i, k, itim_old, it
+   integer :: i, k, it
 
    real(r8), parameter :: micron2meter = 1.e6_r8
    real(r8), parameter :: shapeparam = 1.e5_r8
@@ -1968,7 +1968,6 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    ncol  = state%ncol
    psetcols = state%psetcols
    ngrdcol  = state%ngrdcol
-   itim_old = pbuf_old_tim_idx()
    nlev = pver - top_lev + 1
 
    nan_array = nan
@@ -2002,11 +2001,11 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    call pbuf_get_field(pbuf, accre_enhan_idx, accre_enhan, col_type=col_type, copy_if_needed=use_subcol_microp)
    call pbuf_get_field(pbuf, cmeliq_idx,      cmeliq,      col_type=col_type, copy_if_needed=use_subcol_microp)
 
-   call pbuf_get_field(pbuf, cld_idx,         cld,     start=(/1,1,itim_old/), kount=(/psetcols,pver,1/), &
+   call pbuf_get_field(pbuf, cld_idx,         cld, &
         col_type=col_type, copy_if_needed=use_subcol_microp)
-   call pbuf_get_field(pbuf, concld_idx,      concld,  start=(/1,1,itim_old/), kount=(/psetcols,pver,1/), &
+   call pbuf_get_field(pbuf, concld_idx,      concld, &
         col_type=col_type, copy_if_needed=use_subcol_microp)
-   call pbuf_get_field(pbuf, ast_idx,         ast,     start=(/1,1,itim_old/), kount=(/psetcols,pver,1/), &
+   call pbuf_get_field(pbuf, ast_idx,         ast, &
         col_type=col_type, copy_if_needed=use_subcol_microp)
 
    ! Get convective precip for rainbows
@@ -2154,15 +2153,15 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    if (icgrauwp_idx > 0) call pbuf_get_field(pbuf, icgrauwp_idx, icgrauwp, col_type=col_type)
    if (cldfgrau_idx > 0) call pbuf_get_field(pbuf, cldfgrau_idx, cldfgrau, col_type=col_type)
 
-   call pbuf_get_field(pbuf, cldo_idx,        cldo,     start=(/1,1,itim_old/), kount=(/psetcols,pver,1/), col_type=col_type)
-   call pbuf_get_field(pbuf, cldfsnow_idx,    cldfsnow, start=(/1,1,itim_old/), kount=(/psetcols,pver,1/), col_type=col_type)
-   call pbuf_get_field(pbuf, cc_t_idx,        CC_t,     start=(/1,1,itim_old/), kount=(/psetcols,pver,1/), col_type=col_type)
-   call pbuf_get_field(pbuf, cc_qv_idx,       CC_qv,    start=(/1,1,itim_old/), kount=(/psetcols,pver,1/), col_type=col_type)
-   call pbuf_get_field(pbuf, cc_ql_idx,       CC_ql,    start=(/1,1,itim_old/), kount=(/psetcols,pver,1/), col_type=col_type)
-   call pbuf_get_field(pbuf, cc_qi_idx,       CC_qi,    start=(/1,1,itim_old/), kount=(/psetcols,pver,1/), col_type=col_type)
-   call pbuf_get_field(pbuf, cc_nl_idx,       CC_nl,    start=(/1,1,itim_old/), kount=(/psetcols,pver,1/), col_type=col_type)
-   call pbuf_get_field(pbuf, cc_ni_idx,       CC_ni,    start=(/1,1,itim_old/), kount=(/psetcols,pver,1/), col_type=col_type)
-   call pbuf_get_field(pbuf, cc_qlst_idx,     CC_qlst,  start=(/1,1,itim_old/), kount=(/psetcols,pver,1/), col_type=col_type)
+   call pbuf_get_field(pbuf, cldo_idx,        cldo, col_type=col_type)
+   call pbuf_get_field(pbuf, cldfsnow_idx,    cldfsnow, col_type=col_type)
+   call pbuf_get_field(pbuf, cc_t_idx,        CC_t, col_type=col_type)
+   call pbuf_get_field(pbuf, cc_qv_idx,       CC_qv, col_type=col_type)
+   call pbuf_get_field(pbuf, cc_ql_idx,       CC_ql, col_type=col_type)
+   call pbuf_get_field(pbuf, cc_qi_idx,       CC_qi, col_type=col_type)
+   call pbuf_get_field(pbuf, cc_nl_idx,       CC_nl, col_type=col_type)
+   call pbuf_get_field(pbuf, cc_ni_idx,       CC_ni, col_type=col_type)
+   call pbuf_get_field(pbuf, cc_qlst_idx,     CC_qlst, col_type=col_type)
 
    if (rate1_cw2pr_st_idx > 0) then
       call pbuf_get_field(pbuf, rate1_cw2pr_st_idx, rate1ord_cw2pr_st, col_type=col_type)
@@ -2220,15 +2219,15 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
       if (icgrauwp_idx > 0) call pbuf_get_field(pbuf, icgrauwp_idx, icgrauwp_grid)
       if (cldfgrau_idx > 0) call pbuf_get_field(pbuf, cldfgrau_idx, cldfgrau_grid)
 
-      call pbuf_get_field(pbuf, cldo_idx,     cldo_grid,     start=(/1,1,itim_old/), kount=(/pcols,pver,1/))
-      call pbuf_get_field(pbuf, cldfsnow_idx, cldfsnow_grid, start=(/1,1,itim_old/), kount=(/pcols,pver,1/))
-      call pbuf_get_field(pbuf, cc_t_idx,     CC_t_grid,     start=(/1,1,itim_old/), kount=(/pcols,pver,1/))
-      call pbuf_get_field(pbuf, cc_qv_idx,    CC_qv_grid,    start=(/1,1,itim_old/), kount=(/pcols,pver,1/))
-      call pbuf_get_field(pbuf, cc_ql_idx,    CC_ql_grid,    start=(/1,1,itim_old/), kount=(/pcols,pver,1/))
-      call pbuf_get_field(pbuf, cc_qi_idx,    CC_qi_grid,    start=(/1,1,itim_old/), kount=(/pcols,pver,1/))
-      call pbuf_get_field(pbuf, cc_nl_idx,    CC_nl_grid,    start=(/1,1,itim_old/), kount=(/pcols,pver,1/))
-      call pbuf_get_field(pbuf, cc_ni_idx,    CC_ni_grid,    start=(/1,1,itim_old/), kount=(/pcols,pver,1/))
-      call pbuf_get_field(pbuf, cc_qlst_idx,  CC_qlst_grid,  start=(/1,1,itim_old/), kount=(/pcols,pver,1/))
+      call pbuf_get_field(pbuf, cldo_idx,     cldo_grid)
+      call pbuf_get_field(pbuf, cldfsnow_idx, cldfsnow_grid)
+      call pbuf_get_field(pbuf, cc_t_idx,     CC_t_grid)
+      call pbuf_get_field(pbuf, cc_qv_idx,    CC_qv_grid)
+      call pbuf_get_field(pbuf, cc_ql_idx,    CC_ql_grid)
+      call pbuf_get_field(pbuf, cc_qi_idx,    CC_qi_grid)
+      call pbuf_get_field(pbuf, cc_nl_idx,    CC_nl_grid)
+      call pbuf_get_field(pbuf, cc_ni_idx,    CC_ni_grid)
+      call pbuf_get_field(pbuf, cc_qlst_idx,  CC_qlst_grid)
 
       if (rate1_cw2pr_st_idx > 0) then
          call pbuf_get_field(pbuf, rate1_cw2pr_st_idx, rate1ord_cw2pr_st_grid)
@@ -2248,7 +2247,7 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    call pbuf_get_field(pbuf, acgcme_idx,      acgcme_grid)
    call pbuf_get_field(pbuf, acnum_idx,       acnum_grid)
    call pbuf_get_field(pbuf, cmeliq_idx,      cmeliq_grid)
-   call pbuf_get_field(pbuf, ast_idx,         ast_grid, start=(/1,1,itim_old/), kount=(/pcols,pver,1/))
+   call pbuf_get_field(pbuf, ast_idx,         ast_grid)
 
    !-----------------------------------------------------------------------
    !        ... Calculate cosine of zenith angle

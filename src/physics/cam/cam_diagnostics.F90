@@ -10,7 +10,7 @@ use cam_control_mod, only: moist_physics
 use physics_types,   only: physics_state, physics_tend, physics_ptend
 use ppgrid,          only: pcols, pver, begchunk, endchunk
 use physics_buffer,  only: physics_buffer_desc, pbuf_add_field, dtype_r8
-use physics_buffer,  only: dyn_time_lvls, pbuf_get_field, pbuf_get_index, pbuf_old_tim_idx
+use physics_buffer,  only: pbuf_get_field, pbuf_get_index
 
 use cam_history,     only: outfld, write_inithist, hist_fld_active, inithist_all, write_camiop
 use cam_history_support, only: max_fieldname_len
@@ -164,9 +164,9 @@ contains
     call pbuf_add_field('PSL', 'physpkg', dtype_r8, (/pcols/), psl_idx)
 
     ! Request physics buffer space for fields that persist across timesteps.
-    call pbuf_add_field('T_TTEND', 'global', dtype_r8, (/pcols,pver,dyn_time_lvls/), t_ttend_idx)
-    call pbuf_add_field('T_UTEND', 'global', dtype_r8, (/pcols,pver,dyn_time_lvls/), t_utend_idx)
-    call pbuf_add_field('T_VTEND', 'global', dtype_r8, (/pcols,pver,dyn_time_lvls/), t_vtend_idx)
+    call pbuf_add_field('T_TTEND', 'global', dtype_r8, (/pcols,pver/), t_ttend_idx)
+    call pbuf_add_field('T_UTEND', 'global', dtype_r8, (/pcols,pver/), t_utend_idx)
+    call pbuf_add_field('T_VTEND', 'global', dtype_r8, (/pcols,pver/), t_vtend_idx)
   end subroutine diag_register_dry
 
   subroutine diag_register_moist()
@@ -899,14 +899,12 @@ contains
 
     !! initialize to pbuf T_TTEND to temperature at first timestep
     if (is_first_step()) then
-      do m = 1, dyn_time_lvls
-        call pbuf_get_field(pbuf, t_ttend_idx, t_ttend, start=(/1,1,m/), kount=(/pcols,pver,1/))
-        t_ttend(:ncol,:) = state%t(:ncol,:)
-        call pbuf_get_field(pbuf, t_utend_idx, t_utend, start=(/1,1,m/), kount=(/pcols,pver,1/))
-        t_utend(:ncol,:) = state%u(:ncol,:)
-        call pbuf_get_field(pbuf, t_vtend_idx, t_vtend, start=(/1,1,m/), kount=(/pcols,pver,1/))
-        t_vtend(:ncol,:) = state%v(:ncol,:)
-      end do
+      call pbuf_get_field(pbuf, t_ttend_idx, t_ttend)
+      t_ttend(:ncol,:) = state%t(:ncol,:)
+      call pbuf_get_field(pbuf, t_utend_idx, t_utend)
+      t_utend(:ncol,:) = state%u(:ncol,:)
+      call pbuf_get_field(pbuf, t_vtend_idx, t_vtend)
+      t_vtend(:ncol,:) = state%v(:ncol,:)
     end if
 
   end subroutine diag_conv_tend_ini
@@ -1950,7 +1948,6 @@ contains
     !
     !---------------------------Local workspace-----------------------------
     !
-    integer  :: itim_old          ! indices
 
     real(r8), pointer, dimension(:,:) :: cwat_var
     real(r8), pointer, dimension(:,:) :: conv_var_3d
@@ -1964,35 +1961,34 @@ contains
       !
       ! Associate pointers with physics buffer fields
       !
-      itim_old = pbuf_old_tim_idx()
 
       if (qcwat_idx > 0) then
-        call pbuf_get_field(pbuf, qcwat_idx, cwat_var, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
+        call pbuf_get_field(pbuf, qcwat_idx, cwat_var )
         call outfld('QCWAT&IC   ',cwat_var, pcols,lchnk)
       end if
 
       if (tcwat_idx > 0) then
-        call pbuf_get_field(pbuf, tcwat_idx,  cwat_var, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
+        call pbuf_get_field(pbuf, tcwat_idx,  cwat_var )
         call outfld('TCWAT&IC   ',cwat_var, pcols,lchnk)
       end if
 
       if (lcwat_idx > 0) then
-        call pbuf_get_field(pbuf, lcwat_idx,  cwat_var, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
+        call pbuf_get_field(pbuf, lcwat_idx,  cwat_var )
         call outfld('LCWAT&IC   ',cwat_var, pcols,lchnk)
       end if
 
       if (cld_idx > 0) then
-        call pbuf_get_field(pbuf, cld_idx,    cwat_var, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
+        call pbuf_get_field(pbuf, cld_idx,    cwat_var )
         call outfld('CLOUD&IC   ',cwat_var, pcols,lchnk)
       end if
 
       if (concld_idx > 0) then
-        call pbuf_get_field(pbuf, concld_idx, cwat_var, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
+        call pbuf_get_field(pbuf, concld_idx, cwat_var )
         call outfld('CONCLD&IC   ',cwat_var, pcols,lchnk)
       end if
 
       if (cush_idx > 0) then
-        call pbuf_get_field(pbuf, cush_idx, conv_var_2d ,(/1,itim_old/),  (/pcols,1/))
+        call pbuf_get_field(pbuf, cush_idx, conv_var_2d )
         call outfld('CUSH&IC   ',conv_var_2d, pcols,lchnk)
 
       end if
@@ -2064,7 +2060,7 @@ contains
     real(r8), pointer, dimension(:,:) :: t_ttend
     real(r8), pointer, dimension(:,:) :: t_utend
     real(r8), pointer, dimension(:,:) :: t_vtend
-    integer  :: itim_old,m
+    integer  :: m
 
     !-----------------------------------------------------------------------
 
@@ -2093,10 +2089,9 @@ contains
     ! Total (physics+dynamics, everything!) tendency for Temperature
 
     !! get temperature, U, and V stored in physics buffer
-    itim_old = pbuf_old_tim_idx()
-    call pbuf_get_field(pbuf, t_ttend_idx, t_ttend, start=(/1,1,itim_old/), kount=(/pcols,pver,1/))
-    call pbuf_get_field(pbuf, t_utend_idx, t_utend, start=(/1,1,itim_old/), kount=(/pcols,pver,1/))
-    call pbuf_get_field(pbuf, t_vtend_idx, t_vtend, start=(/1,1,itim_old/), kount=(/pcols,pver,1/))
+    call pbuf_get_field(pbuf, t_ttend_idx, t_ttend)
+    call pbuf_get_field(pbuf, t_utend_idx, t_utend)
+    call pbuf_get_field(pbuf, t_vtend_idx, t_vtend)
 
     !! calculate and outfld the total temperature, U, and V tendencies
     ftem3(:ncol,:) = (state%t(:ncol,:) - t_ttend(:ncol,:))/ztodt
