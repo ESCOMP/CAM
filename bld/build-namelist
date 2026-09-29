@@ -3320,12 +3320,38 @@ if (($chem ne 'none') and ($chem ne 'terminator') and !($chem =~ /geoschem/)) {
     add_default($nl, 'chem_use_chemtrop');
 }
 
+# CLUBB_SGS
+my $do_clubb_sgs = $nl->get_value('do_clubb_sgs');
+if (defined $do_clubb_sgs) {
+    die "CAM Namelist ERROR: User may not specify the value of do_clubb_sgs.\n".
+        "This variable is set by build-namelist based on information\n".
+        "from the configure cache file.\n";
+}
+add_default($nl, 'do_clubb_sgs');
+my $clubb_sgs = $nl->get_value('do_clubb_sgs');
+
 # Deep convection scheme
 add_default($nl, 'deep_scheme');
+
 my $deep_scheme = $nl->get_value('deep_scheme');
+$deep_scheme =~ s/['"]//g;  # Strip quotes for exact XML attribute matching
+
+# CLUBB+MF dependency checks
+if ($deep_scheme =~ /CLUBB_MF/) {
+    if ($clubb_sgs !~ /$TRUE/io) {
+        die "CAM Namelist ERROR: deep_scheme='CLUBB_MF' but do_clubb_sgs is not active.\n" .
+            "CLUBB+MF requires the CLUBB_SGS package to be enabled.\n";
+    }
+    # CLUBB+MF is only valid cam7 physics
+    if ($phys !~ /cam7/) {
+        die "CAM Namelist ERROR: deep_scheme='CLUBB_MF' but the physics package is '$phys'.\n" .
+            "CLUBB+MF is only supported with cam7 physics (configure with -phys cam7).\n";
+    }
+}
 
 # Aerosol convective processes
-if (($phys =~ /cam6/ or $phys =~ /cam7/) and $deep_scheme =~ /ZM/) {
+if ((($phys =~ /cam6/ or $phys =~ /cam7/) and $deep_scheme =~ /ZM/)
+    or $deep_scheme =~ /CLUBB_MF/) {
     add_default($nl, 'convproc_do_aer', 'val'=>'.true.');
     add_default($nl, 'convproc_do_evaprain_atonce', 'val'=>'.true.');
     add_default($nl, 'convproc_pom_spechygro', 'val'=>'0.2D0');
@@ -3436,11 +3462,11 @@ if ($cfg->get('microphys') =~ /^mg/) {
 
 # Aerosol Namelist options
 add_default($nl, 'microp_aero_npccn_scale');
-add_default($nl, 'microp_aero_wsub_scale');
-add_default($nl, 'microp_aero_wsubi_scale');
 add_default($nl, 'microp_aero_wsub_min');
 add_default($nl, 'microp_aero_wsub_min_asf');
 add_default($nl, 'microp_aero_wsubi_min');
+add_default($nl, 'microp_aero_wsub_scale');
+add_default($nl, 'microp_aero_wsubi_scale');
 
 # Ice nucleation options
 if (!$simple_phys) {
@@ -3531,13 +3557,6 @@ if ($use_subcol_microp =~ /$TRUE/io) {
 }
 
 # CLUBB_SGS
-my $do_clubb_sgs = $nl->get_value('do_clubb_sgs');
-if (defined $do_clubb_sgs) {
-    die "CAM Namelist ERROR: User may not specify the value of do_clubb_sgs.\n".
-        "This variable is set by build-namelist based on information\n".
-        "from the configure cache file.\n";
-}
-add_default($nl, 'do_clubb_sgs');
 my $clubb_sgs = $nl->get_value('do_clubb_sgs');
 if ($clubb_sgs  =~ /$TRUE/io) {
    my $clubb_do_adv = $cfg->get('clubb_do_adv');
@@ -3654,7 +3673,6 @@ if ($clubb_sgs  =~ /$TRUE/io) {
    add_default($nl, 'clubb_l_call_pdf_closure_twice');
    add_default($nl, 'clubb_l_damp_wp2_using_em');
    add_default($nl, 'clubb_l_damp_wp3_Skw_squared');
-   add_default($nl, 'clubb_l_do_expldiff_rtm_thlm');
    add_default($nl, 'clubb_l_e3sm_config');
    add_default($nl, 'clubb_l_enable_relaxed_clipping');
    add_default($nl, 'clubb_l_godunov_upwind_wpxp_ta');
@@ -3670,7 +3688,6 @@ if ($clubb_sgs  =~ /$TRUE/io) {
    add_default($nl, 'clubb_l_mono_flux_lim_um');
    add_default($nl, 'clubb_l_mono_flux_lim_vm');
    add_default($nl, 'clubb_l_partial_upwind_wp3');
-   add_default($nl, 'clubb_l_predict_upwp_vpwp');
    add_default($nl, 'clubb_l_ho_nontrad_coriolis');
    add_default($nl, 'clubb_l_ho_trad_coriolis');
    add_default($nl, 'clubb_l_rcm_supersat_adj');
@@ -3701,15 +3718,50 @@ if ($clubb_sgs  =~ /$TRUE/io) {
    add_default($nl, 'clubb_wpxp_Ri_exp');
    add_default($nl, 'clubb_z_displace');
 
-   #CLUBB+MF options
-   add_default($nl, 'do_clubb_mf');
-   add_default($nl, 'do_clubb_mf_diag');
-   add_default($nl, 'clubb_mf_L0');
-   add_default($nl, 'clubb_mf_ent0');
-   add_default($nl, 'clubb_mf_nup');
+   add_default($nl, 'clubb_l_predict_upwp_vpwp', 'deep_scheme'=>$deep_scheme);
+   add_default($nl, 'clubb_l_do_expldiff_rtm_thlm', 'deep_scheme'=>$deep_scheme);
 
    #Turn on HB scheme where CLUBB not active
    add_default($nl, 'do_hb_above_clubb');
+
+   # CLUBB-MF options
+   if ($deep_scheme =~ /CLUBB_MF/) {
+       add_default($nl, 'do_clubb_mf_diag');
+       add_default($nl, 'do_clubb_mf_rad');
+       add_default($nl, 'do_clubb_mf_precip');
+       add_default($nl, 'do_clubb_mf_addtke');
+       add_default($nl, 'clubb_mf_L0');
+       add_default($nl, 'clubb_mf_ent0');
+       add_default($nl, 'clubb_mf_alphturb');
+       add_default($nl, 'clubb_mf_Lopt');
+       add_default($nl, 'clubb_mf_a0');
+       add_default($nl, 'clubb_mf_b0');
+       add_default($nl, 'clubb_mf_nup');
+       add_default($nl, 'clubb_mf_max_L0');
+       add_default($nl, 'clubb_mf_fdd');
+       add_default($nl, 'do_clubb_mf_coldpool');
+       add_default($nl, 'clubb_mf_ddalph');
+       add_default($nl, 'clubb_mf_ddbeta');
+       add_default($nl, 'clubb_mf_pwfac');
+       add_default($nl, 'clubb_mf_ddexp');
+       add_default($nl, 'clubb_mf_pwmin');
+       add_default($nl, 'clubb_mf_pwmax');
+       add_default($nl, 'clubb_mf_cldfrac_fac');
+       add_default($nl, 'do_clubb_mf_ustar');
+       add_default($nl, 'do_clubb_mf_mixd');
+       add_default($nl, 'clubb_mf_up_ndt');
+       add_default($nl, 'clubb_mf_cp_ndt');
+       add_default($nl, 'do_clubb_mf_rhtke');
+       add_default($nl, 'do_clubb_mf_cmt');
+       add_default($nl, 'clubb_mf_kseed');
+       add_default($nl, 'do_clubb_mf_lscale_perplume');
+       add_default($nl, 'do_clubb_mf_coldpool_perplume');
+       add_default($nl, 'do_clubb_mf_coldpool_init');
+       add_default($nl, 'do_clubb_mf_aloft');
+       add_default($nl, 'do_clubb_mf_aspd');
+       add_default($nl, 'do_clubb_mf_pblcull');
+       add_default($nl, 'do_clubb_mf_invswitch');
+   }
 }
 
 # Tuning for wet scavenging of modal aerosols
@@ -4018,7 +4070,8 @@ if ($waccm_phys or
     add_default($nl, 'use_gw_front'     , 'val'=>'.false.');
 }
 # Check if deep convection scheme used.  If not set use_gw_convect_dp=.false.
-if ($deep_scheme =~ /off/) {
+# CLUBB_MF does not (yet) provide TTEND_DP, so treat it like 'off' here
+if ($deep_scheme =~ /off/ or $deep_scheme =~ /CLUBB_MF/) {
     $use_gw_convect_dp = '.false.';
 }
 add_default($nl, 'use_gw_convect_dp', 'val'=>$use_gw_convect_dp);
