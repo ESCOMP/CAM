@@ -2177,9 +2177,6 @@ module clubb_mf
      ! as tke_grad_thresh but for the heat-flux-based diagnostic
      real(r8), parameter :: hflux_grad_thresh = 1.e-4_r8
      !
-     ! Pa -> hPa conversion, needed because buoyan_dilute expects hPa
-     real(r8), parameter :: pa_to_hpa = 0.01_r8
-     !
      ! intialize local variables
      cape      = 0._r8
      mcape     = 0._r8

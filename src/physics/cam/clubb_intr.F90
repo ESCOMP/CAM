@@ -688,7 +688,6 @@ module clubb_intr
     call pbuf_add_field('ISS_FRAC',   'global', dtype_r8, (/pcols,nzt_clubb/), ice_supersat_idx)
 
     if (do_clubb_mf) then
-      ! note that the extra coord dim doesn't seem to work for interpolate_output=.true.
       call add_hist_coord('nens', clubb_mf_nup, 'clubb+mf ensemble size')
 
       call pbuf_add_field('ZTOPMN'             ,'global' ,  dtype_r8, (/clubb_mf_up_ndt,pcols,clubb_mf_nup/), ztopmn_idx)
