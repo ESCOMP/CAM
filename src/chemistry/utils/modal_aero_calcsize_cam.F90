@@ -7,7 +7,7 @@ module modal_aero_calcsize_cam
 
    use ppgrid,           only: pcols, pver
    use physics_types,    only: physics_state, physics_ptend
-   use physics_buffer,   only: physics_buffer_desc, pbuf_get_index, pbuf_old_tim_idx, &
+   use physics_buffer,   only: physics_buffer_desc, pbuf_get_index, &
                                pbuf_get_field, pbuf_add_field, pbuf_set_field, dtype_r8
 
    use phys_control,     only: phys_getopts

@@ -96,7 +96,7 @@ module carma_model_mod
   use cam_abortutils, only: endrun
   use physics_types,  only: physics_state, physics_ptend
   use ppgrid,         only: pcols, pver
-  use physics_buffer, only: physics_buffer_desc, pbuf_old_tim_idx, pbuf_get_field, pbuf_get_index
+  use physics_buffer, only: physics_buffer_desc, pbuf_get_field, pbuf_get_index
   use physconst,      only: gravit
   
 #if ( defined SPMD )
@@ -813,7 +813,6 @@ contains
 
     real(r8), pointer, dimension(:, :)    :: sulf               ! last saturation wrt ice
     integer                               :: lchnk              ! chunk identifier
-    integer                               :: itim
     
     character(len=8)                      :: c_name             ! constituent name
     
@@ -858,9 +857,8 @@ contains
         ! present at this location. Use this to scale the size distribution that CARMA
         ! will generate.
         lchnk = state%lchnk
-        itim  = pbuf_old_tim_idx()
 
-        call pbuf_get_field(pbuf, pbuf_get_index('sulf'), sulf, (/1,1,itim/),(/pcols,pver,1/))
+        call pbuf_get_field(pbuf, pbuf_get_index('sulf'), sulf)
       end if
     end if
     
@@ -885,10 +883,9 @@ contains
       if (carma_sulfate_method == "carma") then
         ! Get the index for the prescribed sulfates.
         lchnk = state%lchnk
-        itim  = pbuf_old_tim_idx()
         write(c_name, '(A, I2.2)') "CRCN", ibin
 
-        call pbuf_get_field(pbuf, pbuf_get_index(c_name), sulf, (/1,1,itim/),(/pcols,pver,1/))
+        call pbuf_get_field(pbuf, pbuf_get_index(c_name), sulf)
         mmr(ibin, :) = sulf(icol, :)
       end if
       

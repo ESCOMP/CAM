@@ -30,7 +30,7 @@ use physconst,        only: pi, rair, gravit, tmelt, cpair, rh2o, rhoh2o, latvap
 use constituents,     only: pcnst, cnst_get_ind
 use physics_types,    only: physics_state, physics_ptend, physics_ptend_init, physics_ptend_sum, &
                             physics_state_copy, physics_update
-use physics_buffer,   only: physics_buffer_desc, pbuf_get_index, pbuf_old_tim_idx, pbuf_get_field
+use physics_buffer,   only: physics_buffer_desc, pbuf_get_index, pbuf_get_field
 use phys_control,     only: phys_getopts, use_hetfrz_classnuc
 use aerosol_instances_mod, only: aerosol_instances_get_num_models, &
                                  aerosol_instances_is_active, &
@@ -607,7 +607,6 @@ subroutine microp_aero_run ( &
    ! all units mks unless otherwise stated
 
    integer :: i, k, m
-   integer :: itim_old
 
    type(physics_state), target :: state1                ! Local copy of state variable
    type(physics_ptend) :: ptend_loc
@@ -685,8 +684,6 @@ subroutine microp_aero_run ( &
    lchnk = state1%lchnk
    ncol  = state1%ncol
 
-   itim_old = pbuf_old_tim_idx()
-
    call pbuf_get_field(pbuf, npccn_idx, npccn)
 
    call pbuf_get_field(pbuf, nacon_idx, nacon)
@@ -717,10 +714,8 @@ subroutine microp_aero_run ( &
 
    if (clim_modal_aero.or.clim_carma_aero) then
 
-      itim_old = pbuf_old_tim_idx()
-
-      call pbuf_get_field(pbuf, ast_idx,  cldn, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
-      call pbuf_get_field(pbuf, cldo_idx, cldo, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
+      call pbuf_get_field(pbuf, ast_idx,  cldn )
+      call pbuf_get_field(pbuf, cldo_idx, cldo )
    end if
 
    if (clim_modal_aero) then
@@ -762,7 +757,6 @@ subroutine microp_aero_run ( &
            errflg  = errflg)
       if(errflg /= 0) call endrun('compute_subgrid_vertical_velocity_tke_run: ' // errmsg)
    case ('CLUBB_SGS')
-      itim_old = pbuf_old_tim_idx()
       call pbuf_get_field(pbuf, wp2_idx, wp2)
 
       ! The WP2_nadv pbuf field is dimensioned on the CLUBB momentum subgrid
@@ -1002,7 +996,7 @@ subroutine microp_aero_run ( &
       ! do not run for aquaplanet compsets which also gets in this path.
       if (associated(aero_state1_obj)) then
          ! get liquid cloud fraction. scaling is done within the ndrop_bam scheme.
-         call pbuf_get_field(pbuf, ast_idx,      ast, start=(/1,1,itim_old/), kount=(/pcols,pver,1/))
+         call pbuf_get_field(pbuf, ast_idx,      ast)
 
          allocate(ccn_bam(pcols, pver, psat))
          allocate(naer2_bam(pcols, pver, naer_all))

@@ -9,7 +9,7 @@ use shr_kind_mod,     only: r8 => shr_kind_r8
 use physconst,        only: gravit
 use ppgrid,           only: pcols, pver, pverp
 use physics_types,    only: physics_state
-use physics_buffer,   only: physics_buffer_desc, pbuf_get_index, pbuf_get_field, pbuf_old_tim_idx
+use physics_buffer,   only: physics_buffer_desc, pbuf_get_index, pbuf_get_field
 use radconstants,     only: nswbands, nlwbands, get_sw_spectral_boundaries
 use cam_abortutils,   only: endrun
 
@@ -120,7 +120,7 @@ subroutine slingo_liq_optics_sw(state, pbuf, liq_tau, liq_tau_w, liq_tau_w_g, li
    ! greater than 20 micro-meters
 
    integer :: ns, i, k, indxsl, Nday
-   integer :: i_rel, lchnk, icld, itim_old
+   integer :: i_rel, lchnk, icld
    real(r8) :: tmp1l, tmp2l, tmp3l, g
    real(r8) :: kext(pcols,pver)
    real(r8), pointer, dimension(:,:) :: iclwpth
@@ -128,8 +128,7 @@ subroutine slingo_liq_optics_sw(state, pbuf, liq_tau, liq_tau_w, liq_tau_w_g, li
    Nday = state%ncol
    lchnk = state%lchnk
 
-   itim_old = pbuf_old_tim_idx()
-   call pbuf_get_field(pbuf, cld_idx, cldn, start=(/1,1,itim_old/), kount=(/pcols,pver,1/))
+   call pbuf_get_field(pbuf, cld_idx, cldn)
    call pbuf_get_field(pbuf, rel_idx, rel)
 
    if (oldliqwp) then
@@ -220,7 +219,7 @@ subroutine slingo_liq_get_rad_props_lw(state, pbuf, abs_od, oldliqwp)
 
    real(r8), pointer, dimension(:,:) :: cldn
    real(r8), pointer, dimension(:,:) :: rei
-   integer :: ncol, icld, itim_old, i_rei, lwband, i, k, lchnk 
+   integer :: ncol, icld, i_rei, lwband, i, k, lchnk 
 
     real(r8) :: kabs, kabsi
     real(r8) kabsl                  ! longwave liquid absorption coeff (m**2/g)
@@ -231,9 +230,8 @@ subroutine slingo_liq_get_rad_props_lw(state, pbuf, abs_od, oldliqwp)
     ncol=state%ncol
    lchnk = state%lchnk
 
-   itim_old  =  pbuf_old_tim_idx()
    call pbuf_get_field(pbuf, rei_idx,   rei)
-   call pbuf_get_field(pbuf, cld_idx,   cldn, start=(/1,1,itim_old/), kount=(/pcols,pver,1/))
+   call pbuf_get_field(pbuf, cld_idx,   cldn)
 
    if (oldliqwp) then
      do k=1,pver

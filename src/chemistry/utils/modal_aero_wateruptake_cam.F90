@@ -285,7 +285,7 @@ contains
       t      => state%t
       pmid   => state%pmid
 
-      call pbuf_get_field(pbuf, cld_idx, cldn, start=(/1,1/), kount=(/pcols,pver/) )
+      call pbuf_get_field(pbuf, cld_idx, cldn )
 
       ! Zero output arrays (allocated at pcols, _sub only writes 1:ncol)
       wetrad(:,:,:)       = 0._r8

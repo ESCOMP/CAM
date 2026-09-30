@@ -83,7 +83,7 @@ contains
 !==============================================================================
    subroutine wetdep_inputs_set( state, pbuf, inputs )
       use physics_types,  only: physics_state
-      use physics_buffer, only: physics_buffer_desc, pbuf_get_field, pbuf_old_tim_idx
+      use physics_buffer, only: physics_buffer_desc, pbuf_get_field
 
       ! args
 
@@ -105,12 +105,11 @@ contains
       real(r8) :: rainmr(pcols,pver)       ! mixing ratio of rain within cloud volume
       real(r8) :: cldst(pcols,pver)        ! Stratiform cloud fraction
 
-      integer :: itim, ncol
+      integer :: ncol
 
       ncol = state%ncol
-      itim = pbuf_old_tim_idx()
 
-      call pbuf_get_field(pbuf, cld_idx,         inputs%cldt, start=(/1,1,itim/), kount=(/pcols,pver,1/) )
+      call pbuf_get_field(pbuf, cld_idx,         inputs%cldt )
       call pbuf_get_field(pbuf, prain_idx,       inputs%prain   )
       call pbuf_get_field(pbuf, nevapr_idx,      inputs%evapr   )
       call pbuf_get_field(pbuf, icwmrdp_idx,     icwmrdp )

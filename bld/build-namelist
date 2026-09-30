@@ -2358,7 +2358,10 @@ if ($phys =~ /cam6/ or $phys =~ /cam7/) {
                   'num_a4_oc_srf_file'  => 'num_a4',
                   'num_a4_bb_srf_file'  => 'num_a4',
                   'num_pom_bb_srf_file' => 'num_a4' );
-      if ((not defined $nl->get_value('csw_specifier')) or (not $nl->get_value('csw_specifier') ~~ /DMS/)) {
+      # match the species field of the specifier entries (e.g. 'DMS -> /path/file.nc'),
+      # not the file path, which may also contain the species name
+      my $csw_specifier = $nl->get_value('csw_specifier');
+      if ((not defined $csw_specifier) or ($csw_specifier !~ /\bDMS\s*->/)) {
         %species = (%species,
                     'dms_ot_srf_file'     => 'DMS' );
       }
@@ -3696,6 +3699,7 @@ if ($clubb_sgs  =~ /$TRUE/io) {
    add_default($nl, 'clubb_Skw_denom_coef');
    add_default($nl, 'clubb_skw_max_mag');
    add_default($nl, 'clubb_tridiag_solve_method');
+   add_default($nl, 'clubb_a_const');
    add_default($nl, 'clubb_up2_sfc_coef');
    add_default($nl, 'clubb_wpxp_L_thresh');
    add_default($nl, 'clubb_wpxp_Ri_exp');

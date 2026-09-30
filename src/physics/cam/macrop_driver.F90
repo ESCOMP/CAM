@@ -16,7 +16,7 @@
   use physconst,     only: latice, latvap
   use phys_control,  only: phys_getopts
   use constituents,  only: cnst_get_ind, pcnst
-  use physics_buffer,    only: physics_buffer_desc, pbuf_set_field, pbuf_get_field, pbuf_old_tim_idx
+  use physics_buffer,    only: physics_buffer_desc, pbuf_set_field, pbuf_get_field
   use time_manager,      only: is_first_step
   use cldwat2m_macro,    only: ini_macro
   use perf_mod,          only: t_startf, t_stopf
@@ -163,26 +163,26 @@ end subroutine macrop_driver_readnl
   !---------------------------------------------------------------------- !
 
 
-   use physics_buffer, only : pbuf_add_field, dtype_r8, dyn_time_lvls
+   use physics_buffer, only : pbuf_add_field, dtype_r8
 
   !-----------------------------------------------------------------------
 
     call phys_getopts(shallow_scheme_out=shallow_scheme)
 
-    call pbuf_add_field('AST',      'global',  dtype_r8, (/pcols,pver,dyn_time_lvls/), ast_idx)
-    call pbuf_add_field('AIST',     'global',  dtype_r8, (/pcols,pver,dyn_time_lvls/), aist_idx)
-    call pbuf_add_field('ALST',     'global',  dtype_r8, (/pcols,pver,dyn_time_lvls/), alst_idx)
-    call pbuf_add_field('QIST',     'global',  dtype_r8, (/pcols,pver,dyn_time_lvls/), qist_idx)
-    call pbuf_add_field('QLST',     'global',  dtype_r8, (/pcols,pver,dyn_time_lvls/), qlst_idx)
-    call pbuf_add_field('CLD',      'global',  dtype_r8, (/pcols,pver,dyn_time_lvls/), cld_idx)
-    call pbuf_add_field('CONCLD',   'global',  dtype_r8, (/pcols,pver,dyn_time_lvls/), concld_idx)
+    call pbuf_add_field('AST',      'global',  dtype_r8, (/pcols,pver/), ast_idx)
+    call pbuf_add_field('AIST',     'global',  dtype_r8, (/pcols,pver/), aist_idx)
+    call pbuf_add_field('ALST',     'global',  dtype_r8, (/pcols,pver/), alst_idx)
+    call pbuf_add_field('QIST',     'global',  dtype_r8, (/pcols,pver/), qist_idx)
+    call pbuf_add_field('QLST',     'global',  dtype_r8, (/pcols,pver/), qlst_idx)
+    call pbuf_add_field('CLD',      'global',  dtype_r8, (/pcols,pver/), cld_idx)
+    call pbuf_add_field('CONCLD',   'global',  dtype_r8, (/pcols,pver/), concld_idx)
 
-    call pbuf_add_field('QCWAT',    'global',  dtype_r8, (/pcols,pver,dyn_time_lvls/), qcwat_idx)
-    call pbuf_add_field('LCWAT',    'global',  dtype_r8, (/pcols,pver,dyn_time_lvls/), lcwat_idx)
-    call pbuf_add_field('ICCWAT',   'global',  dtype_r8, (/pcols,pver,dyn_time_lvls/), iccwat_idx)
-    call pbuf_add_field('NLWAT',    'global',  dtype_r8, (/pcols,pver,dyn_time_lvls/), nlwat_idx)
-    call pbuf_add_field('NIWAT',    'global',  dtype_r8, (/pcols,pver,dyn_time_lvls/), niwat_idx)
-    call pbuf_add_field('TCWAT',    'global',  dtype_r8, (/pcols,pver,dyn_time_lvls/), tcwat_idx)
+    call pbuf_add_field('QCWAT',    'global',  dtype_r8, (/pcols,pver/), qcwat_idx)
+    call pbuf_add_field('LCWAT',    'global',  dtype_r8, (/pcols,pver/), lcwat_idx)
+    call pbuf_add_field('ICCWAT',   'global',  dtype_r8, (/pcols,pver/), iccwat_idx)
+    call pbuf_add_field('NLWAT',    'global',  dtype_r8, (/pcols,pver/), nlwat_idx)
+    call pbuf_add_field('NIWAT',    'global',  dtype_r8, (/pcols,pver/), niwat_idx)
+    call pbuf_add_field('TCWAT',    'global',  dtype_r8, (/pcols,pver/), tcwat_idx)
 
     call pbuf_add_field('FICE',     'physpkg', dtype_r8, (/pcols,pver/), fice_idx)
 
@@ -425,7 +425,6 @@ end subroutine macrop_driver_readnl
 
   ! Physics buffer fields
 
-  integer itim_old
   real(r8), pointer, dimension(:,:) :: qcwat        ! Cloud water old q
   real(r8), pointer, dimension(:,:) :: tcwat        ! Cloud water old temperature
   real(r8), pointer, dimension(:,:) :: lcwat        ! Cloud liquid water old q
@@ -587,30 +586,29 @@ end subroutine macrop_driver_readnl
 
   ! Associate pointers with physics buffer fields
 
-  itim_old = pbuf_old_tim_idx()
 
-  call pbuf_get_field(pbuf, qcwat_idx,   qcwat,   start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
-  call pbuf_get_field(pbuf, tcwat_idx,   tcwat,   start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
-  call pbuf_get_field(pbuf, lcwat_idx,   lcwat,   start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
-  call pbuf_get_field(pbuf, iccwat_idx,  iccwat,  start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
-  call pbuf_get_field(pbuf, nlwat_idx,   nlwat,   start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
-  call pbuf_get_field(pbuf, niwat_idx,   niwat,   start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
+  call pbuf_get_field(pbuf, qcwat_idx,   qcwat )
+  call pbuf_get_field(pbuf, tcwat_idx,   tcwat )
+  call pbuf_get_field(pbuf, lcwat_idx,   lcwat )
+  call pbuf_get_field(pbuf, iccwat_idx,  iccwat )
+  call pbuf_get_field(pbuf, nlwat_idx,   nlwat )
+  call pbuf_get_field(pbuf, niwat_idx,   niwat )
 
-  call pbuf_get_field(pbuf, cc_t_idx,    cc_t,    start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
-  call pbuf_get_field(pbuf, cc_qv_idx,   cc_qv,   start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
-  call pbuf_get_field(pbuf, cc_ql_idx,   cc_ql,   start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
-  call pbuf_get_field(pbuf, cc_qi_idx,   cc_qi,   start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
-  call pbuf_get_field(pbuf, cc_nl_idx,   cc_nl,   start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
-  call pbuf_get_field(pbuf, cc_ni_idx,   cc_ni,   start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
-  call pbuf_get_field(pbuf, cc_qlst_idx, cc_qlst, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
+  call pbuf_get_field(pbuf, cc_t_idx,    cc_t )
+  call pbuf_get_field(pbuf, cc_qv_idx,   cc_qv )
+  call pbuf_get_field(pbuf, cc_ql_idx,   cc_ql )
+  call pbuf_get_field(pbuf, cc_qi_idx,   cc_qi )
+  call pbuf_get_field(pbuf, cc_nl_idx,   cc_nl )
+  call pbuf_get_field(pbuf, cc_ni_idx,   cc_ni )
+  call pbuf_get_field(pbuf, cc_qlst_idx, cc_qlst )
 
-  call pbuf_get_field(pbuf, cld_idx,     cld,    start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
-  call pbuf_get_field(pbuf, concld_idx,  concld, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
-  call pbuf_get_field(pbuf, ast_idx,     ast,    start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
-  call pbuf_get_field(pbuf, aist_idx,    aist,   start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
-  call pbuf_get_field(pbuf, alst_idx,    alst,   start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
-  call pbuf_get_field(pbuf, qist_idx,    qist,   start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
-  call pbuf_get_field(pbuf, qlst_idx,    qlst,   start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
+  call pbuf_get_field(pbuf, cld_idx,     cld )
+  call pbuf_get_field(pbuf, concld_idx,  concld )
+  call pbuf_get_field(pbuf, ast_idx,     ast )
+  call pbuf_get_field(pbuf, aist_idx,    aist )
+  call pbuf_get_field(pbuf, alst_idx,    alst )
+  call pbuf_get_field(pbuf, qist_idx,    qist )
+  call pbuf_get_field(pbuf, qlst_idx,    qlst )
 
   call pbuf_get_field(pbuf, cmeliq_idx,  cmeliq)
 
