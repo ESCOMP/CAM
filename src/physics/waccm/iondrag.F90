@@ -1,14 +1,13 @@
- 
 module iondrag
   !-------------------------------------------------------------------------------
   ! Purpose:
   !   Calculate ion drag tendency and apply to horizontal velocities.
-  !   Also calculate joule heating tendency and apply to neutral temperature. 
-  ! 
+  !   Also calculate joule heating tendency and apply to neutral temperature.
+  !
   ! Subroutines:
   !   iondrag_init (initialize module)
   !   iondrag_calc (calculate ion drag tensors)
-  !   iondrag_tend (ion drag tendency)   
+  !   iondrag_tend (ion drag tendency)
   !   qjoule_tend (joule heating)
   !
   ! Calling sequence:
@@ -32,7 +31,7 @@ module iondrag
   use ppgrid       ,only: pcols, pver, begchunk, endchunk
   use cam_history  ,only: addfld, add_default, outfld, horiz_only
   use physics_types,only: physics_state, physics_ptend, physics_ptend_init
-  
+
   use physics_buffer, only : pbuf_get_index, physics_buffer_desc, pbuf_get_field
   use perf_mod     ,only: t_startf, t_stopf
   use cam_logfile  ,only: iulog
@@ -119,7 +118,7 @@ module iondrag
   !-------------------------------------------------------------------------
 
   ! Private data
-  integer, parameter :: plevtiod = 97   
+  integer, parameter :: plevtiod = 97
 
   real(r8) alamxx(plevtiod)
   real(r8) alamxy(plevtiod)
@@ -187,7 +186,7 @@ module iondrag
 
 contains
 
-!==============================================================================     
+!==============================================================================
 
   subroutine iondrag_register
 !-----------------------------------------------------------------------
@@ -196,7 +195,7 @@ contains
 ! Register iondrag variables with physics buffer:
 !
 ! Hall and Pedersen conductivities
-! 
+!
 ! pcols dimension and lchnk assumed here
 !
 !-----------------------------------------------------------------------
@@ -362,7 +361,7 @@ contains
     if (id_n < 0) then
        id_n = slvd_index( 'N' )
     endif
- 
+
     cnst_ids = (/ id_elec, id_op, id_o2p, id_nop, id_xo1, id_xo2, id_n /)
 
     if ( all( cnst_ids > 0 ) ) then
@@ -439,7 +438,7 @@ contains
     rmi_o2p    = 1._r8/rmass_o2p
     rmi_nop    = 1._r8/rmass_nop
     rmi_op_kg  = 1._r8/(rmass_op *amu)
-    rmi_o2p_kg = 1._r8/(rmass_o2p*amu)  
+    rmi_o2p_kg = 1._r8/(rmass_o2p*amu)
     rmi_nop_kg = 1._r8/(rmass_nop*amu)
 
     !-------------------------------------------------------------------------------
@@ -490,7 +489,7 @@ contains
 
     !------------------Input arguments---------------------------------------
 
-    real(r8), intent(in) :: pref_mid(pver)           ! model ref pressure at midpoint   
+    real(r8), intent(in) :: pref_mid(pver)           ! model ref pressure at midpoint
 
     !-----------------local workspace---------------------------------------
     integer k
@@ -525,7 +524,7 @@ contains
        pshtiod(k)=pshtiod(k-1)+0.25_r8
     enddo
 
-    !     map TIME-psh into CCM-psh 
+    !     map TIME-psh into CCM-psh
     pshtiod=pshtiod-log(preftgcm/1E5_r8)
 
     !     CCM psh
@@ -535,7 +534,7 @@ contains
        pshccm(kinv)=log(1e5_r8/pref_mid(k))
     enddo
 
-    !     vertical interpolation 
+    !     vertical interpolation
     write(iulog,*) ' '
     write(iulog,*) 'iondragi: before lininterp for alamxx'
     write(iulog,*) '          nlatin,nlatout =',plevtiod,pver
@@ -601,7 +600,7 @@ contains
     real(r8), intent(in) :: delt                ! time step (s)
     type(physics_state), intent(in), target    :: state ! Physics state variables
     type(physics_ptend), intent(out)   :: ptend ! Physics tendencies
-    
+
     type(physics_buffer_desc), pointer :: pbuf(:)
 
     !-------------------------------------------------------------------------------
@@ -635,7 +634,7 @@ contains
     ! real(r8),parameter :: rmi_o2p    = 1._r8/rmass_o2p
     ! real(r8),parameter :: rmi_nop    = 1._r8/rmass_nop
     ! real(r8),parameter :: rmi_op_kg  = 1._r8/(rmass_op *amu)
-    ! real(r8),parameter :: rmi_o2p_kg = 1._r8/(rmass_o2p*amu)  
+    ! real(r8),parameter :: rmi_o2p_kg = 1._r8/(rmass_o2p*amu)
     ! real(r8),parameter :: rmi_nop_kg = 1._r8/(rmass_nop*amu)
 
     real(r8), target :: tn(pcols,pver) ! neutral gas temperature (deg K)
@@ -681,7 +680,7 @@ contains
 
     real(r8) :: press        (pcols)     ! pressure at interface levels (dyne/cm^2)
     real(r8) :: qe_fac       (pcols)     ! unit conversion factor for conductivities
-    real(r8) :: dipmag       (pcols)     ! magnetic dip angle 
+    real(r8) :: dipmag       (pcols)     ! magnetic dip angle
     real(r8) :: decmag       (pcols)     ! magnetic declination
     real(r8) :: btesla       (pcols)     ! magnetic field (teslas)
     real(r8) :: sindip       (pcols)     ! sin(dipmag)
@@ -717,8 +716,8 @@ contains
 
     real(r8), dimension(:,:), pointer :: q_xo1,  q_xo2, q_o2p, q_op, q_nop
 
-    real(r8), dimension(:,:), pointer :: tE  	 ! electron temperature in pbuf (K) 
-    real(r8), dimension(:,:), pointer :: tI   	 ! ion temperature in pbuf (K) 
+    real(r8), dimension(:,:), pointer :: tE  	 ! electron temperature in pbuf (K)
+    real(r8), dimension(:,:), pointer :: tI   	 ! ion temperature in pbuf (K)
 
     if (.not.doiodrg) return
 
@@ -754,7 +753,7 @@ contains
     endif
 
     !-------------------------------------------------------------------------------
-    ! Define local tn and major species from state (mmr): 
+    ! Define local tn and major species from state (mmr):
     !-------------------------------------------------------------------------------
     do k = 1,pver
        do i = 1,ncol
@@ -806,7 +805,7 @@ contains
        !-------------------------------------------------------------------------------
        ! Electron angular gyrofrequency (s-1):
        !-------------------------------------------------------------------------------
-       omega_e(i) = qe*btesla(i)/emass 
+       omega_e(i) = qe*btesla(i)/emass
        !-------------------------------------------------------------------------------
        ! Invert now, so we can multiply rather than divide in loops below:
        !-------------------------------------------------------------------------------
@@ -863,7 +862,7 @@ contains
           !-------------------------------------------------------------------------------
           rnu_o2p_o(i,k) = 2.31e-10_r8                     ! O2+ ~ O
           rnu_op_o (i,k) = 3.67e-11_r8*sqrt_tnti  &        ! O+  ~ O (resonant)
-               *(1._r8 - .064_r8*wrk)**2*colfac     
+               *(1._r8 - .064_r8*wrk)**2*colfac
           rnu_nop_o(i,k) = 2.44e-10_r8                     ! NO+ ~ O
           !-------------------------------------------------------------------------------
           ! Collision frequency coefficients with N2 (cm3/s):
@@ -876,7 +875,7 @@ contains
 
     !-------------------------------------------------------------------------------
     ! Sub set_mean_mass (mo_mean_mass.F90) returns barm(ncol,pver) in g/mole,
-    !   however, set_mean_mass sometimes returns zero in top(?) four values 
+    !   however, set_mean_mass sometimes returns zero in top(?) four values
     !   of the column, so barm is calculated here, see below.
     !
     ! call set_mean_mass(ncol, state%q(1,1,imozart), barm)
@@ -890,7 +889,7 @@ contains
        do i = 1,ncol
           press(i)     = 10._r8*state%pmid(i,k) ! from Pa to dyne/cm^2
           !     barm(i,k)   = 1._r8 / (xo2(i,k)*rmi_o2 + xo1(i,k)*rmi_o1 + xn2(i,k)*rmi_n2)
-          xnmbar(i,k)  = press(i)*barm(i,k)/(boltzmann*tn(i,k)) 
+          xnmbar(i,k)  = press(i)*barm(i,k)/(boltzmann*tn(i,k))
           o2_cm3(i,k)  = xo2(i,k)*xnmbar(i,k)*rmi_o2   ! o2 (cm-3)
           o1_cm3(i,k)  = xo1(i,k)*xnmbar(i,k)*rmi_o1   ! o  (cm-3)
           n2_cm3(i,k)  = xn2(i,k)*xnmbar(i,k)*rmi_n2   ! n2 (cm-3)
@@ -901,7 +900,7 @@ contains
 !----------------------------------------------------------------------------------
 !  Use sum of the 3 major ion number densities (as in tiegcm)
 !----------------------------------------------------------------------------------
-! 
+!
           ne_sigmas(i,k)      = op_cm3(i,k) + o2p_cm3(i,k) + nop_cm3(i,k)
        end do
     end do
@@ -928,7 +927,7 @@ contains
           ! Electron collision frequency (s-1):
           !-------------------------------------------------------------------------------
           sqrt_te = sqrt(tE(i,k))
-          rnu_ne(i,k) = & 
+          rnu_ne(i,k) = &
                2.33e-11_r8*n2_cm3(i,k)*tE(i,k)*(1._r8 - 1.21e-4_r8*tE(i,k)) &
                + 1.82e-10_r8*o2_cm3(i,k)*sqrt_te*(1._r8 + 3.60e-2_r8*sqrt_te) &
                + 8.90e-11_r8*o1_cm3(i,k)*sqrt_te*(1._r8 + 5.70e-4_r8*tE(i,k))
@@ -956,7 +955,7 @@ contains
 
     do k = 1,pver
        do i = 1,ncol
- 
+
           !-------------------------------------------------------------------------------
           ! Pedersen conductivity (siemens/m):
           !-------------------------------------------------------------------------------
@@ -983,7 +982,7 @@ contains
     !--------------------------------------------------------------------------------------------
     !  Save conductivities in physics buffer using pointer for access in ionosphere module
     !--------------------------------------------------------------------------------------------
-    if ( waccmx_is('ionosphere') ) then 
+    if ( waccmx_is('ionosphere') ) then
       call pbuf_set_field(pbuf, PedConduct_idx,  sigma_ped(1:ncol,1:pver),  start=(/1,1/), kount=(/ncol,pver/) )
       call pbuf_set_field(pbuf, HallConduct_idx, sigma_hall(1:ncol,1:pver), start=(/1,1/), kount=(/ncol,pver/) )
     endif
@@ -1036,8 +1035,7 @@ contains
     !-------------------------------------------------------------------------------
     ! Calculate joule heating tendency and apply to temperature:
     !-------------------------------------------------------------------------------
-    call jouleheat_tend( lchnk, ncol, state, ptend, pbuf,  &
-         lxx, lyy, lxy, lyx )
+    call jouleheat_tend( lchnk, ncol, state, ptend, pbuf, lamda1)
 
   end subroutine iondrag_calc_ions
 
@@ -1045,7 +1043,7 @@ contains
 
   subroutine iondrag_calc_ghg (lchnk,ncol,state,ptend)
 
-    use phys_grid,      only: get_rlat_all_p 
+    use phys_grid,      only: get_rlat_all_p
     use cam_history,    only: outfld
     use physics_types,  only: physics_ptend_init
 
@@ -1054,7 +1052,7 @@ contains
     !     This subroutine calculates ion drag using globally uniform
     !     ion drag tensor:
     !
-    !                |alamxx       alamxy   | 
+    !                |alamxx       alamxy   |
     !                |                      |
     !         lambda=|                      |
     !                |                      |
@@ -1066,7 +1064,7 @@ contains
     !
     !       alamyy = alamxx (sin(DIP_ANGLE))**2
     !
-    !     where 
+    !     where
     !
     !       DIP_ANGLE = arctan(2.*tan(clat))
     !
@@ -1078,7 +1076,7 @@ contains
 
     type(physics_state), intent(in) :: state
     type(physics_ptend ), intent(out) :: ptend
-    
+
 
 
     !---------------------Local workspace-------------------------------------
@@ -1159,7 +1157,7 @@ contains
     real(r8), intent(in)  :: lyx(pcols,pver)       ! ion drag tensor
     type(physics_state), intent(in)    :: state ! Physics state variables
     type(physics_ptend), intent(inout) :: ptend ! Physics tendencies
-    
+
     type(physics_buffer_desc), pointer :: pbuf(:)
 
 
@@ -1178,9 +1176,9 @@ contains
     real(r8), pointer :: wi(:,:)           ! pointer to 3d vertical ion drift from edynamo
 
     !-------------------------------------------------------------------------------
-    ! Get ion ExB drift from physics buffer (they were defined by either the exbdrift 
-    !   module in chemistry (2d), or the dynamo module in dynamics dpie_coupling (3d), 
-    !   depending on the switch empirical_ion_velocities. If using dynamo drifts, 
+    ! Get ion ExB drift from physics buffer (they were defined by either the exbdrift
+    !   module in chemistry (2d), or the dynamo module in dynamics dpie_coupling (3d),
+    !   depending on the switch empirical_ion_velocities. If using dynamo drifts,
     !   they were put into pbuf by dp_coupling. If using empirical exbdrifts, then
     !   they are redundant in the vertical dimension (i.e., 2d only).
     !-------------------------------------------------------------------------------
@@ -1197,7 +1195,7 @@ contains
        do i = 1,ncol
           !-------------------------------------------------------------------------------
           ! 2/28/04 btf:
-          ! Full ion-drag, using lambdas and ExB drifts. 
+          ! Full ion-drag, using lambdas and ExB drifts.
           !   This should succeed with bz = 0 (efield module)
           ! Runs:
           !   bz=-5, nstep=24 min, nsplit=4 (6 min dynamics): crashed after 2 days.
@@ -1209,7 +1207,7 @@ contains
           vs = vi(i,k) - state%v(i,k)
 
           !-------------------------------------------------------------------------------
-          ! Exclude ue,ve drift momentum source to avoid crashes when bz < 0 and 
+          ! Exclude ue,ve drift momentum source to avoid crashes when bz < 0 and
           ! full 30 min timestep (partial ion-drag):
           !-------------------------------------------------------------------------------
           l11     = dti + lxx(i,k)
@@ -1261,8 +1259,7 @@ contains
   end subroutine iondrag_tend
 
   !================================================================================================
-  subroutine jouleheat_tend( lchnk, ncol, state, ptend, pbuf,  &
-       lxx, lyy, lxy, lyx )
+  subroutine jouleheat_tend( lchnk, ncol, state, ptend, pbuf, lamda1)
     !-------------------------------------------------------------------------------
     ! Calculate tendencies in T due to joule heating.
     ! This is called from sub iondrag_calc.
@@ -1270,20 +1267,20 @@ contains
 
     use physconst,       only: pi
     use air_composition, only: cpairv
+    use air_composition, only: mbarv ! g/mole
     use phys_grid,       only: get_rlon_p, get_rlat_p
+    use shr_const_mod, only: grav => shr_const_g ! m/s2
+    use shr_const_mod, only: rgas => shr_const_rgas ! J/K/kmole
 
     !-------------------------------------------------------------------------------
     ! dummy arguments
     !-------------------------------------------------------------------------------
     integer,intent(in)    :: lchnk                    ! current chunk index
     integer,intent(in)    :: ncol                     ! number of atmospheric columns
-    real(r8), intent(in)  :: lxx(pcols,pver)          ! ion drag tensor
-    real(r8), intent(in)  :: lyy(pcols,pver)          ! ion drag tensor
-    real(r8), intent(in)  :: lxy(pcols,pver)          ! ion drag tensor
-    real(r8), intent(in)  :: lyx(pcols,pver)          ! ion drag tensor
+    real(r8), intent(in)  :: lamda1(pcols,pver)       ! sigped*b**2/rho
     type(physics_state), intent(in)    :: state       ! Physics state variables
     type(physics_ptend), intent(inout) :: ptend       ! Physics tendencies (inout)
-    
+
     type(physics_buffer_desc), pointer :: pbuf(:)
 
     !-------------------------------------------------------------------------------
@@ -1291,33 +1288,33 @@ contains
     !-------------------------------------------------------------------------------
     integer  :: k, i
     integer  :: max_ind(2)
-    real(r8) :: us, vs
+    real(r8) :: us, vs, ws
+    real(r8) :: sheight, vel_vert
     real(r8) :: max_q
     real(r8) :: qjoule(pcols,pver)         ! joule heating
     real(r8) :: qout(pcols,pver)           ! temp for outfld
+    real(r8),parameter :: joulefac = 1.0_r8            ! qjoule factor (tuneable)
     real(r8), pointer :: ui(:,:)           ! pointer to pbuf
     real(r8), pointer :: vi(:,:)           ! pointer to pbuf
+    real(r8), pointer :: wi(:,:)           ! pointer to pbuf
 
     logical, parameter :: debug = .false.
 
     !-------------------------------------------------------------------------------
     ! Get ion velocities from physics buffer (they were defined by exbdrift module)
-    ! Ion velocities are 2d arrays, i.e., no vertical dimension.
     !-------------------------------------------------------------------------------
     call pbuf_get_field(pbuf, ui_idx, ui     )
     call pbuf_get_field(pbuf, vi_idx, vi     )
- 
+    call pbuf_get_field(pbuf, wi_idx, wi     )
+
     do k = ntop_lev,nbot_lev
-       !   write(iulog,"('qjoule: k=',i3,' u=',/,(6e12.4))") k,state%u(:,k)
-       !   write(iulog,"('qjoule: k=',i3,' v=',/,(6e12.4))") k,state%v(:,k)
-       !   write(iulog,"('qjoule: k=',i3,' lxx=',/,(6e12.4))") k,lxx(:,k)
-       !   write(iulog,"('qjoule: k=',i3,' lxy=',/,(6e12.4))") k,lxy(:,k)
-       !   write(iulog,"('qjoule: k=',i3,' lyx=',/,(6e12.4))") k,lyx(:,k)
-       !   write(iulog,"('qjoule: k=',i3,' lyy=',/,(6e12.4))") k,lyy(:,k)
        do i = 1,ncol
+          sheight = rgas * state%t(i,k)/(mbarv(i,k,lchnk) * grav)      ! Scale height (meter)
+          vel_vert = -state%omega(i,k)/state%pmid(i,k) * sheight       ! vertical wind (m/s)
           us           = ui(i,k) - state%u(i,k)
           vs           = vi(i,k) - state%v(i,k)
-          qjoule(i,k)  = us*us*lxx(i,k) + us*vs*(lxy(i,k) - lyx(i,k)) + vs*vs*lyy(i,k)
+          ws           = wi(i,k) - vel_vert
+          qjoule(i,k)  = lamda1(i,k) * (us*us + vs*vs + ws*ws) * joulefac
           ptend%s(i,k) = qjoule(i,k)        ! joule heating tendency
        end do
        !   write(iulog,"('qjoule: k=',i3,' qjoule(:,k)=',/,(6e12.4))") k,qjoule(:,k)
@@ -1340,7 +1337,7 @@ contains
           write(iulog,*) 'jouleheat_tend: lon,lat = ',get_rlon_p(lchnk,14)*180._r8/pi, get_rlat_p(lchnk,14)*180._r8/pi
           write(iulog,*) 'jouleheat_tend: dt,t,max% dt/t = ',qjoule(i,k)/cpairv(i,k,lchnk),state%t(i,k),max_q, &
                ' @ lchnk,i,k = ',lchnk,max_ind(:)
-          write(iulog,*) 'jouleheat_tend: lxx,xy,yx,yy   = ',lxx(i,k),lxy(i,k),lyx(i,k),lyy(i,k)
+          write(iulog,*) 'jouleheat_tend: lamda1         = ',lamda1(i,k)
           write(iulog,*) 'jouleheat_tend: u,ui,v,vi      = ',state%u(i,k),ui(i,k),state%v(i,k),vi(i,k)
           write(iulog,*) 'jouleheat_tend: us,vs          = ',ui(i,k) - state%u(i,k),vi(i,k) - state%v(i,k)
           write(iulog,*) 'jouleheat_tend: du,dv          = ',ptend%u(i,k),ptend%v(i,k)
@@ -1423,7 +1420,7 @@ contains
     if (masterproc) then
        write(iulog,*) 'iondrag_inidat: ionvels_read_from_file = ',ionvels_read_from_file
     end if
- 
+
   end subroutine iondrag_inidat
 
 end module iondrag
