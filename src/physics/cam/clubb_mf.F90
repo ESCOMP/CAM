@@ -1960,6 +1960,7 @@ module clubb_mf
                                     ee2, ud2 )
   ! =============================================================================== !
   ! Buoyancy-sorting neutral mixing fraction, after Bretherton et al 2014.          !
+  ! DOI: 10.1175/1520-0493(2004)132<0864:ANPFSC>2.0.CO;2                            !
   ! Iterates the trial (qtn,thln,wn) state internally and returns only the final    !
   ! entrainment/detrainment area-fraction terms (ee2, ud2).                         !
   ! =============================================================================== !
