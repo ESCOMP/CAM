@@ -297,14 +297,14 @@ contains
   do i1=2, num_input_lons
      input_lon_edge(i1) = (input_lon(i1-1) + input_lon(i1)) / 2.0_r8
   enddo
-  input_lon_edge(1) = (input_lon(num_input_lons) - 360_r8 + input_lon(1)) / 2.0_r8
-  input_lon_edge(num_input_lons+1) = input_lon_edge(1) + 360_r8
+  input_lon_edge(1) = (input_lon(num_input_lons) - 360._r8 + input_lon(1)) / 2.0_r8
+  input_lon_edge(num_input_lons+1) = input_lon_edge(1) + 360._r8
 
   do i2=2,num_sim_lons
      sim_lon_edge(i2) = (sim_lon(i2-1) + sim_lon(i2)) / 2.0_r8
   enddo
-  sim_lon_edge(1) = (sim_lon(num_sim_lons) - 360_r8 + sim_lon(1)) / 2.0_r8
-  sim_lon_edge(num_sim_lons+1) = sim_lon_edge(1) + 360_r8
+  sim_lon_edge(1) = (sim_lon(num_sim_lons) - 360._r8 + sim_lon(1)) / 2.0_r8
+  sim_lon_edge(num_sim_lons+1) = sim_lon_edge(1) + 360._r8
 
   ! set up staggered lattiudes (cell edges in y)
   input_lat_edge(1)=-90.0_r8

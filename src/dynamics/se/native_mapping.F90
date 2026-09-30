@@ -224,8 +224,8 @@ subroutine create_native_mapping_files(par, elem, maptype, ncol, clat, clon, are
        end if
 
        if(unit_str .eq. 'degrees') then
-          lat = lat * pi/180_r8
-          lon = lon * pi/180_r8
+          lat = lat * pi/180._r8
+          lon = lon * pi/180._r8
        end if
 
        ierr = pio_inq_varid( ogfile, 'grid_imask', vid)

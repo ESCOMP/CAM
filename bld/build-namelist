@@ -2359,7 +2359,10 @@ if ($phys =~ /cam6/ or $phys =~ /cam7/) {
                   'num_a4_oc_srf_file'  => 'num_a4',
                   'num_a4_bb_srf_file'  => 'num_a4',
                   'num_pom_bb_srf_file' => 'num_a4' );
-      if ((not defined $nl->get_value('csw_specifier')) or (not $nl->get_value('csw_specifier') ~~ /DMS/)) {
+      # match the species field of the specifier entries (e.g. 'DMS -> /path/file.nc'),
+      # not the file path, which may also contain the species name
+      my $csw_specifier = $nl->get_value('csw_specifier');
+      if ((not defined $csw_specifier) or ($csw_specifier !~ /\bDMS\s*->/)) {
         %species = (%species,
                     'dms_ot_srf_file'     => 'DMS' );
       }
@@ -3697,6 +3700,7 @@ if ($clubb_sgs  =~ /$TRUE/io) {
    add_default($nl, 'clubb_Skw_denom_coef');
    add_default($nl, 'clubb_skw_max_mag');
    add_default($nl, 'clubb_tridiag_solve_method');
+   add_default($nl, 'clubb_a_const');
    add_default($nl, 'clubb_up2_sfc_coef');
    add_default($nl, 'clubb_wpxp_L_thresh');
    add_default($nl, 'clubb_wpxp_Ri_exp');
@@ -4333,6 +4337,8 @@ if ($dyn =~ /se/) {
                   se_ftype
                   se_horz_num_threads
 		  se_large_Courant_incr
+                  se_cslam_q_filter_nu_fac
+                  se_gll_advect_q
                   se_hypervis_subcycle
                   se_hypervis_subcycle_sponge
                   se_hypervis_subcycle_q
@@ -4356,9 +4362,6 @@ if ($dyn =~ /se/) {
                   se_vert_remap_uvTq_alg
                   se_vert_remap_tracer_alg
 		  se_fvm_supercycling
-		  se_fvm_supercycling_jet
-		  se_kmin_jet
-		  se_kmax_jet
                   se_molecular_diff
 	          se_pgf_formulation
 	          se_dribble_in_rsplit_loop
@@ -5363,7 +5366,8 @@ sub check_snapshot_settings {
         # cam7 physpkg
         push(@validList_ac, ("'chem_emissions'",
                              "'clubb_tend_cam'",
-                             "'microp_section'"));
+                             "'microp_aero'",
+                             "'pumas_tend'"));
         if ($use_subcol_microp =~ /$TRUE/io) {
             push (@validList_bc, ("'microp_driver_tend_subcol'"));
         }
@@ -5404,7 +5408,8 @@ sub check_snapshot_settings {
             } else {
                 push (@validList_bc, ("'macrop_driver_tend'"));
             }
-            push (@validList_bc, ("'microp_section'"));
+            push (@validList_bc, ("'microp_aero'"));
+            push (@validList_bc, ("'pumas_tend'"));
             if ($use_subcol_microp =~ /$TRUE/io) {
                 push (@validList_bc, ("'microp_driver_tend_subcol'"));
             }

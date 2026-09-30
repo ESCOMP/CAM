@@ -17,12 +17,26 @@ module global_norms_mod
   public :: linf_vnorm
 
   public :: print_cfl
+  public :: auto_rsplit
+  public :: nu_top_default
+  public :: set_global_max_normDinv
   public :: global_integral
   public :: global_integrals_general
   public :: wrap_repro_sum
 
+  public :: nu_q_cslam
+
   private :: global_maximum
   type (EdgeBuffer_t), private :: edgebuf
+  real(r8) :: nu_q_cslam = -1.0_r8
+
+  real(kind=r8), parameter :: ugw = 342.0_r8 ! max gravity-wave speed [m/s]
+
+  ! Global max of the mesh metric elem(:)%normDinv. Set once by
+  ! set_global_max_normDinv (called from dyn_grid_init, before the dynamics
+  ! timestep is initialized) so that "automatic" (se_rsplit=-1) subcycling can
+  ! be resolved there.
+  real(kind=r8) :: global_max_normDinv = -1.0_r8
 
   interface global_integral
      module procedure global_integral_elem
@@ -209,30 +223,11 @@ contains
 
   end function global_integral_fvm
 
-!------------------------------------------------------------------------------------
-
-  ! ================================
-  ! print_cfl:
-  !
-  ! Calculate / output CFL info
-  ! (both advective and based on
-  ! viscosity or hyperviscosity)
-  !
-  ! ================================
-
-  subroutine print_cfl(elem,hybrid,nets,nete,dtnu,ptop,pmid,&
-       dt_remap_actual,dt_tracer_fvm_actual,dt_tracer_se_actual,&
-       dt_dyn_actual,dt_dyn_visco_actual,dt_dyn_del2_actual,dt_tracer_visco_actual,dt_phys)
-    !
-    !   estimate various CFL limits
-    !   also, for variable resolution viscosity coefficient, make sure
-    !   worse viscosity CFL (given by dtnu) is not violated by reducing
-    !   viscosity coefficient in regions where CFL is violated
-    !
+  subroutine print_cfl(elem,hybrid,nets,nete,ptop,pmid)
     use hybrid_mod,     only: hybrid_t
     use element_mod,    only: element_t
     use dimensions_mod, only: np,ne,nelem,nc,nhe,use_cslam,nlev,large_Courant_incr
-    use dimensions_mod, only: nu_scale_top,nu_div_lev,nu_lev,nu_t_lev
+    use dimensions_mod, only: nu_scale_top,nu_div_lev,nu_lev,nu_t_lev,nu_p_lev
 
     use quadrature_mod, only: gausslobatto, quadrature_t
 
@@ -241,24 +236,30 @@ contains
     use control_mod,    only: nu, nu_div, nu_q, nu_p, nu_t, nu_top, fine_ne, max_hypervis_courant
     use control_mod,    only: tstep_type, hypervis_power, hypervis_scaling
     use control_mod,    only: sponge_del4_nu_div_fac, sponge_del4_nu_fac, sponge_del4_lev
+    use control_mod,    only: rsplit, qsplit, hypervis_subcycle, hypervis_subcycle_sponge, hypervis_subcycle_q
+    use control_mod,    only: cslam_q_filter_nsub, hypervis_subcycle_cslam_q
+    use control_mod,    only: cslam_q_filter, cslam_q_filter_nu_fac, del4_cslam_qgll
+    use se_dyn_time_mod,only: tstep
+    use time_manager,   only: get_step_size
     use cam_abortutils, only: endrun
     use parallel_mod,   only: global_shared_buf, global_shared_sum
     use edge_mod,       only: initedgebuffer, FreeEdgeBuffer, edgeVpack, edgeVunpack
     use bndry_mod,      only: bndry_exchange
     use mesh_mod,       only: MeshUseMeshFile
-    use dimensions_mod, only: ksponge_end, kmvis_ref, kmcnd_ref,rho_ref
+    use dimensions_mod, only: ksponge_end, kmvis_ref, kmcnd_ref,rho_ref, fvm_supercycling
     use physconst,      only: cpair
     use std_atm_profile,only: std_atm_height
     type(element_t)      , intent(inout) :: elem(:)
     integer              , intent(in) :: nets,nete
     type (hybrid_t)      , intent(in) :: hybrid
-    real (kind=r8), intent(in) :: dtnu, ptop, pmid(nlev)
+    real (kind=r8), intent(in) :: ptop, pmid(nlev)
     !
-    ! actual time-steps
+    ! actual time-steps (computed below, after "automatic" (se_*=-1) subcycling is resolved)
     !
-    real (kind=r8), intent(in) :: dt_remap_actual,dt_tracer_fvm_actual,dt_tracer_se_actual,&
-                           dt_dyn_actual,dt_dyn_visco_actual,dt_dyn_del2_actual,           &
-                           dt_tracer_visco_actual, dt_phys
+    real (kind=r8) :: dtnu, dtime
+    real (kind=r8) :: dt_remap_actual,dt_tracer_fvm_actual,dt_tracer_se_actual,&
+                      dt_dyn_actual,dt_dyn_visco_actual,dt_dyn_del2_actual,    &
+                      dt_tracer_visco_actual, dt_phys
 
     ! Element statisics
     real (kind=r8) :: max_min_dx,min_min_dx,min_max_dx,max_unif_dx   ! used for normalizing scalar HV
@@ -269,7 +270,7 @@ contains
     real (kind=r8) :: normDinv_hypervis
     real (kind=r8) :: x, y, noreast, nw, se, sw
     real (kind=r8), dimension(np,np,nets:nete) :: zeta
-    real (kind=r8) :: lambda_max, lambda_vis, min_gw, lambda,umax, ugw
+    real (kind=r8) :: lambda_max, lambda_vis, min_gw, lambda,umax
     real (kind=r8) :: scale1, max_laplace,z(nlev)
     integer :: ie, i, j, rowind, colind, k
     type (quadrature_t)    :: gp
@@ -278,6 +279,8 @@ contains
     real (kind=r8) :: s_laplacian, s_hypervis, s_rk, s_rk_tracer !Stability region
     real (kind=r8) :: dt_max_adv, dt_max_gw, dt_max_tracer_se, dt_max_tracer_fvm
     real (kind=r8) :: dt_max_hypervis, dt_max_hypervis_tracer, dt_max_laplacian_top
+    real (kind=r8) :: dt_max_cslam_q_filter, min_area_fvm_m2, lam4_fvm
+    real (kind=r8) :: dt_max_hypervis_cslam_q
 
     real(kind=r8) :: I_sphere, nu_max, nu_div_max
     real(kind=r8) :: fld(np,np,nets:nete)
@@ -285,42 +288,20 @@ contains
     logical :: top_000_032km, top_032_042km, top_042_090km, top_090_140km, top_140_600km ! model top location ranges
     logical :: nu_set,div_set,lev_set
 
-    ! Eigenvalues calculated by folks at UMich (Paul U & Jared W)
-    select case (np)
-    case (2)
-      lambda_max = 0.5_r8
-      lambda_vis = 0.0_r8  ! need to compute this
-    case (3)
-      lambda_max = 1.5_r8
-      lambda_vis = 12.0_r8
-    case (4)
-      lambda_max = 2.74_r8
-      lambda_vis = 30.0_r8
-    case (5)
-      lambda_max = 4.18_r8
-      lambda_vis = 91.6742_r8
-    case (6)
-      lambda_max = 5.86_r8
-      lambda_vis = 190.1176_r8
-    case (7)
-      lambda_max = 7.79_r8
-      lambda_vis = 374.7788_r8
-    case (8)
-      lambda_max = 10.0_r8
-      lambda_vis = 652.3015_r8
-    case DEFAULT
-      lambda_max = 0.0_r8
-      lambda_vis = 0.0_r8
-    end select
+    call se_stability_constants(ptop, lambda_max, lambda_vis, s_rk, umax)
 
-    if ((lambda_max.eq.0_r8).and.(hybrid%masterthread)) then
+    if ((lambda_max.eq.0._r8).and.(hybrid%masterthread)) then
       print*, "lambda_max not calculated for NP = ",np
       print*, "Estimate of gravity wave timestep will be incorrect"
     end if
-    if ((lambda_vis.eq.0_r8).and.(hybrid%masterthread)) then
+    if ((lambda_vis.eq.0._r8).and.(hybrid%masterthread)) then
       print*, "lambda_vis not calculated for NP = ",np
       print*, "Estimate of viscous CFLs will be incorrect"
     end if
+
+    dtime = get_step_size()
+    ! timestep seen by the viscosity operators (ignores subcycling)
+    dtnu = max(tstep*max(nu,nu_div), tstep*qsplit*nu_q)
 
     do ie=nets,nete
       elem(ie)%variable_hyperviscosity = 1.0_r8
@@ -370,7 +351,7 @@ contains
     min_area     = ParallelMin(min_area,hybrid)
     max_area     = ParallelMax(max_area,hybrid)
     min_normDinv = ParallelMin(min_normDinv,hybrid)
-    max_normDinv = ParallelMax(max_normDinv,hybrid)
+    max_normDinv = global_max_normDinv ! reduced once in dyn_grid_init (set_global_max_normDinv)
     min_min_dx   = ParallelMin(min_min_dx,hybrid)
     max_min_dx   = ParallelMax(max_min_dx,hybrid)
     min_max_dx   = ParallelMin(min_max_dx,hybrid)
@@ -581,10 +562,22 @@ contains
 
     if (nu_q<0) nu_q = nu_p ! necessary for consistency
     if (nu_t<0) nu_t = nu_p ! temperature damping is always equal to nu_p
+    !
+    ! Coefficient for the GLL-side del4 on water vapor after cslam2gll
+    ! (hypervis_Qdp)
+    !
+    if (use_cslam .and. del4_cslam_qgll) then
+      if (cslam_q_filter) then
+        nu_q_cslam = 0.5_r8 * nu_p
+      else
+        nu_q_cslam = 3.0_r8 * nu_p
+      end if
+    end if
 
     nu_div_lev(:) = nu_div
     nu_lev(:)     = nu
     nu_t_lev(:)   = nu_p
+    nu_p_lev(:)   = nu_p
 
     !
     ! sponge layer strength needed for stability depends on model top location
@@ -645,22 +638,13 @@ contains
     else if (top_090_140km.or.top_140_600km) then ! defaults for waccm(x)
       if (sponge_del4_lev       <0) sponge_del4_lev        = 20
       if (sponge_del4_nu_fac    <0) sponge_del4_nu_fac     = 5.0_r8
-      if (sponge_del4_nu_div_fac<0) sponge_del4_nu_div_fac = 10.0_r8
+      if (sponge_del4_nu_div_fac<0) sponge_del4_nu_div_fac = 7.5_r8
     else
       if (sponge_del4_lev       <0) sponge_del4_lev        = 1
       if (sponge_del4_nu_fac    <0) sponge_del4_nu_fac     = 1.0_r8
       if (sponge_del4_nu_div_fac<0) sponge_del4_nu_div_fac = 1.0_r8
     end if
 
-    ! set max wind speed for diagnostics
-    umax = 120.0_r8
-    if (top_042_090km) then
-       umax = 240._r8
-    else if (top_090_140km) then
-       umax = 300._r8
-    else if (top_140_600km) then
-       umax = 800._r8
-    end if
     !
     ! Log sponge layer configuration
     !
@@ -692,13 +676,21 @@ contains
         nu_t_lev(k)   = (1.0_r8-scale1)*nu_p  +scale1*nu_max
       end if
     end do
+    !
+    ! For WACCM and WACCM-x, apply the same sponge-layer ramp to dp (pressure)
+    ! damping as is used for temperature damping. For lower-top configurations
+    ! nu_p_lev remains uniform at nu_p (no ramp).
+    !
+    if (top_090_140km .or. top_140_600km) then
+      nu_p_lev(:) = nu_t_lev(:)
+    end if
 
     if (hybrid%masterthread)then
       write(iulog,*) "z computed from barometric formula (using US std atmosphere)"
       call std_atm_height(pmid(:),z(:))
-      write(iulog,*) "k,pmid_ref,z,nu_lev,nu_t_lev,nu_div_lev"
+      write(iulog,*) "k,pmid_ref,z,nu_lev,nu_t_lev,nu_p_lev,nu_div_lev"
       do k=1,nlev
-        write(iulog,'(i3,5e11.4)') k,pmid(k),z(k),nu_lev(k),nu_t_lev(k),nu_div_lev(k)
+        write(iulog,'(i3,6e11.4)') k,pmid(k),z(k),nu_lev(k),nu_t_lev(k),nu_p_lev(k),nu_div_lev(k)
       end do
       if (nu_top>0) then
         write(iulog,*) ": ksponge_end = ",ksponge_end
@@ -720,16 +712,12 @@ contains
     ! S=time-step stability region (i.e. advection w/leapfrog: S=1, viscosity w/forward Euler: S=2)
     !
     if (tstep_type==1) then
-      S_rk   = 2.0_r8
       rk_str = '  * RK2-SSP 3 stage (same as tracers)'
     elseif (tstep_type==2) then
-      S_rk   = 2.0_r8
       rk_str = '  * classic RK3'
     elseif (tstep_type==3) then
-      S_rk   = 2.0_r8
       rk_str = '  * Kinnmark&Gray RK4'
     elseif (tstep_type==4) then
-      S_rk   = 3.0_r8
       rk_str = '  * Kinnmark&Gray RK3 5 stage (3rd order)'
     end if
     if (hybrid%masterthread) then
@@ -744,8 +732,6 @@ contains
     S_laplacian = 2.0_r8 !using forward Euler for sponge diffusion
     S_hypervis  = 2.0_r8 !using forward Euler for hyperviscosity
     S_rk_tracer = 2.0_r8
-
-    ugw = 342.0_r8 !max gravity wave speed
 
     dt_max_adv             = S_rk/(umax*max_normDinv*lambda_max*ra)
     dt_max_gw              = S_rk/(ugw*max_normDinv*lambda_max*ra)
@@ -766,6 +752,57 @@ contains
     max_laplace = MAX(MAXVAL(nu_scale_top(:))*nu_top,MAXVAL(kmvis_ref(:)/rho_ref(:)))
     max_laplace = MAX(max_laplace,MAXVAL(kmcnd_ref(:)/(cpair*rho_ref(:))))
     dt_max_laplacian_top   = 1.0_r8/(max_laplace*((ra*max_normDinv)**2)*lambda_vis)
+
+    ! Resolve "automatic" (se_*=-1) hyperviscosity subcycling from the stability
+    ! limits above. (rsplit=-1 is resolved earlier, in dyn_grid_init via
+    ! auto_rsplit)
+    !
+    if (hypervis_subcycle==-1)        hypervis_subcycle        = max(1, ceiling(tstep/dt_max_hypervis))
+    if (hypervis_subcycle_sponge==-1) hypervis_subcycle_sponge = max(1, ceiling(tstep/dt_max_laplacian_top))
+    !
+    ! actual time-steps with final subcycling (printed below)
+    !
+    dt_remap_actual        = tstep*qsplit*rsplit
+    dt_tracer_fvm_actual   = tstep*qsplit*fvm_supercycling
+    dt_tracer_se_actual    = tstep*qsplit
+    dt_dyn_actual          = tstep
+    dt_dyn_visco_actual    = tstep/hypervis_subcycle
+    dt_dyn_del2_actual     = tstep/hypervis_subcycle_sponge
+    dt_tracer_visco_actual = tstep*qsplit/hypervis_subcycle_q
+    dt_phys                = dtime
+    !
+    ! auto-set cslam_q_filter_nsub for the CSLAM-grid del4 Q filter
+    !
+    if (use_cslam .and. cslam_q_filter) then
+      ! Smallest CSLAM cell area = 0.833 * mean cell area on the equiangular
+      ! gnomonic cubed sphere.
+      min_area_fvm_m2 = 0.83_r8*4.0_r8*pi/real(6*ne*ne*nc*nc, r8)*rearth*rearth
+      lam4_fvm = 1.25_r8*(8.0_r8/min_area_fvm_m2)**2
+      dt_max_cslam_q_filter = s_hypervis/(cslam_q_filter_nu_fac*nu_p*lam4_fvm)
+      cslam_q_filter_nsub = max(1, ceiling(dt_tracer_fvm_actual/dt_max_cslam_q_filter))
+    else
+      dt_max_cslam_q_filter = -1.0_r8
+      cslam_q_filter_nsub = 1
+    end if
+    !
+    ! Subcycling of the GLL-side del4 on water vapor after cslam2gll
+    ! (hypervis_Qdp, stepped with dt_remap).
+    !
+    if (use_cslam .and. del4_cslam_qgll) then
+      dt_max_hypervis_cslam_q = s_hypervis/(nu_q_cslam*normDinv_hypervis)
+      if (cslam_q_filter) then
+        ! weak background coefficient (nu_q_cslam = 0.5*nu_p): auto-resolve
+        ! from the del4 stability bound
+        hypervis_subcycle_cslam_q = max(1, ceiling(dt_remap_actual/dt_max_hypervis_cslam_q))
+      else
+        ! operational configuration (nu_q_cslam = 3*nu_p): 2 subcycles,
+        ! empirically stable although beyond the linear del4 bound
+        hypervis_subcycle_cslam_q = 2
+      end if
+    else
+      dt_max_hypervis_cslam_q = -1.0_r8
+      hypervis_subcycle_cslam_q = 1
+    end if
 
     if (hybrid%masterthread) then
       write(iulog,'(a,f10.2,a)') ' '
@@ -792,6 +829,14 @@ contains
         write(iulog,'(a,f10.2,a,f10.2,a)') '* dt_tracer_fvm (time-stepping tracers ; q       ) < ',dt_max_tracer_fvm,&
              's ',dt_tracer_fvm_actual
         if (dt_tracer_fvm_actual>dt_max_tracer_fvm) write(iulog,*) 'WARNING: dt_tracer_fvm theortically unstable'
+        if (cslam_q_filter) then
+          write(iulog,'(a,f10.2,a,i4)') '* dt_max_cslam_q_filter (CSLAM-grid del4 Q filter) < ',&
+               dt_max_cslam_q_filter,'s ; cslam_q_filter_nsub = ',cslam_q_filter_nsub
+        end if
+        if (del4_cslam_qgll) then
+          write(iulog,'(a,f10.2,a,i4)') '* dt_max_hypervis_cslam_q (del4 q on GLL after cslam2gll) < ',&
+               dt_max_hypervis_cslam_q,'s ; hypervis_subcycle_cslam_q = ',hypervis_subcycle_cslam_q
+        end if
       end if
       write(iulog,'(a,f10.2)') '* dt_remap (vertical remap dt) ',dt_remap_actual
       do k=1,ksponge_end
@@ -811,6 +856,8 @@ contains
         end if
       end do
       write(iulog,*) ' '
+      write(iulog,'(a,3i6)') 'subcycling: rsplit, hypervis_subcycle, hypervis_subcycle_sponge =', &
+           rsplit,hypervis_subcycle,hypervis_subcycle_sponge
       if (hypervis_power /= 0) then
         write(iulog,'(a,3e11.4)')'Scalar hyperviscosity (dynamics): ave,min,max = ', &
              nu*(/avg_hypervis**2,min_hypervis**2,max_hypervis**2/)
@@ -818,6 +865,102 @@ contains
       write(iulog,*) 'tstep_type = ',tstep_type
     end if
   end subroutine print_cfl
+
+  !=============================================================================
+  ! se_stability_constants: single source for the stability constants used by
+  ! print_cfl and auto_rsplit.
+  !=============================================================================
+  !
+  ! Default top-of-model del2 sponge coefficient when se_nu_top < 0.  The 100 Pa
+  ! boundary is the same one separating a low top from the CAM7/WACCM tops in
+  ! print_cfl and se_stability_constants.
+  !
+  pure function nu_top_default(ptop) result(nu_top_auto)
+    real(kind=r8), intent(in) :: ptop         ! model top pressure [Pa]
+    real(kind=r8)             :: nu_top_auto  ! [m^2/s]
+
+    if (ptop>100.0_r8) then
+      nu_top_auto = 1.25e5_r8   ! model top below ~42km (CAM6/CAM7 low top)
+    else
+      nu_top_auto = 1.0e6_r8    ! CAM7 middle/high top, WACCM and WACCM-x
+    end if
+  end function nu_top_default
+
+  pure subroutine se_stability_constants(ptop, lambda_max, lambda_vis, s_rk, umax)
+    use dimensions_mod, only: np
+    use control_mod,    only: tstep_type
+
+    real(kind=r8), intent(in)  :: ptop        ! model top pressure [Pa]
+    real(kind=r8), intent(out) :: lambda_max  ! max eigenvalue of gradient operator
+    real(kind=r8), intent(out) :: lambda_vis  ! max eigenvalue of Laplace operator
+    real(kind=r8), intent(out) :: s_rk        ! stability region of dynamics time-stepping
+    real(kind=r8), intent(out) :: umax        ! max wind estimate [m/s] given model top
+
+    ! Eigenvalues calculated by folks at UMich (Paul U & Jared W)
+    select case (np)
+    case (2);     lambda_max = 0.5_r8 ; lambda_vis = 0.0_r8 ! lambda_vis not computed
+    case (3);     lambda_max = 1.5_r8 ; lambda_vis = 12.0_r8
+    case (4);     lambda_max = 2.74_r8; lambda_vis = 30.0_r8
+    case (5);     lambda_max = 4.18_r8; lambda_vis = 91.6742_r8
+    case (6);     lambda_max = 5.86_r8; lambda_vis = 190.1176_r8
+    case (7);     lambda_max = 7.79_r8; lambda_vis = 374.7788_r8
+    case (8);     lambda_max = 10.0_r8; lambda_vis = 652.3015_r8
+    case DEFAULT; lambda_max = 0.0_r8 ; lambda_vis = 0.0_r8
+    end select
+    ! RK stability region (tstep_type 1-3: S=2; 4 = Kinnmark&Gray RK3 5-stage: S=3)
+    s_rk = 2.0_r8
+    if (tstep_type==4) s_rk = 3.0_r8
+    ! max wind estimate by model top location (same pressure ranges as the model
+    ! top damping classification in print_cfl)
+    if (ptop>100.0_r8) then
+      umax = 120._r8  ! model top below ~42km
+    else if (ptop>1e-1_r8) then
+      umax = 240._r8  ! CAM7 top (~42-90km)
+    else if (ptop>1e-4_r8) then
+      umax = 300._r8  ! WACCM (~90-140km)
+    else
+      umax = 800._r8  ! WACCM-x (>140km)
+    end if
+  end subroutine se_stability_constants
+
+  !=============================================================================
+  ! set_global_max_normDinv: form the global max of elem(:)%normDinv from the
+  ! task-local max (0 on tasks without elements). Called once from
+  ! dyn_grid_init, on all tasks, BEFORE the dynamics timestep is initialized.
+  !=============================================================================
+  subroutine set_global_max_normDinv(max_normDinv_loc, comm)
+    use spmd_utils, only: mpi_real8, mpi_max
+
+    real(kind=r8), intent(in) :: max_normDinv_loc ! task-local max of elem(:)%normDinv
+    integer,       intent(in) :: comm             ! communicator spanning all tasks
+    integer :: ierr
+
+    call MPI_Allreduce(max_normDinv_loc, global_max_normDinv, 1, mpi_real8, mpi_max, comm, ierr)
+  end subroutine set_global_max_normDinv
+
+  !=============================================================================
+  ! auto_rsplit: smallest rsplit keeping the dynamics timestep within the
+  ! advective/gravity-wave stability limit (as diagnosed in print_cfl). Called
+  ! from dyn_grid_init BEFORE tstep and the SE nstep counter are initialized, so
+  ! restart reading (TimeLevel_Qdp), the variable-resolution viscosity limiter
+  ! and all CFL diagnostics see the final timestep.
+  !=============================================================================
+  function auto_rsplit(dt_remap, ptop) result(rsplit_auto)
+    use physconst,      only: ra
+    use cam_abortutils, only: endrun
+
+    real(kind=r8), intent(in) :: dt_remap     ! vertical remap timestep (dtime/nsplit)
+    real(kind=r8), intent(in) :: ptop         ! model top pressure [Pa]
+    integer                   :: rsplit_auto
+
+    real(kind=r8) :: lambda_max, lambda_vis, s_rk, umax
+
+    if (global_max_normDinv < 0.0_r8) call endrun('auto_rsplit: set_global_max_normDinv not called')
+    call se_stability_constants(ptop, lambda_max, lambda_vis, s_rk, umax)
+    if (lambda_max == 0.0_r8) call endrun('auto_rsplit (se_rsplit=-1): lambda_max not available for this np')
+    ! smallest rsplit with dt_remap/rsplit <= s_rk/(max(umax,ugw)*global_max_normDinv*lambda_max*ra)
+    rsplit_auto = max(1, ceiling(dt_remap*max(umax,ugw)*global_max_normDinv*lambda_max*ra/s_rk))
+  end function auto_rsplit
 
   !
   ! ============================

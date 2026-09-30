@@ -19,11 +19,11 @@ module nudging
 !    forcing discontinues.
 !
 !    Some analyses products can have gaps in the available data, where values
-!    are missing for some interval of time. The default behavior is now for the 
-!    model to error exit if there is a gap. Users with known gaps in their nuding 
-!    data can manually change the gap behavior to accomodate their needs. 
-!    When files are missing, the nudging force can be switched off for that interval 
-!    of time, in order to effectively 'coast' thru the gap. 
+!    are missing for some interval of time. The default behavior is now for the
+!    model to error exit if there is a gap. Users with known gaps in their nuding
+!    data can manually change the gap behavior to accomodate their needs.
+!    When files are missing, the nudging force can be switched off for that interval
+!    of time, in order to effectively 'coast' thru the gap.
 !
 !    The nudging of the model toward the analyses data is controlled by
 !    the 'nudging_nl' namelist in 'user_nl_cam'; whose variables control the
@@ -44,7 +44,7 @@ module nudging
 !    SURFACE PRESSURE NUDGING:
 !    ------------------------
 !    Surface pressure is not a prognostic variable, so nudging cannot be implemented directly.
-!    Hydrostatic balance provides a constraint on the values of pressure, temperature, and model 
+!    Hydrostatic balance provides a constraint on the values of pressure, temperature, and model
 !    layer thicknesses(geopotential heights). Since any change in thickness values will translate
 !    into a momentum tendency via the gradient of height, we require that dZ/dn must remain constant
 !    under changes to pressures so that the result does not indirectly impose a momentum nudging.
@@ -54,19 +54,19 @@ module nudging
 !
 !    Vertical Influence Function:
 !    To convey the effect of the 2D surface pressure changes to the 3D temperature values, there are
-!    two choices for the vertical influence function. The first, most natural choice, is to just 
-!    convey the surface pressures using the (Bn) hybrid pressure coeffcients. However, due to the 
-!    inherent structure of the hybrid coeffcients this results in a vertical profile that is small 
+!    two choices for the vertical influence function. The first, most natural choice, is to just
+!    convey the surface pressures using the (Bn) hybrid pressure coeffcients. However, due to the
+!    inherent structure of the hybrid coeffcients this results in a vertical profile that is small
 !    at the surface increases to a maximum at the upper levels, and then abruptly drops to 0 for the
 !    pure-pressure levels at the mode top. Very un-physical behavior, but that is what the mathematics
 !    dictates for the current (An,Bn) values. An alternative vertical influence function is implemented
-!    based on the reference profile of the atmosphere. 
+!    based on the reference profile of the atmosphere.
 !                                                      (Pref/P0)**scl = exp[-scl*(Ztop/H)*(1-n)]. (H=7km)
-!    For scl=1.0, the vertical profile is similar to the Bn profile, but with a smaller amplitude. 
-!    For larger values of scl, the profile transitions to one in which the vertical influence function 
-!    falls off with height from a maximum at the surface layer. There is typically a discontinuity in 
+!    For scl=1.0, the vertical profile is similar to the Bn profile, but with a smaller amplitude.
+!    For larger values of scl, the profile transitions to one in which the vertical influence function
+!    falls off with height from a maximum at the surface layer. There is typically a discontinuity in
 !    the profile at the transition to pure pressure levels, which gets smaller with increasing scl values.
-!      
+!
 !    WINDOWING:
 !    ----------
 !    The region of applied nudging can be limited using Horizontal/Vertical
@@ -122,13 +122,13 @@ module nudging
 !        -------------------------------------------------------------------------------
 !        USER-DEFINED WINDOW:  (Nudge_Xprof = 3)  where X=[U,V,T,Q,PS]
 !        -------------------------------------------------------------------------------
-!    The horizontal window domain can be customized by providing a netCDF file containing 
+!    The horizontal window domain can be customized by providing a netCDF file containing
 !    a lat/lon grid of window coeffcients [0.,1.], where 1.0 represents the nudged domain
-!    and the values taper to 0. for un-nudged gridpoints. The Horizonal window values at 
-!    model gridpoints are linearly interpolated from the given reclilinear grid. For this 
-!    case the user specifies the Nudge_Bwindow_File file in the namelist and setting 
-!    (Nudge_Hwin_Invert=.true.) will invert the window given in the file, but all of the 
-!    other Nudge_Hwin_* namelist values are ignored. The vertical domain of the window is 
+!    and the values taper to 0. for un-nudged gridpoints. The Horizonal window values at
+!    model gridpoints are linearly interpolated from the given reclilinear grid. For this
+!    case the user specifies the Nudge_Bwindow_File file in the namelist and setting
+!    (Nudge_Hwin_Invert=.true.) will invert the window given in the file, but all of the
+!    other Nudge_Hwin_* namelist values are ignored. The vertical domain of the window is
 !    still specified via the Nudge_Vwin_* namelist values.
 !
 !    The format for the Nudge_Bwindow_File can be either:
@@ -141,11 +141,11 @@ module nudging
 !           double longitude(longitude);             !         double longitude(longitude);
 !           double refineMap(latitude, longitude);   !         double boundaryMap(latitude, longitude);
 !
-!    The left format is the REFMAP file output that is created from the variable mesh VRM editor 
-!    program. The default resolution for these files is [720,360]. There is no restriction on the 
+!    The left format is the REFMAP file output that is created from the variable mesh VRM editor
+!    program. The default resolution for these files is [720,360]. There is no restriction on the
 !    horizonal dimensions, so higher resoultion domains can be provided as lonag as the grid points
 !    span the lat/lon domain.
-!    
+!
 !
 !    INPUT/OUTPUT VALUES:
 !    ---------------------
@@ -202,32 +202,32 @@ module nudging
 !                              0 -->  TimeScale = 1/Tdlt_Anal                      [DEFAULT]
 !                              1 -->  TimeScale = 1/(t'_next - t_curr )
 !
-!      Nudge_ZonalFilter    - LOGICAL Option to apply zonal mean filtering to the 
+!      Nudge_ZonalFilter    - LOGICAL Option to apply zonal mean filtering to the
 !                                     model state and target data.
 !
 !      Nudge_ZonalNbasis    - INT The number of meridional modes(Legendre Polynomials)
-!                                     used for zonal filtering. 
+!                                     used for zonal filtering.
 !
-!      Nudge_SpectralFilter - LOGICAL Option to apply spherical harminic filtering to 
-!                                     the model state and target data so that nudging 
+!      Nudge_SpectralFilter - LOGICAL Option to apply spherical harminic filtering to
+!                                     the model state and target data so that nudging
 !                                     tendencies are only applied to scales larger than
 !                                     the specified truncation.
 !
-!      Nudge_SpectralNtrunc - INT The number of meridional spherical harmonic modes used 
-!                                 for spectral filtering. The nominal horizontal scale (km) of 
+!      Nudge_SpectralNtrunc - INT The number of meridional spherical harmonic modes used
+!                                 for spectral filtering. The nominal horizontal scale (km) of
 !                                 the filtering can be estimated as:
 !
 !                                     Hscale = PI*6350/Nudge_SpectralNtrunc
 !
-!                                 i.e. Nudge_SpectralNtrunc=40 corresponds to a horizontal 
+!                                 i.e. Nudge_SpectralNtrunc=40 corresponds to a horizontal
 !                                      nudging scale  Hscale~500km.
 !
-!      Nudge_SpectralNring  - INT The number of sampling rings used for local area averaging 
+!      Nudge_SpectralNring  - INT The number of sampling rings used for local area averaging
 !                                 of spherical harmonic modes, to suppress sampling errors.
-!                                 When initializing each basis, a local average of SH values 
+!                                 When initializing each basis, a local average of SH values
 !                                 is computed for the area associated with each grid point.
-!                                 SpectralNring set the number of rings of equal-area points 
-!                                 in this sampling domain. 
+!                                 SpectralNring set the number of rings of equal-area points
+!                                 in this sampling domain.
 !                                 Each ring (kk) contains 8*(kk-1) sample points.
 !
 !                                    Nudge_SpectralNring     Number of Samping Points
@@ -247,7 +247,7 @@ module nudging
 !                                         1 == CONSTANT (Spatially Uniform Nudging)
 !                                         2 == HEAVISIDE WINDOW FUNCTION
 !                                         3 == HEAVISIDE WINDOW FUNCTION IN VERTICAL
-!                                              and USER SPECIFIED HORIZONAL DOMAIN 
+!                                              and USER SPECIFIED HORIZONAL DOMAIN
 !                                              (Specified by user via Nudge_Bwindow_File)
 !
 !      Nudge_Ucoef         - REAL fractional nudging coeffcient for U.
@@ -399,7 +399,7 @@ module nudging
   real(r8),allocatable:: Model_T     (:,:,:)  !(pcols,pver,begchunk:endchunk)
   real(r8),allocatable:: Model_S     (:,:,:)  !(pcols,pver,begchunk:endchunk)
   real(r8),allocatable:: Model_Q     (:,:,:)  !(pcols,pver,begchunk:endchunk)
-  real(r8),allocatable:: Model_PS    (:,:)    !(pcols,begchunk:endchunk)        
+  real(r8),allocatable:: Model_PS    (:,:)    !(pcols,begchunk:endchunk)
   real(r8),allocatable:: Model_PSfilt(:,:)    !(pcols,begchunk:endchunk)
   real(r8),allocatable:: Nudge_Utau  (:,:,:)  !(pcols,pver,begchunk:endchunk)
   real(r8),allocatable:: Nudge_Vtau  (:,:,:)  !(pcols,pver,begchunk:endchunk)
@@ -946,7 +946,7 @@ contains
      Val1_p=(1._r8+tanh((Nudge_Hwin_lonWidthH+lonp)/Nudge_Hwin_lonDelta))/2._r8
      Val2_p=(1._r8+tanh((Nudge_Hwin_lonWidthH-lonp)/Nudge_Hwin_lonDelta))/2._r8
      Val3_p=(1._r8+tanh((Nudge_Hwin_latWidthH+latp)/Nudge_Hwin_latDelta))/2._r8
-     Val4_p=(1._r8+tanh((Nudge_Hwin_latWidthH-latp)/Nudge_Hwin_latDelta))/2_r8
+     Val4_p=(1._r8+tanh((Nudge_Hwin_latWidthH-latp)/Nudge_Hwin_latDelta))/2._r8
      Val1_0=(1._r8+tanh((Nudge_Hwin_lonWidthH+lon0)/Nudge_Hwin_lonDelta))/2._r8
      Val2_0=(1._r8+tanh((Nudge_Hwin_lonWidthH-lon0)/Nudge_Hwin_lonDelta))/2._r8
      Val3_0=(1._r8+tanh((Nudge_Hwin_latWidthH+lat0)/Nudge_Hwin_latDelta))/2._r8
@@ -1053,7 +1053,7 @@ contains
      write(iulog,*) 'NUDGING: Nudge_NumObs=',Nudge_NumObs
      write(iulog,*) ' '
 
-     ! Error Check TSmode usage 
+     ! Error Check TSmode usage
      !---------------------------
      if((Nudge_ZonalFilter).or.(Nudge_SpectralFilter).or.(Nudge_PSprof.ne.0)) then
        if(Nudge_TSmode.ne.0) then
@@ -1068,7 +1068,7 @@ contains
      ! Error Check and set up for Ps Nudging option
      !---------------------------------------------
      if(Nudge_PSprof.ne.0) then
-       ! Ps Nudging is activated. 
+       ! Ps Nudging is activated.
        ! Make sure that Direct nudging of T is disbled
        !------------------------------------------------
        if(Nudge_Tprof.ne.0) then
@@ -1080,7 +1080,7 @@ contains
          call endrun('NUDGING: Eror with PS nudging option')
        endif
 
-       ! Internally turn on T nudging and set the 
+       ! Internally turn on T nudging and set the
        ! nudging coef with the Nudge_PScoef value
        !------------------------------------------
        Nudge_Tprof = Nudge_PSprof
@@ -1230,13 +1230,13 @@ contains
    !----------------------------------------------------------
    call nudging_update_analyses (trim(Nudge_Path)//trim(Nudge_File))
 
-   ! Prepare needed variables if a custom window 
+   ! Prepare needed variables if a custom window
    !  (Nudge_Xprof==3) is used
    !-------------------------------------------------
    if((Nudge_Uprof.eq.3).or.(Nudge_Vprof.eq.3).or.                   &
       (Nudge_Tprof.eq.3).or.(Nudge_Qprof.eq.3).or.(Nudge_PSprof.eq.3)) then
 
-     ! Initialize values that specify the 
+     ! Initialize values that specify the
      ! custom horizonal Boundary window
      !-------------------------------------
      istat = nf90_open(trim(Nudge_Bwindow_File),NF90_NOWRITE,ncid)
@@ -1829,7 +1829,7 @@ contains
        ! Ps Nudging is active
        !----------------------
        if(Nudge_PSscal < 1._r8) then
-         ! Use hybrid Bn coeffcients for the vertical 
+         ! Use hybrid Bn coeffcients for the vertical
          ! influence of Ps perturbations
          !-----------------------------------------------------
          do lchnk=begchunk,endchunk
@@ -1854,7 +1854,7 @@ contains
            end do ! kk=1,pver
          end do
        else! (Nudge_PSscal >= 1._r8)
-         ! Use the value of Nudge_PSscal to set the scale 
+         ! Use the value of Nudge_PSscal to set the scale
          ! height for the vertical influence function:
          !                 (Pref/P0)**Nudge_PSscal
          !-----------------------------------------------------
@@ -1950,7 +1950,7 @@ contains
 !      write(iulog,*) 'PFC: Target_S(1,:pver,begchunk)=',Target_S(1,:pver,begchunk)
 !      write(iulog,*) 'PFC:  Model_S(1,:pver,begchunk)=',Model_S(1,:pver,begchunk)
 !      write(iulog,*) 'PFC:      Target_PS(1,begchunk)=',Target_PS(1,begchunk)
-!      write(iulog,*) 'PFC:       Model_PS(1,begchunk)=',Model_PS    (1,begchunk) 
+!      write(iulog,*) 'PFC:       Model_PS(1,begchunk)=',Model_PS    (1,begchunk)
 !      write(iulog,*) 'PFC:   Model_PSfilt(1,begchunk)=',Model_PSfilt(1,begchunk)
 !      write(iulog,*) 'PFC: Nudge_Sstep(1,:pver,begchunk)=',Nudge_Sstep(1,:pver,begchunk)
 !      write(iulog,*) 'PFC: Nudge_Xstep arrays updated:'

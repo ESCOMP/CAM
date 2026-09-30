@@ -1537,7 +1537,7 @@ contains
     real(r8), pointer :: wrk2d_in(:,:)
 
     integer :: c, ierr, ncols
-    real(r8), parameter :: zero=0_r8, twopi=2_r8*pi
+    real(r8), parameter :: zero=0._r8, twopi=2._r8*pi
     type(interp_type) :: lon_wgts, lat_wgts
     integer :: lons(pcols), lats(pcols)
     real(r8) :: file_lats(file%nlat)
@@ -1847,7 +1847,7 @@ contains
     real(r8), allocatable, target :: wrk3d(:,:,:)
     real(r8), pointer :: wrk3d_in(:,:,:)
     real(r8) :: to_lons(pcols), to_lats(pcols)
-    real(r8), parameter :: zero=0_r8, twopi=2_r8*pi
+    real(r8), parameter :: zero=0._r8, twopi=2._r8*pi
     type(interp_type) :: lon_wgts, lat_wgts
     logical :: use_shmem
     character(len=shr_kind_cl) :: srcname, srcpath, locfn, varname
