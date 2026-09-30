@@ -16,7 +16,7 @@ use physics_types,  only: physics_state, physics_ptend, physics_ptend_init
 use physics_buffer, only: physics_buffer_desc
 use phys_control,   only: use_hetfrz_classnuc
 
-use physics_buffer, only: pbuf_add_field, dtype_r8, pbuf_old_tim_idx, &
+use physics_buffer, only: pbuf_add_field, dtype_r8, &
                           pbuf_get_index, pbuf_get_field, &
                           pbuf_set_field
 use cam_history,    only: addfld, add_default, outfld
@@ -348,7 +348,6 @@ subroutine nucleate_ice_cam_calc( &
    real(r8), pointer :: naai_hom(:,:)   ! number of activated aerosol for ice nucleation (homogeneous freezing only)
 
    integer :: lchnk, ncol
-   integer :: itim_old
    integer :: i, k, l, m
 
    character(len=32) :: spectype
@@ -469,8 +468,7 @@ subroutine nucleate_ice_cam_calc( &
       call physics_ptend_init(ptend, state%psetcols, 'nucleatei')
    end if
 
-   itim_old = pbuf_old_tim_idx()
-   call pbuf_get_field(pbuf, aist_idx, aist, start=(/1,1,itim_old/), kount=(/pcols,pver,1/))
+   call pbuf_get_field(pbuf, aist_idx, aist)
    icecldf(:ncol,:pver) = aist(:ncol,:pver)
 
    ! naai and naai_hom are the outputs from this parameterization

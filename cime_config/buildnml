@@ -5,6 +5,7 @@ CAM namelist creator
 """
 # pylint: disable=multiple-imports
 import sys, os, shutil, filecmp
+import xml.etree.ElementTree as ET
 
 _CIMEROOT = os.environ.get("CIMEROOT")
 if _CIMEROOT is None:
@@ -84,6 +85,14 @@ def buildnml(case, caseroot, compname):
         file1 = os.path.join(caseroot,"env_build.xml")
         file2 = os.path.join(caseroot,"LockedFiles","env_build.xml")
         if os.path.isfile(file2) and not filecmp.cmp(file1, file2):
+            call_buildcpp = True
+    if not call_buildcpp:
+        # For cloned cases, the usr_src directory may still be pointing to the old
+        # case's SourceMod directory. If so, we need to call buildcpp to get it
+        # to reference the correct SourceMod directory.
+        expected_usr_src = os.path.join(caseroot, "SourceMods", "src.cam")
+        entry = ET.parse(filename).find(".//entry[@id='usr_src']")
+        if entry is None or entry.get("value") != expected_usr_src:
             call_buildcpp = True
     if call_buildcpp:
         cmd = os.path.join(os.path.join(srcroot,"cime_config","buildcpp"))

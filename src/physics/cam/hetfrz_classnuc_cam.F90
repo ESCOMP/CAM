@@ -12,9 +12,9 @@ use ppgrid,         only: pcols, pver
 use physconst,      only: rair, cpair, rh2o, rhoh2o, mwh2o, tmelt, pi
 use constituents,   only: cnst_get_ind
 use physics_types,  only: physics_state
-use physics_buffer, only: physics_buffer_desc, pbuf_get_index, pbuf_old_tim_idx, pbuf_get_field
+use physics_buffer, only: physics_buffer_desc, pbuf_get_index, pbuf_get_field
 use phys_control,   only: use_hetfrz_classnuc
-use physics_buffer, only: pbuf_add_field, dtype_r8, pbuf_old_tim_idx, &
+use physics_buffer, only: pbuf_add_field, dtype_r8, &
                           pbuf_get_index, pbuf_get_field
 use cam_history,    only: addfld, add_default, outfld, fieldname_len
 use ref_pres,       only: top_lev => trop_cloud_top_lev
@@ -362,7 +362,6 @@ subroutine hetfrz_classnuc_cam_calc(aero_props, aero_state, state, deltatin, fac
    real(r8), pointer :: frzcnt(:,:)
    real(r8), pointer :: frzdep(:,:)
 
-   integer :: itim_old
    integer :: i, k
 
    real(r8) :: rho(pcols,pver)          ! air density (kg m-3)
@@ -414,8 +413,7 @@ subroutine hetfrz_classnuc_cam_calc(aero_props, aero_state, state, deltatin, fac
       nc    => state%q(:pcols,:pver,numliq_idx), &
       pmid  => state%pmid               )
 
-   itim_old = pbuf_old_tim_idx()
-   call pbuf_get_field(pbuf, ast_idx, ast, start=(/1,1,itim_old/), kount=(/pcols,pver,1/))
+   call pbuf_get_field(pbuf, ast_idx, ast)
 
    rho(:,:) = 0._r8
 

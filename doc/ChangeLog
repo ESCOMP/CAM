@@ -1,119 +1,198 @@
-
 ===============================================================
 
-Tag name: TBD (assigned at merge)
-Originator(s): juliob
-Date: September 24, 2026
+Tag name:
+Originator(s): juliob, jimmielin
+Date:
 One-line Summary: Moving-mountain GW diagnostics (MMTAUE/W/S/N) and
   atmos_phys external bump for new flow-dependent tilt/precip source options
-Github PR URL: TBD
+Github PR URL: https://github.com/ESCOMP/CAM/pull/1684
 
 Purpose of changes (include the issue number and title text for each relevant GitHub issue):
- - Add directional (E/W/S/N) Reynolds-stress history diagnostics for the
-   moving-mountain gravity-wave source, analogous to the existing BTAUE/
-   BTAUW/BTAUS/BTAUN diagnostics for the Beres deep-convective source, but
-   using a plain "MM" prefix rather than the generic prefix/scheme
-   infrastructure used for the other GW sources.
- - Bump the `atmos_phys` external to include new, opt-in flow-dependent
-   tilt/precipitation source formulations for the moving-mountain scheme
-   (movmtn_source = 3/4/5); see the companion atmos_phys PR (URL: TBD) for
-   the physics-level description.
- - Not associated with a tracked GitHub issue.
+- Add directional (E/W/S/N) Reynolds-stress history diagnostics for the
+ moving-mountain gravity-wave source, analogous to the existing BTAUE/
+ BTAUW/BTAUS/BTAUN diagnostics for the Beres deep-convective source, but
+ using a plain "MM" prefix rather than the generic prefix/scheme
+ infrastructure used for the other GW sources.
+- Bump the `atmos_phys` external to include new, opt-in flow-dependent
+ tilt/precipitation source formulations for the moving-mountain scheme
+ (movmtn_source = 3/4/5).
 
 Describe any changes made to build system: N/A
 
-Describe any changes made to the namelist:
- No new namelist variables. Updated the doc string for the existing
- `movmtn_source` (bld/namelist_files/namelist_definition.xml) to document
- the new valid values 3/4/5 introduced by the atmos_phys bump; the
- default (1) is unchanged.
+Describe any changes made to the namelist: movmtn_source values update.
 
 List any changes to the defaults for the boundary datasets: N/A
 
-Describe any substantial timing or memory changes: none expected; new
-code paths are either purely diagnostic (addfld/outfld) or gated behind
-movmtn_source=3/4/5, which is not the default.
+Describe any substantial timing or memory changes: N/A
 
-Code reviewed by: TBD
+Code reviewed by: jimmielin
 
 List all files eliminated: N/A
 
-List all files added and what they do: N/A (all changes are modifications
-to existing files; see below)
+List all files added and what they do: N/A
 
 List all existing files that have been modified, and describe the changes:
 
 M  src/physics/cam/gw_drag_cam.F90
-     - Added four new pbuf lookups (prec_dp_idx, prec_sh_idx, prec_sed_idx,
-       prec_pcw_idx) and local PRECT summation, passed into the
-       moving-mountain scheme as its new `prect` input.
-     - Added local arrays and call-site arguments for the scheme's new
-       tilt/p_steer/p_launch/taucd_west/taucd_east/taucd_south/taucd_north
-       outputs.
-     - New history diagnostics: TILT_MOVMTN, PSTEER_MOVMTN, PLAUNCH_MOVMTN,
-       and MMTAUE/MMTAUW/MMTAUS/MMTAUN (directional Reynolds stress for the
-       moving-mountain source, on interface levels, units Pa).
-     - Corrected several pre-existing `outfld` calls (TAU_MOVMTN,
-       GWUT_MOVMTN, TAUAORO, UEGW/VEGW/TEGW/ZEGW/ZMGW, U_MOVMTN_IN,
-       V_MOVMTN_IN) that were passing `ncol` instead of `pcols` as the
-       array-bound argument, which is CAM's convention for `outfld`; this
-       only affects the fill value of unused, beyond-`ncol` padding
-       columns in those diagnostic history fields and does not affect the
-       model's prognostic state.
+   - Added four new pbuf lookups (prec_dp_idx, prec_sh_idx, prec_sed_idx,
+     prec_pcw_idx) and local PRECT summation, passed into the
+     moving-mountain scheme as its new `prect` input.
+   - Added local arrays and call-site arguments for the scheme's new
+     tilt/p_steer/p_launch/taucd_west/taucd_east/taucd_south/taucd_north
+     outputs.
+   - New history diagnostics: TILT_MOVMTN, PSTEER_MOVMTN, PLAUNCH_MOVMTN,
+     and MMTAUE/MMTAUW/MMTAUS/MMTAUN (directional Reynolds stress for the
+     moving-mountain source, on interface levels, units Pa).
+   - Corrected several pre-existing `outfld` calls (TAU_MOVMTN,
+     GWUT_MOVMTN, TAUAORO, UEGW/VEGW/TEGW/ZEGW/ZMGW, U_MOVMTN_IN,
+     V_MOVMTN_IN) that were passing `ncol` instead of `pcols` as the
+     array-bound argument, which is CAM's convention for `outfld`; this
+     only affects the fill value of unused, beyond-`ncol` padding
+     columns in those diagnostic history fields and does not affect the
+     model's prognostic state.
 
 M  bld/namelist_files/namelist_definition.xml
-     - Updated the `movmtn_source` doc string to describe the new valid
-       values (see above). No default or valid_values attribute changed.
+   - Updated the `movmtn_source` doc string to describe the new valid
+     values (see above). No default or valid_values attribute changed.
 
-M  src/atmos_phys (external)
-     - Bump to include the companion atmos_phys PR (URL: TBD); see that
-       PR's ChangeLog entry for the physics-level description.
+M  src/atmos_phys
+   - update atmos_phys external.
 
 If there were any failures reported from running test_driver.sh on any test
 platform, and checkin with these failures has been OK'd by the gatekeeper,
 then copy the lines from the td.*.status files for the failed tests to the
 appropriate machine below.  All failed tests must be justified.
 
-derecho/intel/aux_cam: not yet run
-derecho/nvhpc/aux_cam: not yet run
-izumi/nag/aux_cam: not yet run
-izumi/gnu/aux_cam: not yet run
+derecho/intel/aux_cam:
+
+derecho/nvhpc/aux_cam:
+
+izumi/nag/aux_cam:
+
+izumi/gnu/aux_cam:
 
 CAM tag used for the baseline comparison tests if different than previous
-tag: cam6_4_173 (this branch's development baseline; not yet compared
-against the cam6_4_203 tip other than a build-only test)
+tag:
 
-Summarize any changes to answers, i.e.,
-- what code configurations: none. `movmtn_source` defaults to 1
-  (vorticity), which exercises only the pre-existing, functionally
-  unchanged `vorticity_flux_src` code path; the new diagnostics are
-  write-only (addfld/outfld) and do not feed back into any tendency.
-- what platforms/compilers: N/A (no answer change)
-- nature of change (roundoff; larger than roundoff but same climate; new
-  climate): none (bit-for-bit for any existing configuration)
+Summarize any changes to answers:
 
-If bitwise differences were observed, how did you show they were no worse
-than roundoff? N/A - reconciled the branch against current cam_development
-via a three-way merge (`git merge-file`) against the common ancestor
-(cam6_4_173-pinned commit for both gw_drag_cam.F90 and the atmos_phys
-external), confirmed the only true upstream drift in either file was two
-cosmetic/precision-suffix changes unrelated to this branch's edits, and
-confirmed via `case.build` (QPC7, ne3pg3_ne3pg3_mt232, casper) that the
-reconciled files compile with 0 warnings/errors. A full bit-for-bit
-regression run against the cam6_4_203 tip has not yet been performed.
+===============================================================
 
-If this tag changes climate describe the run(s) done to evaluate the new
-climate in enough detail that it(they) could be reproduced, i.e.,
-- source tag (all code used must be in the repository): N/A, no climate change
-- platform/compilers: N/A
-- configure commandline: N/A
-- build-namelist command (or complete namelist): N/A
-- MSS location of output: N/A
+Tag name: cam6_4_204
+Originator(s): cacraigucar, jimmielin, hingong, peverwhee, johnpaulalex, fvitt, briandobbins, jshaw35
+Date: Sept 29, 2026
+One-line Summary: Misc PRs
+Github PR URL: https://github.com/ESCOMP/CAM/pull/1690
 
-MSS location of control simulations used to validate new climate: N/A
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+  - Add COSP's EarthCARE lidar simulator to CAM output - https://github.com/ESCOMP/CAM/pull/1574
+  - Remove incorrect use of CASEROOT in bld/configure - https://github.com/ESCOMP/CAM/pull/1641
+  - Initial removal of leapfrogging pbuf dimensions - https://github.com/ESCOMP/CAM/pull/1644
+  - Remove use of deprecated perl smartmatch - https://github.com/ESCOMP/CAM/pull/1658
+  - refactor(utils): allow optional errmsg in handle_allocate_error - https://github.com/ESCOMP/CAM/pull/1671
+  - Add clubb_a_const into the namelist - https://github.com/ESCOMP/CAM/pull/1676
+  - Recreate config_cache.xml when in a cloned case - https://github.com/ESCOMP/CAM/pull/1681
 
-URL for AMWG diagnostics output used to validate new climate: N/A
+Describe any changes made to build system: N/A
 
+Describe any changes made to the namelist: N/A
+
+List any changes to the defaults for the boundary datasets: N/A
+
+Describe any substantial timing or memory changes: N/A
+
+Code reviewed by: jimmielin, cacraigucar
+
+List all files eliminated: N/A
+
+List all files added and what they do: N/A
+
+List all existing files that have been modified, and describe the changes:
+M       bld/namelist_files/namelist_definition.xml
+M       bld/build-namelist
+           - mods for several changes listed above
+
+M       src/physics/cam/cospsimulator_intr.F90
+M       src/physics/cosp2/optics/cosp_optics.F90
+           - COSP changes
+
+M       bld/configure
+           - remove incorrect CASEROOT
+
+M       bld/perl5lib/Build/ChemNamelist.pm
+           - remove perl smartmatch
+
+M       src/utils/cam_abortutils.F90
+           - allow optional errmsg in handle_allocate_error
+
+M       bld/namelist_files/namelist_defaults_cam.xml
+M       src/physics/cam/clubb_intr.F90
+           - add clubb_a_const
+
+M       cime_config/buildnml
+           - recreate config_cache.xml when in a cloned case
+
+M       src/chemistry/aerosol/wetdep.F90
+M       src/chemistry/geoschem/chemistry.F90
+M       src/chemistry/mozart/chemistry.F90
+M       src/chemistry/mozart/mo_gas_phase_chemdr.F90
+M       src/chemistry/utils/modal_aero_calcsize.F90
+M       src/chemistry/utils/modal_aero_wateruptake.F90
+M       src/dynamics/fv/dyn_grid.F90
+M       src/dynamics/mpas/dycore
+M       src/dynamics/mpas/dyn_grid.F90
+M       src/dynamics/se/dyn_grid.F90
+M       src/physics/cam/cam_diagnostics.F90
+M       src/physics/cam/check_energy.F90
+M       src/physics/cam/cloud_diagnostics.F90
+M       src/physics/cam/cloud_rad_props.F90
+M       src/physics/cam/conv_water.F90
+M       src/physics/cam/convect_shallow.F90
+M       src/physics/cam/ebert_curry_ice_optics.F90
+M       src/physics/cam/hetfrz_classnuc_cam.F90
+M       src/physics/cam/macrop_driver.F90
+M       src/physics/cam/micro_pumas_cam.F90
+M       src/physics/cam/microp_aero.F90
+M       src/physics/cam/nucleate_ice_cam.F90
+M       src/physics/cam/oldcloud_optics.F90
+M       src/physics/cam/physics_buffer.F90.in
+M       src/physics/cam/physpkg.F90
+M       src/physics/cam/radiation_data.F90
+M       src/physics/cam/rk_stratiform_cam.F90
+M       src/physics/cam/slingo_liq_optics.F90
+M       src/physics/cam/ssatcontrail.F90
+M       src/physics/cam/zm_conv_intr.F90
+M       src/physics/cam7/micro_pumas_cam.F90
+M       src/physics/cam7/physpkg.F90
+M       src/physics/camrt/radiation.F90
+M       src/physics/carma/cam/carma_intr.F90
+M       src/physics/carma/models/cirrus/carma_model_mod.F90
+M       src/physics/carma/models/cirrus_dust/carma_model_mod.F90
+M       src/physics/rrtmg/radiation.F90
+M       src/physics/rrtmgp/radiation.F90
+M       src/physics/simple/kessler_cam.F90
+M       src/physics/simple/physpkg.F90
+          - remove leapfrog
+
+If there were any failures reported from running test_driver.sh on any test
+platform, and checkin with these failures has been OK'd by the gatekeeper,
+then copy the lines from the td.*.status files for the failed tests to the
+appropriate machine below.  All failed tests must be justified.
+
+derecho/intel/aux_cam: all pass except:
+  SMS_D_Ln9_P1536x1.ne0CONUSne30x8_ne0CONUSne30x8_mt12.FCHIST.derecho_intel.cam-outfrq9s (Overall: FAIL)
+    - intermittent failure in CTSM code (lnd_set_decomp_and_domain.F90)  - It failed this time
+
+derecho/nvhpc/aux_cam: all BFB
+
+izumi/nag/aux_cam: all pass except:
+
+  FAIL ERC_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_nag.cam-outfrq3s_subcol
+  - pre-existing failure -- see https://github.com/ESCOMP/CAM/issues/1514
+
+izumi/gnu/aux_cam: all BFB
+
+===============================================================
 ===============================================================
 
 Tag name: cam6_4_203

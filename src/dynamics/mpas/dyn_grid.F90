@@ -45,11 +45,9 @@ integer, parameter :: cam_cell_decomp = 104 ! same grid decomp as dyn_decomp, bu
                                             ! uses ncol, lat, lon
 integer, parameter :: edge_decomp   = 102 ! edge node grid
 integer, parameter :: vertex_decomp = 103 ! vertex node grid
-integer, parameter :: ptimelevels = 2
 
 public :: &
    dyn_decomp, &
-   ptimelevels, &
    dyn_grid_init, &
    get_dyn_grid_info, &
    get_horiz_grid_dim_d, &
