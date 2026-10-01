@@ -421,7 +421,7 @@ module ionosphere_interface
       real(r8), pointer :: prescr_efx(:) ! prescribed energy flux
       real(r8), pointer :: prescr_kev(:) ! prescribed characteristic mean energy
 
-      ! output condances here befor dynamo update
+      ! output conductances here before dynamo update
       call savefld_waccm(azigm1(mlon0:omlon1,mlat0:mlat1),'AZIGM1',1, mlon0,omlon1,mlat0,mlat1)
       call savefld_waccm(azigm2(mlon0:omlon1,mlat0:mlat1),'AZIGM2',1, mlon0,omlon1,mlat0,mlat1)
 
@@ -1154,9 +1154,9 @@ module ionosphere_interface
 
          ! read vars if available on restart file
          ierr = pio_inq_varid(File, 'azigm1', azigm1_vdesc)
-         if (ierr.eq.PIO_NOERR) call pio_read_darray(File, azigm1_vdesc, iodesc2d, azigm1(mlon0:omlon1,mlat0:mlat1), ierr)
+         if (ierr == PIO_NOERR) call pio_read_darray(File, azigm1_vdesc, iodesc2d, azigm1(mlon0:omlon1,mlat0:mlat1), ierr)
          ierr = pio_inq_varid(File, 'azigm2', azigm2_vdesc)
-         if (ierr.eq.PIO_NOERR) call pio_read_darray(File, azigm2_vdesc, iodesc2d, azigm2(mlon0:omlon1,mlat0:mlat1), ierr)
+         if (ierr == PIO_NOERR) call pio_read_darray(File, azigm2_vdesc, iodesc2d, azigm2(mlon0:omlon1,mlat0:mlat1), ierr)
 
          ! restore old error handling
          call pio_seterrorhandling(File, err_handling)
