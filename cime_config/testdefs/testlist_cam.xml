@@ -2204,19 +2204,19 @@
       <option name="wallclock">00:10:00</option>
     </options>
   </test>
-  <test compset="FX2000" grid="f09_f09_mg17" name="ERS_Ln9"   testmods="cam/outfrq9s">
+  <test compset="FX2000" grid="f09_f09_mg17" name="ERS_Ln9"   testmods="cam/outfrq9s_ltr">
     <machines>
       <machine name="derecho" compiler="intel" category="waccmx"/>
       <machine name="derecho" compiler="intel" category="aux_cam"/>
     </machines>
     <options>
       <option name="wallclock">00:40:00</option>
+      <option name="comment">WACCM-X LTR</option>
     </options>
   </test>
   <test compset="FHISTC_WXma" grid="ne16pg3_ne16pg3_mg17" name="SMS_C2_D_Ln9" testmods="cam/outfrq9s">
     <machines>
       <machine name="derecho" compiler="intel" category="waccmx"/>
-      <machine name="derecho" compiler="intel" category="aux_cam"/>
     </machines>
     <options>
       <option name="wallclock">00:20:00</option>
@@ -2226,10 +2226,9 @@
   <test compset="QPX2000" grid="f19_f19_mg17" name="ERC_D_Ln9_P128x4" testmods="cam/outfrq9s_ltr">
     <machines>
       <machine name="derecho" compiler="intel" category="waccmx"/>
-      <machine name="derecho" compiler="intel" category="aux_cam"/>
     </machines>
     <options>
-      <option name="wallclock">00:30:00</option>
+      <option name="wallclock">00:20:00</option>
       <option name="comment">WACCM-X LTR threaded test</option>
     </options>
   </test>
