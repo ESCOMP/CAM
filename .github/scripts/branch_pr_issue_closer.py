@@ -74,10 +74,16 @@ def end_script(msg):
 #numbers to the official PR search list
 #++++++++++++++++++++++++++++++++++++
 
-def add_closed_pulls(nums):
+def add_closed_pulls(nums, cam_repo, checked_nums, searched_pulls, search_pulls):
 
     """
     Add any numbers that are closed PRs to the search list.
+
+    nums           -> list of Github issue/PR numbers to check
+    cam_repo       -> PyGithub repository object
+    checked_nums   -> set of numbers already checked (modified in place)
+    searched_pulls -> set of PR numbers already searched
+    search_pulls   -> list of PR numbers to search (modified in place)
     """
 
     for num in nums:
@@ -141,8 +147,12 @@ def find_close_numbers(pr_body, open_issues, open_pulls):
         #Check if first word matches issue pattern:
         if issue_pattern.match(tmp_msg_str) is not None:
 
-            #If so, then look for an issue number immediately following
-            first_word = tmp_msg_str.split()[0]
+            #If so, then look for an issue number immediately following,
+            #skipping when there are no words to extract a number from:
+            tmp_msg_words = tmp_msg_str.split()
+            if not tmp_msg_words:
+                continue
+            first_word = tmp_msg_words[0]
 
             #Extract issue number from first word:
             try:
@@ -330,7 +340,7 @@ def _main_prog():
     search_pulls = list(close_pulls)
 
     #Check if non-open Github numbers are actually PRs:
-    add_closed_pulls(other_nums)
+    add_closed_pulls(other_nums, cam_repo, checked_nums, searched_pulls, search_pulls)
 
     for pull_num in search_pulls:
 
@@ -352,7 +362,7 @@ def _main_prog():
 
         #Add newly-found open and closed PRs to the search list:
         search_pulls.extend(ref_pulls)
-        add_closed_pulls(ref_others)
+        add_closed_pulls(ref_others, cam_repo, checked_nums, searched_pulls, search_pulls)
 
     #Remove the merged PR itself, in case it was referenced by one of the other PRs:
     close_pulls = [pull for pull in close_pulls if pull != pr_num]
