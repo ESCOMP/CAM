@@ -11,8 +11,6 @@ module namelist_mod
        partmethod,            & ! Mesh partitioning method (METIS)
        multilevel,            &
        numnodes,              &
-       tasknum,               & ! used dg model in AIX machine
-       remapfreq,             & ! number of steps per remapping call
        statefreq,             & ! number of steps per printstate call
        runtype,               &
        cubed_sphere_map,      &
@@ -60,8 +58,6 @@ module namelist_mod
     numnodes            = -1
     runtype             = 0
     statefreq           = 1
-    remapfreq           = 240
-    tasknum             =-1
     columnpackage       = "none"
     nu_top              = 0
     ne                  = 0

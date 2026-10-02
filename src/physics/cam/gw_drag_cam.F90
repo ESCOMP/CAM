@@ -151,13 +151,6 @@ module gw_drag_cam
   integer :: pgwv_long = -1
   real(r8) :: gw_dc_long = unset_r8
 
-  !  New couplings from CLUBB
-  real(r8), pointer :: ttend_clubb(:,:)
-  real(r8), pointer :: thlp2_clubb_gw(:,:)
-  real(r8), pointer :: wpthlp_clubb_gw(:,:)
-  real(r8), pointer :: upwp_clubb_gw(:,:)
-  real(r8), pointer :: vpwp_clubb_gw(:,:)
-  real(r8), pointer :: vort4gw(:,:)
 
   ! Gravity wave Ridge scheme namelist
   logical  :: gw_rdg_do_divstream, gw_rdg_do_smooth_regimes, gw_rdg_do_adjust_tauoro, &
@@ -1280,10 +1273,17 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
 
   integer :: i, k, m
 
+  !  New couplings from CLUBB
+  real(r8), pointer :: ttend_clubb(:,:)
+  real(r8), pointer :: thlp2_clubb_gw(:,:)
+  real(r8), pointer :: wpthlp_clubb_gw(:,:)
+  real(r8), pointer :: upwp_clubb_gw(:,:)
+  real(r8), pointer :: vpwp_clubb_gw(:,:)
+  real(r8), pointer :: vort4gw(:,:)
+
   ! Temperature tendencies from diffusion and kinetic energy.
   real(r8) :: dttdf(pcols,pver)
   real(r8) :: dttke(pcols,pver)
-
   ! pbuf fields
   ! Molecular diffusivity
   real(r8), pointer :: kvt_in(:,:)
