@@ -1959,7 +1959,7 @@ module clubb_mf
                                     rle, wa,                           &
                                     ee2, ud2 )
   ! =============================================================================== !
-  ! Buoyancy-sorting neutral mixing fraction, after Bretherton et al 2014.          !
+  ! Buoyancy-sorting neutral mixing fraction, after Bretherton et al 2004.          !
   ! DOI: 10.1175/1520-0493(2004)132<0864:ANPFSC>2.0.CO;2                            !
   ! Iterates the trial (qtn,thln,wn) state internally and returns only the final    !
   ! entrainment/detrainment area-fraction terms (ee2, ud2).                         !
@@ -1986,7 +1986,8 @@ module clubb_mf
 
     ! --------------------------------------------------------- !
     ! Compute excess water to derive neutral mixing fraction    !
-    ! after Bretherton et al 2014                               !
+    ! after Bretherton et al 2004                               !
+    ! DOI: 10.1175/1520-0493(2004)132<0864:ANPFSC>2.0.CO;2      !
     ! --------------------------------------------------------- !
 
     ! qexcess of the envrionment

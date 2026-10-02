@@ -46,7 +46,7 @@ contains
     type(var_desc_t), intent(inout) :: varid
     real(r8), intent(in) :: fld(:,:,:)
     integer,  intent(in)    :: ext_dims(:)
-    integer, intent(in) :: numlev, data_type, decomp_type
+    integer, intent(in) :: data_type, decomp_type
     call endrun('This routine is a stub, you shouldnt get here')
 
   end subroutine write_interpolated_scalar
@@ -58,7 +58,7 @@ contains
     type(var_desc_t), intent(inout) :: varidu, varidv
     real(r8), intent(in) :: fldu(:,:,:), fldv(:,:,:)
     integer, intent(in) :: ext_dims(:)
-    integer, intent(in) :: numlev, data_type, decomp_type
+    integer, intent(in) :: data_type, decomp_type
     call endrun('This routine is a stub, you shouldnt get here')
 
   end subroutine write_interpolated_vector
