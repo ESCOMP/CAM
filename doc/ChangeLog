@@ -1,4 +1,83 @@
+===============================================================
 
+Tag name: cam6_4_205
+Originator(s): fvitt, nusbaume
+Date: 2 Oct 2026
+One-line Summary: Add conductances to restart files for WACCMX-MAGE; other misc fixes
+Github PR URL:
+ https://github.com/ESCOMP/CAM/pull/1660
+ https://github.com/ESCOMP/CAM/pull/1693
+ https://github.com/ESCOMP/CAM/pull/1698
+
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+
+ Initial changes to address part of #1647
+  - Conductances are added to the restart file so that restarts work properly in
+    WACCMX-MAGE coupled simulations.
+
+ Fix CESM alpha test failures (age-of-air) #1688
+
+ Github actions fixes provided by nusbaume:
+   Modify branch-push Github Action to fully prevent runs on forks #395
+   Issue-closing script should close all issues mentioned in referenced PRs #1695
+
+Describe any changes made to build system: N/A
+
+Describe any changes made to the namelist: N/A
+
+List any changes to the defaults for the boundary datasets: N/A
+
+Describe any substantial timing or memory changes: N/A
+
+Code reviewed by: cacraigucar
+
+List all files eliminated: N/A
+
+List all files added and what they do: N/A
+
+List all existing files that have been modified, and describe the changes:
+M       .github/scripts/branch_pr_issue_closer.py
+M       .github/workflows/branch_push_workflow.yml
+ - github actions fixes provided by nusbaume
+
+M       cime_config/testdefs/testlist_cam.xml
+ - aux test for WACCMX LTR/MAGE
+ - fix threaded PE layout for prealpha test
+
+M       cime_config/testdefs/testmods_dirs/cam/outfrq1d_physgrid_tem_mpasa120_wcmsc/user_nl_cam
+M       cime_config/testdefs/testmods_dirs/cam/outfrq9s_camchem_mam4/user_nl_cam
+ - do not read AOA tracers from IC file
+
+M       cime_config/testdefs/testmods_dirs/cam/outfrq9s_ltr/user_nl_cam
+ - add conductances to history output list
+
+M       src/ionosphere/waccmx/edynamo.F90
+M       src/ionosphere/waccmx/ionosphere_interface.F90
+ - add conductances to history output and restart files
+
+If there were any failures reported from running test_driver.sh on any test
+platform, and checkin with these failures has been OK'd by the gatekeeper,
+then copy the lines from the td.*.status files for the failed tests to the
+appropriate machine below.  All failed tests must be justified.
+
+derecho/intel/aux_cam:
+  DIFF ERS_Ln9.f09_f09_mg17.FX2000.derecho_intel.cam-outfrq9s_ltr
+  - new LTR test
+
+  FAIL SMS_D_Ln9_P1536x1.ne0CONUSne30x8_ne0CONUSne30x8_mt12.FCHIST.derecho_intel.cam-outfrq9s
+  - intermittent failure in CTSM code (lnd_set_decomp_and_domain.F90)
+
+derecho/nvhpc/aux_cam: All PASS
+
+izumi/nag/aux_cam:
+  FAIL ERC_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_nag.cam-outfrq3s_subcol COMPARE_base_rest
+  - pre-existing failure -- see https://github.com/ESCOMP/CAM/issues/1514
+
+izumi/gnu/aux_cam: All PASS
+
+Summarize any changes to answers: bit-for-bit
+
+===============================================================
 ===============================================================
 
 Tag name: cam6_4_204
