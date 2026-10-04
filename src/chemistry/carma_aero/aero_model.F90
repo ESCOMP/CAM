@@ -22,7 +22,7 @@ module aero_model
   use radiative_aerosol, only: rad_aer_get_info, rad_aer_get_info_by_bin, rad_aer_get_info_by_bin_spec, &
                                rad_aer_get_bin_props_by_idx
   use aerosol_mmr_host,   only: rad_cnst_get_bin_mmr_by_idx
-  use mo_setsox,         only: setsox, has_sox
+  use mo_setsox_cam,     only: setsox, has_sox
   use aerosol_properties_mod, only: aerosol_properties
   use aerosol_instances_mod, only: aerosol_instances_get_props, &
        aerosol_instances_get_state, aerosol_instances_get_num_models
@@ -198,7 +198,7 @@ contains
     use cam_history,     only: addfld, add_default, horiz_only
     use mo_chem_utls,    only: get_rxt_ndx, get_spc_ndx
     use aero_wetdep_cam, only: aero_wetdep_init
-    use mo_setsox,       only: sox_inti
+    use mo_setsox_cam,   only: sox_inti
     use carma_aero_gasaerexch, only: carma_aero_gasaerexch_init
 
     use time_manager,    only: is_first_step

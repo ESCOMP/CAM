@@ -482,6 +482,8 @@ contains
     integer :: lchnk, ncol
     integer :: num_aero_models
 
+    real(r8), pointer :: cldn(:,:)   ! layer cloud fraction (0-1)
+
     character(len=aero_name_len) :: modetype
     logical :: coarse_dust_mode ! coarse dust mode for different MAM versions
 
@@ -648,6 +650,9 @@ contains
     relh(:ncol,:) = state%q(1:ncol,:,1) / satq(:ncol,:)
     relh(:ncol,:) = max(1.e-20_r8,relh(:ncol,:))
 
+    ! layer cloud fraction, for the water uptake recompute of diagnostic lists
+    call pbuf_get_field(pbuf, pbuf_get_index('CLD'), cldn, start=(/1,1/), kount=(/pcols,pver/))
+
     bam_cnt = 0
 
     aeromodel: do iaermod = 1,num_aero_models
@@ -699,7 +704,9 @@ contains
           call aerosol_optics_sw_bin(aeroprops, aerostate, ibin, &
                ncol, pver, top_lev, nswbands, nlwbands, numrh, &
                idx_sw_diag, &
-               relh(:ncol,:), sulfwtpct(:ncol,:), mass(:ncol,:), crefwsw, crefwlw, &
+               relh(:ncol,:), sulfwtpct(:ncol,:), &
+               state%t(:ncol,:), state%pmid(:ncol,:), state%q(:ncol,:,1), cldn(:ncol,:), &
+               mass(:ncol,:), crefwsw, crefwlw, &
                geometric_radius=geometric_radius, &
                tau_bin=tau_bin(:ncol,:,:), ssa_bin=ssa_bin(:ncol,:,:), asm_bin=asm_bin(:ncol,:,:), &
                pabs_vis=pabs_vis(:ncol,:), dopaer0_vis=dopaer0_vis(:ncol,:), &
@@ -730,8 +737,10 @@ contains
 
           ! CAM diagnostics:
           ! Get wet/water volumes for diagnostic species partitioning
-          wetvol(:ncol,:pver) = aerostate%wet_volume(aeroprops, ibin, ncol, pver)
-          watervol(:ncol,:pver) = aerostate%water_volume(aeroprops, ibin, ncol, pver)
+          wetvol(:ncol,:pver) = aerostate%wet_volume(aeroprops, ibin, ncol, pver, top_lev, &
+               state%t(:ncol,:), state%pmid(:ncol,:), state%q(:ncol,:,1), cldn(:ncol,:))
+          watervol(:ncol,:pver) = aerostate%water_volume(aeroprops, ibin, ncol, pver, top_lev, &
+               state%t(:ncol,:), state%pmid(:ncol,:), state%q(:ncol,:,1), cldn(:ncol,:))
 
           ! Diagnostic accumulation using tau_bin (asphericity already applied by core)
           do iwav = 1, nswbands
@@ -1130,6 +1139,8 @@ contains
     integer :: ncol, icol
     integer :: num_aero_models
 
+    real(r8), pointer :: cldn(:,:)   ! layer cloud fraction (0-1)
+
     class(aerosol_state),      pointer :: aerostate
     class(aerosol_properties), pointer :: aeroprops
 
@@ -1168,6 +1179,9 @@ contains
     relh(:ncol,:) = state%q(1:ncol,:,1) / satq(:ncol,:)
     relh(:ncol,:) = max(1.e-20_r8,relh(:ncol,:))
 
+    ! layer cloud fraction, for the water uptake recompute of diagnostic lists
+    call pbuf_get_field(pbuf, pbuf_get_index('CLD'), cldn, start=(/1,1/), kount=(/pcols,pver/))
+
     aeromodel: do iaermod = 1,num_aero_models
 
        aeroprops => aerosol_instances_get_props(iaermod, list_idx)
@@ -1198,8 +1212,10 @@ contains
           ! geometric_radius is a null pointer for non-volcanic types;
           ! the optional pointer dummy checks associated() internally.
           call aerosol_optics_lw_bin(aeroprops, aerostate, ibin, &
-               ncol, pver, nswbands, nlwbands, numrh, &
-               relh(:ncol,:), sulfwtpct(:ncol,:), mass(:ncol,:), crefwsw, crefwlw, &
+               ncol, pver, top_lev, nswbands, nlwbands, numrh, &
+               relh(:ncol,:), sulfwtpct(:ncol,:), &
+               state%t(:ncol,:), state%pmid(:ncol,:), state%q(:ncol,:,1), cldn(:ncol,:), &
+               mass(:ncol,:), crefwsw, crefwlw, &
                geometric_radius=geometric_radius, &
                tau_lw_bin=tau_lw_bin(:ncol,:,:), absorp_bin=absorp_bin(:ncol,:,:), &
                errmsg=errmsg, errflg=errflg)
