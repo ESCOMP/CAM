@@ -1,8 +1,7 @@
 module mean_module
 
   use shr_kind_mod,  only : r8 => shr_kind_r8
-  use shr_reprosum_mod, only : shr_reprosum_calc, shr_reprosum_tolExceeded, &
-                            shr_reprosum_recompute
+  use shr_reprosum_mod, only : shr_reprosum_calc, shr_reprosum_tolExceeded
   use perf_mod
   use cam_logfile,   only : iulog
 
@@ -97,10 +96,6 @@ subroutine gmeanxy(grid, q, qmean)
   use commap, only : w
   use dynamics_vars, only : T_FVDYCORE_GRID
 
-#if defined( SPMD )
-  use parutilitiesmodule, only : parcollective, sumop
-#endif
-
   implicit none
 
 ! !INPUT PARAMETERS:
@@ -134,13 +129,13 @@ subroutine gmeanxy(grid, q, qmean)
 
   real(r8) :: q_tmp(grid%ifirstxy:grid%ilastxy, &
                     grid%jfirstxy:grid%jlastxy)
-  real(r8) :: rel_diff(2), qmean_tmp(1), xsum
-  real(r8), allocatable :: q_global(:,:)
+  real(r8) :: rel_diff(2), qmean_tmp(1)
 
   integer  :: i, j, im, jm, ifirstxy, ilastxy, jfirstxy, jlastxy
   integer  :: lim, ljm, lijm
 
   logical  :: write_warning
+  logical  :: tol_exceeded
 
   im        = grid%im
   jm        = grid%jm
@@ -165,38 +160,13 @@ subroutine gmeanxy(grid, q, qmean)
   qmean = qmean_tmp(1)
   call t_stopf("gmeanxy_reprosum")
 
-  ! check that "fast" reproducible sum is accurate enough. If not, calculate
-  ! using old method
+  ! Warn if the nonreproducible floating point check sum differs from the
+  ! integer vector sum by more than reprosum_diffmax. The integer vector sum is
+  ! exact, so the result is kept regardless.
   write_warning = .false.
   if (grid%iam == 0) write_warning = .true.
-  if ( shr_reprosum_tolExceeded('gmeanxy', 1, write_warning, &
-                              iulog, rel_diff) ) then
-     if ( shr_reprosum_recompute ) then
-        call t_startf("gmeanxy_sumfix")
-        allocate( q_global(im,jm) )
-        q_global = D0_0
-        do j=jfirstxy,jlastxy
-           do i=ifirstxy,ilastxy
-              q_global(i,j) = q_tmp(i,j)
-           enddo
-        enddo
-
-#if defined( SPMD )
-        call parcollective( grid%commxy, sumop, im, jm, q_global )
-#endif
-        qmean = D0_0
-        do j=1,jm
-           xsum = D0_0
-           do i=1,im
-              xsum = xsum + q_global(i,j)
-           enddo
-           qmean = qmean + xsum
-        enddo
-
-        deallocate( q_global )
-        call t_stopf("gmeanxy_sumfix")
-     endif
-  endif
+  tol_exceeded = shr_reprosum_tolExceeded('gmeanxy', 1, write_warning, &
+       iulog, rel_diff)
 
   qmean = qmean / (2*im)
 

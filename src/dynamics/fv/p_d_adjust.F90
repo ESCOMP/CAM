@@ -9,12 +9,7 @@
 ! !USES:
     use shr_kind_mod, only: r8 => shr_kind_r8
     use dynamics_vars, only : T_FVDYCORE_GRID
-#if defined( SPMD )
-    use parutilitiesmodule, only: parcollective, sumop
-#endif
-    use shr_reprosum_mod, only : shr_reprosum_calc, shr_reprosum_tolExceeded, &
-                              shr_reprosum_reldiffmax, &
-                              shr_reprosum_recompute
+    use shr_reprosum_mod, only : shr_reprosum_calc, shr_reprosum_tolExceeded
     use cam_logfile,   only : iulog
     use perf_mod
 
@@ -63,7 +58,6 @@
 !-----------------------------------------------------------------------
 !BOC
 ! !LOCAL VARIABLES:
-    real(r8), parameter ::  D0_0                    =  0.0_r8
     real(r8), parameter ::  D1_0                    =  1.0_r8
 
     real(r8) :: pole(grid%ifirstxy:grid%ilastxy,grid%km,grid%ntotq+2)
@@ -76,13 +70,12 @@
     real(r8) :: &
         pkln(grid%ifirstxy:grid%ilastxy,grid%km+1,grid%jfirstxy:grid%jlastxy)
 
-    real(r8),allocatable :: pole_tmp(:)
-
     integer :: i, k, m, j ! indices
     integer :: im, jm, km, ntotq, lim
     integer :: ifirstxy, ilastxy, jfirstxy, jlastxy
 
     logical  :: write_warning
+    logical  :: tol_exceeded
     logical  :: high_alt
 
 !---------------------------End Local workspace-------------------------
@@ -127,36 +120,13 @@
                       commid=grid%commxy_x, rel_diff=rel_diff) ! South pole
        call t_stopf("pdadj_reprosum")
 
-       ! check that "fast" reproducible sum is accurate enough. If not, calculate
-       ! using old method
+       ! Warn if the nonreproducible floating point check sum differs from the
+       ! integer vector sum by more than reprosum_diffmax. The integer vector sum is
+       ! exact, so the result is kept regardless.
        write_warning = .false.
        if (grid%myidxy_x == 0) write_warning = .true.
-       if ( shr_reprosum_tolExceeded('p_d_adjust/South Pole', km*(ntotq+2), &
-                                   write_warning, iulog, rel_diff) ) then
-          if ( shr_reprosum_recompute ) then
-             call t_startf("pdadj_sumfix")
-             allocate( pole_tmp(im) )
-             do m = 1, ntotq+2
-                do k = 1, km
-                   if (rel_diff(1,k,m) > shr_reprosum_reldiffmax) then
-                      pole_tmp(:) = D0_0
-                      do i = ifirstxy, ilastxy
-                         pole_tmp(i) = pole(i,k,m)
-                      enddo
-#if defined(SPMD)
-                      call parcollective(grid%commxy_x,sumop,im,pole_tmp)
-#endif
-                      pole_sum(k,m) = D0_0
-                      do i = 1, im
-                         pole_sum(k,m) = pole_sum(k,m) + pole_tmp(i)
-                      enddo
-                   endif
-                enddo
-             enddo
-             deallocate( pole_tmp )
-             call t_stopf("pdadj_sumfix")
-          endif
-       endif
+       tol_exceeded = shr_reprosum_tolExceeded('p_d_adjust/South Pole', km*(ntotq+2), write_warning, &
+            iulog, rel_diff)
 
        ! save results
        !$omp parallel do private(i,k,m)
@@ -198,36 +168,13 @@
                       commid=grid%commxy_x, rel_diff=rel_diff) ! North pole
        call t_stopf("pdadj_reprosum")
 
-       ! check that "fast" reproducible sum is accurate enough. If not, calculate
-       ! using old method
+       ! Warn if the nonreproducible floating point check sum differs from the
+       ! integer vector sum by more than reprosum_diffmax. The integer vector sum is
+       ! exact, so the result is kept regardless.
        write_warning = .false.
        if (grid%myidxy_x == 0) write_warning = .true.
-       if ( shr_reprosum_tolExceeded('p_d_adjust/Nouth Pole', km*(ntotq+2), &
-                                   write_warning, iulog, rel_diff) ) then
-          if ( shr_reprosum_recompute ) then
-             call t_startf("pdadj_sumfix")
-             allocate( pole_tmp(im) )
-             do m = 1, ntotq+2
-                do k = 1, km
-                   if (rel_diff(1,k,m) > shr_reprosum_reldiffmax) then
-                      pole_tmp(:) = D0_0
-                      do i = ifirstxy, ilastxy
-                         pole_tmp(i) = pole(i,k,m)
-                      enddo
-#if defined(SPMD)
-                      call parcollective(grid%commxy_x,sumop,im,pole_tmp)
-#endif
-                      pole_sum(k,m) = D0_0
-                      do i = 1, im
-                         pole_sum(k,m) = pole_sum(k,m) + pole_tmp(i)
-                      enddo
-                   endif
-                enddo
-             enddo
-             deallocate( pole_tmp )
-             call t_stopf("pdadj_sumfix")
-          endif
-       endif
+       tol_exceeded = shr_reprosum_tolExceeded('p_d_adjust/North Pole', km*(ntotq+2), write_warning, &
+            iulog, rel_diff)
 
        ! save results
        !$omp parallel do private(i,k,m)

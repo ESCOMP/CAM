@@ -8,18 +8,16 @@ module gmean_mod
    ! Reproducible (scalable):
    !    Convert to fixed point (integer representation) to enable
    !    reproducibility when using MPI collectives.
-   ! If error checking is on (via setting reprosum_diffmax > 0 and
-   !    reprosum_recompute = .true. in user_nl_cpl), shr_reprosum_calc will
-   !    check the accuracy of its computation with a fast but
-   !    non-reproducible algorithm. If any error is reported, report
-   !    the difference and the expected sum and abort run (call endrun)
+   ! If reprosum_diffmax >= 0 (user_nl_cpl), shr_reprosum_calc also forms a
+   !    fast nonreproducible sum and a warning is written when it differs
+   !    from the reproducible sum by more than that tolerance. The
+   !    reproducible sum is exact and is always the value returned.
    !
    !
    !-----------------------------------------------------------------------
    use shr_kind_mod,     only: r8 => shr_kind_r8
    use ppgrid,           only: pcols, begchunk, endchunk
    use shr_reprosum_mod, only: shr_reprosum_calc, shr_reprosum_tolExceeded
-   use shr_reprosum_mod, only: shr_reprosum_reldiffmax, shr_reprosum_recompute
    use perf_mod,         only: t_startf, t_stopf
    use cam_logfile,      only: iulog
 
@@ -36,7 +34,6 @@ module gmean_mod
    end interface gmean
 
    private :: gmean_fixed_repro
-   private :: gmean_float_norepro
 
    ! Set do_gmean_tests to .true. to run a gmean challenge test
    logical, private    :: do_gmean_tests = .false.
@@ -75,9 +72,7 @@ CONTAINS
    !
 
    subroutine gmean_arr (arr, arr_gmean, nflds)
-      use shr_strconvert_mod, only: toString
       use spmd_utils,         only: masterproc
-      use cam_abortutils,     only: endrun
       !-----------------------------------------------------------------------
       !
       ! Purpose:
@@ -96,9 +91,8 @@ CONTAINS
       ! Local workspace
       !
       real(r8)                   :: rel_diff(2, nflds)
-      integer                    :: ifld ! field index
-      integer                    :: num_err
       logical                    :: write_warning
+      logical                    :: tol_exceeded
       !
       !-----------------------------------------------------------------------
       !
@@ -107,25 +101,13 @@ CONTAINS
       call gmean_fixed_repro(arr, arr_gmean, rel_diff, nflds)
       call t_stopf ('gmean_fixed_repro')
 
-      ! check that "fast" reproducible sum is accurate enough. If not, calculate
-      ! using old method
+      ! Warn if the nonreproducible floating point check sum differs from the
+      ! integer vector sum by more than reprosum_diffmax. The integer vector sum is
+      ! exact, so the result is kept regardless.
       write_warning = masterproc
-      num_err = 0
-      if (shr_reprosum_tolExceeded('gmean', nflds, write_warning,             &
-           iulog, rel_diff)) then
-         if (shr_reprosum_recompute) then
-            do ifld = 1, nflds
-               if (rel_diff(1, ifld) > shr_reprosum_reldiffmax) then
-                  call gmean_float_norepro(arr(:,:,ifld), arr_gmean(ifld), ifld)
-                  num_err = num_err + 1
-               end if
-            end do
-         end if
-      end if
+      tol_exceeded = shr_reprosum_tolExceeded('gmean', nflds, write_warning,   &
+           iulog, rel_diff)
       call t_stopf('gmean_arr')
-      if (num_err > 0) then
-         call endrun('gmean: '//toString(num_err)//' reprosum errors found')
-      end if
 
    end subroutine gmean_arr
 
@@ -170,60 +152,6 @@ CONTAINS
    !========================================================================
    !
 
-   subroutine gmean_float_norepro(arr, repro_sum, index)
-      !-----------------------------------------------------------------------
-      !
-      ! Purpose:
-      ! Compute the global mean of <arr> in the physics chunked
-      !    decomposition using a fast but non-reproducible algorithm.
-      !    Log that value along with the value computed by
-      !    shr_reprosum_calc (<repro_sum>)
-      !
-      !-----------------------------------------------------------------------
-
-      use physconst,  only: pi
-      use spmd_utils, only: masterproc, masterprocid, MPI_REAL8, MPI_SUM, mpicom
-      use phys_grid,  only: get_ncols_p, get_wght_p
-      !
-      ! Arguments
-      !
-      real(r8), intent(in) :: arr(pcols, begchunk:endchunk)
-      real(r8), intent(in) :: repro_sum ! Value computed by reprosum
-      integer,  intent(in) :: index     ! Index of field in original call
-      !
-      ! Local workspace
-      !
-      integer             :: lchnk, ncols, icol
-      integer             :: ierr
-      real(r8)            :: wght
-      real(r8)            :: check
-      real(r8)            :: check_sum
-      real(r8), parameter :: pi4 = 4.0_r8 * pi
-
-      !
-      !-----------------------------------------------------------------------
-      !
-      ! Calculate and print out non-reproducible value
-      check = 0.0_r8
-      do lchnk = begchunk, endchunk
-         ncols = get_ncols_p(lchnk)
-         do icol = 1, ncols
-            wght = get_wght_p(lchnk, icol)
-            check = check + arr(icol, lchnk) * wght
-         end do
-      end do
-      call MPI_reduce(check, check_sum, 1, MPI_REAL8, check_sum, MPI_SUM,     &
-                       masterprocid, mpicom, ierr)
-      if (masterproc) then
-         write(iulog, '(a,i0,2(a,e20.13e2))') 'gmean(', index, ') = ',        &
-              check_sum / pi4, ', reprosum reported ', repro_sum
-      end if
-
-   end subroutine gmean_float_norepro
-
-   !
-   !========================================================================
-   !
    subroutine gmean_fixed_repro (arr, arr_gmean, rel_diff, nflds)
       !-----------------------------------------------------------------------
       !

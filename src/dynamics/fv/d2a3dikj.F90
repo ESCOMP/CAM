@@ -22,14 +22,11 @@ contains
       use dynamics_vars, only : t_fvdycore_grid
 
 #if defined( SPMD )
-      use parutilitiesmodule, only : parcollective, sumop
       use mod_comm, only: mp_send3d, mp_recv3d
 #endif
 
       use shr_reprosum_mod, only : shr_reprosum_calc, &
-           shr_reprosum_tolExceeded, &
-           shr_reprosum_reldiffmax, &
-           shr_reprosum_recompute
+           shr_reprosum_tolExceeded
       use cam_logfile,   only : iulog
       use perf_mod
 
@@ -67,22 +64,21 @@ contains
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-      real(r8), parameter ::  D0_0                    =  0.0_r8
       real(r8), parameter ::  D0_5                    =  0.5_r8
 
-      integer  :: imh, i, j, k, m, itot, jtot, ltot, ik
+      integer  :: imh, i, j, k, itot, jtot, ltot, ik
       real(r8) :: veast(grid%jfirstxy:grid%jlastxy,grid%km)
       real(r8) :: unorth(grid%ifirstxy:grid%ilastxy,grid%km)
 
       real(r8) :: uva(grid%ifirstxy:grid%ilastxy,grid%km,2)
       real(r8) :: uvn(grid%km,2), uvs(grid%km,2)
       real(r8) :: rel_diff(2,grid%km,2)
-      real(r8),allocatable :: uva_tmp(:)
 
       integer  :: ifirstxy, ilastxy, jfirstxy, jlastxy, im, jm, km
       integer  :: myidxy_y, myidxy_x, nprxy_x, iam
 
       logical  :: write_warning
+      logical  :: tol_exceeded
 
       real(r8), pointer :: coslon(:),sinlon(:)  ! Sine and cosine in longitude
 
@@ -230,36 +226,13 @@ contains
                         commid=grid%commxy_x, rel_diff=rel_diff)
          call t_stopf("d2a3dikj_reprosum")
 
-         ! check that "fast" reproducible sum is accurate enough. If not, calculate
-         ! using old method
+         ! Warn if the nonreproducible floating point check sum differs from the
+         ! integer vector sum by more than reprosum_diffmax. The integer vector sum is
+         ! exact, so the result is kept regardless.
          write_warning = .false.
          if (myidxy_x == 0) write_warning = .true.
-         if ( shr_reprosum_tolExceeded('d2a3dikj/South Pole', 2*km, write_warning, &
-              iulog, rel_diff) ) then
-            if ( shr_reprosum_recompute ) then
-               call t_startf("d2a3dikj_sumfix")
-               allocate( uva_tmp(im) )
-               do m = 1,2
-                  do k = 1,km
-                     if (rel_diff(1,k,m) > shr_reprosum_reldiffmax) then
-                        uva_tmp(:) = D0_0
-                        do i = ifirstxy,ilastxy
-                           uva_tmp(i) = uva(i,k,m)
-                        enddo
-#if defined(SPMD)
-                        call parcollective(grid%commxy_x,sumop,im,uva_tmp)
-#endif
-                        uvs(k,m) = D0_0
-                        do i = 1,im
-                           uvs(k,m) = uvs(k,m) + uva_tmp(i)
-                        enddo
-                     endif
-                  enddo
-               enddo
-               deallocate( uva_tmp )
-               call t_stopf("d2a3dikj_sumfix")
-            endif
-         endif
+         tol_exceeded = shr_reprosum_tolExceeded('d2a3dikj/South Pole', 2*km, write_warning, &
+              iulog, rel_diff)
 
 !$omp  parallel do private(i,k)
          do k = 1,km
@@ -303,36 +276,13 @@ contains
                         commid=grid%commxy_x, rel_diff=rel_diff)
          call t_stopf("d2a3dikj_reprosum")
 
-         ! check that "fast" reproducible sum is accurate enough. If not, calculate
-         ! using old method
+         ! Warn if the nonreproducible floating point check sum differs from the
+         ! integer vector sum by more than reprosum_diffmax. The integer vector sum is
+         ! exact, so the result is kept regardless.
          write_warning = .false.
          if (myidxy_x == 0) write_warning = .true.
-         if ( shr_reprosum_tolExceeded('d2a3dikj/Nouth Pole', 2*km, write_warning, &
-              iulog, rel_diff) ) then
-            if ( shr_reprosum_recompute ) then
-               call t_startf("d2a3dikj_sumfix")
-               allocate( uva_tmp(im) )
-               do m = 1,2
-                  do k = 1,km
-                     if (rel_diff(1,k,m) > shr_reprosum_reldiffmax) then
-                        uva_tmp(:) = D0_0
-                        do i = ifirstxy,ilastxy
-                           uva_tmp(i) = uva(i,k,m)
-                        enddo
-#if defined(SPMD)
-                        call parcollective(grid%commxy_x,sumop,im,uva_tmp)
-#endif
-                        uvn(k,m) = D0_0
-                        do i = 1,im
-                           uvn(k,m) = uvn(k,m) + uva_tmp(i)
-                        enddo
-                     endif
-                  enddo
-               enddo
-               deallocate( uva_tmp )
-               call t_stopf("d2a3dikj_sumfix")
-            endif
-         endif
+         tol_exceeded = shr_reprosum_tolExceeded('d2a3dikj/North Pole', 2*km, write_warning, &
+              iulog, rel_diff)
 
 !$omp  parallel do private(i,k)
          do k = 1,km
