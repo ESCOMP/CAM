@@ -25,7 +25,7 @@ List any changes to the defaults for the boundary datasets: N/A
 
 Describe any substantial timing or memory changes: N/A
 
-Code reviewed by: jimmielin
+Code reviewed by: jimmielin, peverwhee (atmos_phys)
 
 List all files eliminated: N/A
 
@@ -64,17 +64,23 @@ then copy the lines from the td.*.status files for the failed tests to the
 appropriate machine below.  All failed tests must be justified.
 
 derecho/intel/aux_cam:
+  SMS_D_Ln9_P1536x1.ne0CONUSne30x8_ne0CONUSne30x8_mt12.FCHIST.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+    FAIL SMS_D_Ln9_P1536x1.ne0CONUSne30x8_ne0CONUSne30x8_mt12.FCHIST.derecho_intel.cam-outfrq9s BASELINE /glade/campaign/cesm/community/amwg/cam_baselines/cam6_4_205_intel: ERROR BFAIL some baseline files were missing
+  - Not a real DIFF -- baseline files were missing since the run crashed in previous tags (intermittent), but this time it passed.
+  - Manually compared against latest available cam6_4_203 baselines and matched.
 
-derecho/nvhpc/aux_cam:
+derecho/nvhpc/aux_cam: All PASS
 
 izumi/nag/aux_cam:
+  FAIL ERC_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_nag.cam-outfrq3s_subcol COMPARE_base_rest
+  - pre-existing failure -- see https://github.com/ESCOMP/CAM/issues/1514
 
-izumi/gnu/aux_cam:
+izumi/gnu/aux_cam: All PASS
 
 CAM tag used for the baseline comparison tests if different than previous
-tag:
+tag: CONUS test used latest available tag, cam6_4_203.
 
-Summarize any changes to answers:
+Summarize any changes to answers: All B4B
 
 ===============================================================
 
