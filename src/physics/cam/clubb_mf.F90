@@ -1514,12 +1514,19 @@ module clubb_mf
                  end if
                  wn2 = max(wn2,mindnw**2._r8)
                  dnw(kn,i) = -1._r8*sqrt(wn2)
-
                else
+                 ! analytical taper in sub-cloud layer to
+                 ! avoid unphysical flux divergence near surface       
                  zsub = zm(ddbotm(i)+kdir)
                  wcb  = dnw(ddbotm(i)+kdir,i)
                  dnw(kn,i) = wcb - (wcb/(zsub**clubb_mf_ddexp))*(zsub - zm(kn))**clubb_mf_ddexp
-                 dnw(kn,i) = min(dnw(kn,i),-1._r8*mindnw)
+                 if (dnw(kn,i) >= -1._r8*mindnw) then
+                   ! sub-cloud profile has decayed to the velocity floor: the downdraft
+                   ! ends here. Levels below keep their zero initialization.
+                   dnw(kn,i) = 0._r8
+                   dna(kn,i) = 0._r8
+                   exit
+                 end if
                end if
 
              end do!k
@@ -1527,17 +1534,6 @@ module clubb_mf
            end if
 
          end do!i
-
-         ! this should be changed to only zero out above the downdraft (dnw<-mindw)
-         ! zero out downdraft fluxes for dnw == -mindnw
-         do i=1,clubb_mf_nup
-           do k=ksfcm, ktopm, kdir
-             if ( dnw(k,i) == -1._r8*mindnw ) then
-               dnw(k,i) = 0._r8
-               dna(k,i) = 0._r8
-             end if
-           end do
-         end do
 
        end if
        ! end computing downdrafts
