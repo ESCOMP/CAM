@@ -20,6 +20,7 @@ use phys_control,   only: phys_getopts
 use cam_logfile,    only: iulog
 use cam_snapshot_common, only: snapshot_type, cam_snapshot_deactivate, cam_snapshot_all_outfld, cam_snapshot_ptend_outfld
 use cam_snapshot_common, only: snapshot_type, cam_state_snapshot_init, cam_cnst_snapshot_init, cam_tend_snapshot_init
+use cam_snapshot_common, only: cam_grid_snapshot_init
 use cam_snapshot_common, only: cam_ptend_snapshot_init, cam_in_snapshot_init, cam_out_snapshot_init
 use cam_snapshot_common, only: cam_pbuf_snapshot_init, snapshot_addfld
 
@@ -64,6 +65,7 @@ subroutine cam_snapshot_init(cam_in_arr, cam_out_arr, pbuf, index)
    if (cam_snapshot_before_num <= 0 .and. cam_snapshot_after_num <= 0) return ! No snapshot files are being requested
 
    call cam_state_snapshot_init(cam_snapshot_before_num, cam_snapshot_after_num)
+   call cam_grid_snapshot_init(cam_snapshot_before_num, cam_snapshot_after_num)
    call cam_cnst_snapshot_init(cam_snapshot_before_num, cam_snapshot_after_num)
    call cam_tend_snapshot_init(cam_snapshot_before_num, cam_snapshot_after_num)
    call cam_ptend_snapshot_init(cam_snapshot_after_num)
