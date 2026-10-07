@@ -6,7 +6,7 @@ module cloud_rad_props
 use shr_kind_mod,     only: r8 => shr_kind_r8
 use ppgrid,           only: pcols, pver, pverp
 use physics_types,    only: physics_state
-use physics_buffer,   only: physics_buffer_desc, pbuf_get_index, pbuf_get_field, pbuf_old_tim_idx
+use physics_buffer,   only: physics_buffer_desc, pbuf_get_index, pbuf_get_field
 use constituents,     only: cnst_get_ind
 use radconstants,     only: nswbands, nlwbands, idx_sw_diag
 use rad_constituents, only: iceopticsfile, liqopticsfile

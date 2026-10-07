@@ -11,6 +11,8 @@ Goal:  To check if the newly-merged PR's commit message attempted to close an is
 
        Finally, this script also checks to see if the merged PR attempted
        to close other PRs, and does so if the merge was not to the repo's default branch.
+       Any PRs referenced this way (including PRs that are already closed or merged)
+       are also searched (recursively) for additional issues and PRs to close.
 
 Written by:  Jesse Nusbaumer <nusbaume@ucar.edu> - October, 2019
 """
@@ -23,7 +25,7 @@ import re
 import sys
 import argparse
 
-from github import Github
+from github import Github, GithubException
 
 #################
 #HELPER FUNCTIONS
@@ -66,6 +68,119 @@ def end_script(msg):
     print(f"\n{msg}\n")
     print("Issue closing check has completed successfully.")
     sys.exit(0)
+
+#++++++++++++++++++++++++++++++++++++
+#Function to add a list of referenced Github
+#numbers to the official PR search list
+#++++++++++++++++++++++++++++++++++++
+
+def add_closed_pulls(nums, cam_repo, checked_nums, searched_pulls, search_pulls):
+
+    """
+    Add any numbers that are closed PRs to the search list.
+
+    nums           -> list of Github issue/PR numbers to check
+    cam_repo       -> PyGithub repository object
+    checked_nums   -> set of numbers already checked (modified in place)
+    searched_pulls -> set of PR numbers already searched
+    search_pulls   -> list of PR numbers to search (modified in place)
+    """
+
+    for num in nums:
+
+        #Ignore issues/PRs that have already been checked:
+        if num in checked_nums or num in searched_pulls:
+            continue
+
+        #Add number to set of checked Github issue/PR numbers:
+        checked_nums.add(num)
+
+        try:
+            #The issue object is only a PR if it has "pull_request" data:
+            if cam_repo.get_issue(number=num).pull_request is not None:
+                search_pulls.append(num)
+        except GithubException:
+            #Number doesn't exist in repo (e.g. a typo), so ignore it:
+            print(f"Referenced number #{num} was not found in the repo, so it will be ignored.")
+
+#++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#Function to find issue and PR numbers marked for closing
+#++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+def find_close_numbers(pr_body, open_issues, open_pulls):
+
+    """
+    Searches the text of a pull request body for any of the GitHub
+    closing keywords, and returns three lists of the numbers that
+    immediately follow those keywords: the open issue numbers, the
+    open PR numbers, and all other (i.e. closed issue or PR) numbers.
+    """
+
+    #Initialize output lists:
+    close_issues = []
+    close_pulls = []
+    other_nums = []
+
+    #Keywords are:
+    #close, closes, closed
+    #fix, fixes, fixed
+    #resolve, resolves, resolved
+
+    #Create regex pattern to find keywords:
+    keyword_pattern = re.compile(r'(^|\s)close(\s|s\s|d\s)|(^|\s)fix(\s|es\s|ed\s)|(^|\s)resolve(\s|s\s|d\s)')
+
+    #Extract (lower case) Pull Request message
+    #(the body is "None" if the PR has no description):
+    pr_msg_lower = (pr_body or "").lower()
+
+    #create issue pattern ("the number symbol {#} + a number"),
+    #which ends with either a space, a comma, a period, or
+    #the end of the string itself:
+    issue_pattern = re.compile(r'#[0-9]+(\s|,|$)|.')
+
+    #Search text right after keywords for possible issue numbers:
+    for match in keyword_pattern.finditer(pr_msg_lower):
+
+        #create temporary string starting at end of match:
+        tmp_msg_str = pr_msg_lower[match.end():]
+
+        #Check if first word matches issue pattern:
+        if issue_pattern.match(tmp_msg_str) is not None:
+
+            #If so, then look for an issue number immediately following,
+            #skipping when there are no words to extract a number from:
+            tmp_msg_words = tmp_msg_str.split()
+            if not tmp_msg_words:
+                continue
+            first_word = tmp_msg_words[0]
+
+            #Extract issue number from first word:
+            try:
+                #First try assuming the string is just a number
+                issue_num = int(first_word[1:]) #ignore "#" symbol
+            except ValueError:
+                #If not, then ignore last letter:
+                try:
+                    issue_num = int(first_word[1:-1])
+                except ValueError:
+                    #If ignoring the first and last letter doesn't work,
+                    #then the match was likely a false positive,
+                    #so set the issue number to one that will never be found:
+                    issue_num = -9999
+
+            #Check if number is actually for a PR (as opposed to an issue):
+            if issue_num in open_pulls:
+                #Add PR number to "close pulls" list:
+                close_pulls.append(issue_num)
+            elif issue_num in open_issues:
+                #If in fact an issue, then add to "close issues" list:
+                close_issues.append(issue_num)
+            elif issue_num > 0:
+                #If neither, then it may be an already-closed PR, so
+                #add to "other numbers" list:
+                other_nums.append(issue_num)
+
+    return close_issues, close_pulls, other_nums
 
 #############
 #MAIN PROGRAM
@@ -199,78 +314,62 @@ def _main_prog():
     #Collect all open pull requests:
     open_pulls = [pr.number for pr in open_repo_pulls]
 
-    #+++++++++++++++++++++++++++++++++++++++++++++++++
-    #Check if one of the keywords exists in PR message
-    #+++++++++++++++++++++++++++++++++++++++++++++++++
+    #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    #Extract issue and PR numbers associated with keywords in the merged PR message
+    #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    #Keywords are:
-    #close, closes, closed
-    #fix, fixes, fixed
-    #resolve, resolves, resolved
+    close_issues, close_pulls, other_nums = find_close_numbers(merged_pull.body,
+                                                               open_issues, open_pulls)
 
-    #Create regex pattern to find keywords:
-    keyword_pattern = re.compile(r'(^|\s)close(\s|s\s|d\s)|(^|\s)fix(\s|es\s|ed\s)|(^|\s)resolve(\s|s\s|d\s)')
+    #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    #Recursively search all referenced PRs (open, closed, or merged) for
+    #additional issues and PRs to close
+    #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    #Extract (lower case) Pull Request message:
-    pr_msg_lower = merged_pull.body.lower()
+    #Keep track of PRs that have already been searched,
+    #in order to prevent infinite loops from circular references:
+    searched_pulls = {pr_num}
 
-    #search for at least one keyword:
-    word_matches = []
-    if keyword_pattern.search(pr_msg_lower) is not None:
-        #If at least one keyword is found, then determine location of every keyword instance:
-        word_matches = keyword_pattern.finditer(pr_msg_lower)
-    else:
-        endmsg = "Pull request was merged without using any of the keywords.  Thus there are no issues to close."
-        end_script(endmsg)
+    #Keep track of numbers that have already been checked
+    #for whether they are closed PRs, to avoid repeated API calls:
+    checked_nums = set()
 
-    #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    #Extract issue and PR numbers associated with found keywords in merged PR message
-    #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    #Create list of PRs to search, starting with the open PRs being closed.
+    #Note that this list grows as new PRs are found, so newly-added PRs
+    #will also be searched by the loop below:
+    search_pulls = list(close_pulls)
 
-    #create issue pattern ("the number symbol {#} + a number"),
-    #which ends with either a space, a comma, a period, or
-    #the end of the string itself:
-    issue_pattern = re.compile(r'#[0-9]+(\s|,|$)|.')
+    #Check if non-open Github numbers are actually PRs:
+    add_closed_pulls(other_nums, cam_repo, checked_nums, searched_pulls, search_pulls)
 
-    #Create new "close" issues list:
-    close_issues = []
+    for pull_num in search_pulls:
 
-    #Create new "closed" PR list:
-    close_pulls = []
+        #Skip PRs that have already been searched:
+        if pull_num in searched_pulls:
+            continue
+        searched_pulls.add(pull_num)
 
-    #Search text right after keywords for possible issue numbers:
-    for match in word_matches:
+        #Extract Pull request object:
+        ref_pull = cam_repo.get_pull(number=pull_num)
 
-        #create temporary string starting at end of match:
-        tmp_msg_str = pr_msg_lower[match.end():]
+        #Search referenced PR message for keywords:
+        ref_issues, ref_pulls, ref_others = find_close_numbers(ref_pull.body,
+                                                               open_issues, open_pulls)
 
-        #Check if first word matches issue pattern:
-        if issue_pattern.match(tmp_msg_str) is not None:
+        #Add any newly-found issues and open PRs to the "close" lists:
+        close_issues.extend(issue for issue in ref_issues if issue not in close_issues)
+        close_pulls.extend(pull for pull in ref_pulls if pull not in close_pulls)
 
-            #If so, then look for an issue number immediately following
-            first_word = tmp_msg_str.split()[0]
+        #Add newly-found open and closed PRs to the search list:
+        search_pulls.extend(ref_pulls)
+        add_closed_pulls(ref_others, cam_repo, checked_nums, searched_pulls, search_pulls)
 
-            #Extract issue number from first word:
-            try:
-                #First try assuming the string is just a number
-                issue_num = int(first_word[1:]) #ignore "#" symbol
-            except ValueError:
-                #If not, then ignore last letter:
-                try:
-                    issue_num = int(first_word[1:-1])
-                except ValueError:
-                    #If ignoring the first and last letter doesn't work,
-                    #then the match was likely a false positive,
-                    #so set the issue number to one that will never be found:
-                    issue_num = -9999
+    #Remove the merged PR itself, in case it was referenced by one of the other PRs:
+    close_pulls = [pull for pull in close_pulls if pull != pr_num]
 
-            #Check if number is actually for a PR (as opposed to an issue):
-            if issue_num in open_pulls:
-                #Add PR number to "close pulls" list:
-                close_pulls.append(issue_num)
-            elif issue_num in open_issues:
-                #If in fact an issue, then add to "close issues" list:
-                close_issues.append(issue_num)
+    #Remove any duplicate issue and PR numbers, while preserving order:
+    close_issues = list(dict.fromkeys(close_issues))
+    close_pulls = list(dict.fromkeys(close_pulls))
 
     #If no issue numbers are present after any of the keywords, then exit script:
     if not close_issues and not close_pulls:

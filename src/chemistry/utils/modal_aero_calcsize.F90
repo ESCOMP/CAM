@@ -8,7 +8,7 @@ use physconst,        only: pi, rhoh2o, gravit
 
 use ppgrid,           only: pcols, pver
 use physics_types,    only: physics_state, physics_ptend
-use physics_buffer,   only: physics_buffer_desc, pbuf_get_index, pbuf_old_tim_idx, pbuf_get_field
+use physics_buffer,   only: physics_buffer_desc, pbuf_get_index, pbuf_get_field
 
 use phys_control,     only: phys_getopts
 use aerosol_properties_mod, only: aerosol_properties
