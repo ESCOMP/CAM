@@ -167,8 +167,8 @@ module clubb_intr
                                       ! This is mainly for testing, it should not significantly change answers
 
   logical            :: lq(pcnst)
-  logical            :: do_rainturb
-  logical            :: clubb_do_adv
+  logical            :: do_rainturb = .false.
+  logical            :: clubb_do_adv = .false.
   logical            :: clubb_do_liqsupersat = .false.
   logical            :: clubb_do_energyfix   = .true.
   integer            :: edsclr_dim       ! Number of scalars to transport in CLUBB
@@ -3579,7 +3579,7 @@ end subroutine clubb_init_cnst
         !  Note that some of the moments below can be positive or negative.
         !    Remove a constant that was added to prevent dynamics from clipping
         !    them to prevent dynamics from making them positive.
-        do k = 1, nzm_clubb
+        do k = 1, nzt_clubb
           do i = 1, ncol
             k_cam = top_lev - 1 + k
             rtpthlp_pbuf(i,k) = state_loc%q(i,k_cam,ixrtpthlp) - ( rtpthlp_const * apply_const )

@@ -1626,7 +1626,7 @@ contains
        ifld = pbuf_get_index('ICWMRDP')
        call pbuf_get_field(pbuf, ifld, dp_icwmr)
        ifld = pbuf_get_index('CONCLD')
-       call pbuf_get_field(pbuf, ifld, concld, start=(/1,1,itim_old/), kount=(/pcols,pver,1/))
+       call pbuf_get_field(pbuf, ifld, concld, start=(/1,1/), kount=(/pcols,pver/))
     end if
 
     if (dlfzm_idx > 0) then
