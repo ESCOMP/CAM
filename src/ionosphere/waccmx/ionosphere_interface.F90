@@ -393,8 +393,8 @@ module ionosphere_interface
       call addfld ('Z3GMI',      (/ 'lev' /), 'I', 'm',                       &
            'Geometric height (Interfaces)', gridname='physgrid')
 
-      call addfld ('AZIGM1', horiz_only, 'I', 'S','Hall conductance before dynamo' ,gridname='gmag_grid')
-      call addfld ('AZIGM2', horiz_only, 'I', 'S','Pedersen conductance before dynamo' ,gridname='gmag_grid')
+      call addfld ('AZIGM1', horiz_only, 'I', 'S','Pedersen conductance before dynamo' ,gridname='gmag_grid')
+      call addfld ('AZIGM2', horiz_only, 'I', 'S','Hall conductance before dynamo' ,gridname='gmag_grid')
 
    end subroutine ionosphere_init
 
