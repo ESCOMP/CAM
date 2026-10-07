@@ -1516,7 +1516,7 @@ module clubb_mf
                  dnw(kn,i) = -1._r8*sqrt(wn2)
                else
                  ! analytical taper in sub-cloud layer to
-                 ! avoid unphysical flux divergence near surface       
+                 ! avoid unphysical flux divergence near surface
                  zsub = zm(ddbotm(i)+kdir)
                  wcb  = dnw(ddbotm(i)+kdir,i)
                  dnw(kn,i) = wcb - (wcb/(zsub**clubb_mf_ddexp))*(zsub - zm(kn))**clubb_mf_ddexp
@@ -2162,8 +2162,7 @@ module clubb_mf
                                                k
 
      ! upper search bound (m) for locating the TKE-gradient or heat-flux-
-     ! gradient based L0 diagnostic (clubb_mf_Lopt 1/2) -- currently written
-     ! as 20000._r8 in one branch and 20000_r8 (no decimal) in the other
+     ! gradient based L0 diagnostic
      real(r8), parameter :: Lscale_search_top = 20000._r8
      !
      ! TKE vertical-gradient threshold (clubb_mf_Lopt==1) marking the
@@ -2457,6 +2456,7 @@ module clubb_mf
   ! Implements Poisson Transformed Rejection with Squeeze (PTRS)
   ! from W. Hormann Insurance: Mathematics and Economics 12, 39-45 (1993)
   ! By Jake Reschke
+  ! DOI: 10.1016/0167-6687(93)90997-4
   !**********************************************************************
   use shr_RandNum_mod, only: ShrKissRandGen
 
