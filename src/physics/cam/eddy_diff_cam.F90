@@ -234,7 +234,6 @@ subroutine eddy_diff_tend(state, pbuf, cam_in, &
   use cam_history,          only: outfld
 
   use constituents,              only: pcnst
-  use ccpp_constituent_prop_mod, only: ccpp_const_props
   use beljaars_drag_cam,         only: do_beljaars
 
   ! CCPPized subroutines
@@ -451,7 +450,6 @@ subroutine eddy_diff_tend(state, pbuf, cam_in, &
        ncvmax          = ncvmax,                        & ! max # of CLs.
        iulog           = iulog,                         &
        dt              = ztodt,                         &
-       const_props     = ccpp_const_props,              &
        do_iss          = do_iss,                        &
        am_correction   = fv_am_correction,              &
        do_beljaars     = do_beljaars,                   &

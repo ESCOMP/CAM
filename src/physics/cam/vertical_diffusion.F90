@@ -1022,7 +1022,6 @@ subroutine vertical_diffusion_tend( &
           ncol              = ncol,                       &
           pverp             = pverp,                      &
           pcnst             = pcnst,                      &
-          const_props       = ccpp_const_props,           &
           apply_nonwv_cflx  = (.not. cam_physpkg_is("cam7")), & ! does vertical diffusion apply ANY fluxes?
           cflx_from_coupler = cam_in%cflx(:ncol,:pcnst),  &
           ! below output
@@ -1096,7 +1095,6 @@ subroutine vertical_diffusion_tend( &
            ncol               = ncol, &
            pver               = pver, &
            pcnst              = pcnst, &
-           const_props        = ccpp_const_props,          &
            zvir               = zvir, &
            cpair              = cpair, &
            gravit             = gravit, &
@@ -1164,7 +1162,6 @@ subroutine vertical_diffusion_tend( &
           ncol               = ncol, &
           pver               = pver, &
           pcnst              = pcnst, &
-          const_props        = ccpp_const_props,          &
           zvir               = zvir, &
           cpair              = cpair, &
           gravit             = gravit, &
@@ -1310,7 +1307,6 @@ subroutine vertical_diffusion_tend( &
            ncol               = ncol, &
            pver               = pver, &
            pcnst              = pcnst, &
-           const_props        = ccpp_const_props,          &
            zvir               = zvir, &
            cpair              = cpair, &
            gravit             = gravit, &
@@ -1374,7 +1370,6 @@ subroutine vertical_diffusion_tend( &
            ncol               = ncol, &
            pver               = pver, &
            pcnst              = pcnst, &
-           const_props        = ccpp_const_props,          &
            zvir               = zvir, &
            cpair              = cpair, &
            gravit             = gravit, &
