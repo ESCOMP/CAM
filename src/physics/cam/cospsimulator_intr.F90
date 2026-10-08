@@ -911,9 +911,9 @@ CONTAINS
             'ATLID Cloud Fraction (355 nm)', flag_xyfill=.true., fill_value=R_UNDEF)
        call addfld('CFAD_SR355_ATLID', (/'cosp_355sr','cosp_ht   '/), 'A', 'fraction', &
             'ATLID Scattering Ratio CFAD (355 nm)', flag_xyfill=.true., fill_value=R_UNDEF)
-       call addfld('BETAMOL_ATLID', (/'cosp_ht'/), 'A', 'm-1 sr-1', &
+       call addfld('BETAMOL_ATLID', (/'trop_pref'/), 'A', 'm-1 sr-1', &
             'ATLID Molecular Backscatter (355 nm)', flag_xyfill=.true., fill_value=R_UNDEF)
-       call addfld('BETATOT_ATLID', (/'cosp_scol','cosp_ht  '/), 'I', 'm-1 sr-1', &
+       call addfld('BETATOT_ATLID', (/'cosp_scol','trop_pref'/), 'I', 'm-1 sr-1', &
             'ATLID Total Backscatter (355 nm) in each Subcolumn', flag_xyfill=.true., fill_value=R_UNDEF)
 
        call add_default('CLDLOW_ATLID',cosp_histfile_num,' ')
@@ -2310,7 +2310,7 @@ CONTAINS
     do k = 1, nlay
        kk = ktop + k -1
        do i = 1, ncol
-          if (cld(i,k) > 0._r8) then
+          if (cld(i,kk) > 0._r8) then
              mr_lsliq(i,k) = totg_liq(i,kk)
              mr_lsice(i,k) = totg_ice(i,kk)
           end if
@@ -2384,11 +2384,11 @@ CONTAINS
     cospstateIN%lon             = state%lon(:ncol)*rad2deg
     cospstateIN%at              = state%t(:ncol,ktop:pver)
     cospstateIN%qv              = q(:ncol,ktop:pver)
-    cospstateIN%tca             = cld(1:ncol,1:pver)
+    cospstateIN%tca             = cld(:ncol,ktop:pver)
     cospstateIN%o3              = o3(:ncol,ktop:pver)
-    cospstateIN%co2             = co2(1:ncol,1:pver)
-    cospstateIN%ch4             = ch4(1:ncol,1:pver)
-    cospstateIN%n2o             = n2o(1:ncol,1:pver)
+    cospstateIN%co2             = co2(:ncol,ktop:pver)
+    cospstateIN%ch4             = ch4(:ncol,ktop:pver)
+    cospstateIN%n2o             = n2o(:ncol,ktop:pver)
     cospstateIN%co              = 0._r8 ! CO not radiatively active.
     ! For winds take the total 10m wind from cam_in and divide it such that the quadrature sum is the same.
     cospstateIN%u_sfc           = cam_in%u10(1:ncol) * (2**(-0.5_r8))
@@ -2419,23 +2419,23 @@ CONTAINS
     ! We get the SZA by taking the arcosine of cos(sza), but this seems to be the variable the radiation scheme can pass.
     cospstateIN%sza(1:ncol)                    = acos(coszrs(1:ncol)) * 180.0_r8 / acos(-1.0_r8)
 
-    cospstateIN%cloudIce(1:ncol,1:pver) = totg_ice(1:ncol,1:pver)  ! gridcell ice water mixing ratio
-    cospstateIN%cloudLiq(1:ncol,1:pver) = totg_liq(1:ncol,1:pver)  ! gridcell liquid water mixing ratio
+    cospstateIN%cloudIce(1:ncol,1:nlay) = totg_ice(1:ncol,ktop:pver)  ! gridcell ice water mixing ratio
+    cospstateIN%cloudLiq(1:ncol,1:nlay) = totg_liq(1:ncol,ktop:pver)  ! gridcell liquid water mixing ratio
 
     ! Combine large-scale and convective cloud liquid effective radii into effective diameters for RTTOV
     ! Reff(Npoints,Nlevels,N_HYDRO)
     ! The weighted Reff is given by: Reff_net = (M_1 + M_2) / (M_1/Reff_1 + M_2/Reff_2)
     ! Multiply by 2 to go from radius to diameter, multiply 1e6 to go from meters to microns.
     cospstateIN%DeffLiq(:,:) = 0._r8 ! Initialize for zero everywhere.
-    where ((mr_lsliq(1:ncol,1:pver) > 0._r8) .and. (mr_ccliq(1:ncol,1:pver) > 0._r8))
-        cospstateIN%DeffLiq(:,:) = 2._r8 * 1.0e6_r8 * (mr_lsliq(1:ncol,1:pver) + mr_ccliq(1:ncol,1:pver)) / &
-        (mr_lsliq(1:ncol,1:pver) / reff_cosp(1:ncol,1:pver,I_LSCLIQ) + mr_ccliq(1:ncol,1:pver) / reff_cosp(1:ncol,1:pver,I_CVCLIQ))
-    else where (mr_lsliq(1:ncol,1:pver) > 0._r8)
-        cospstateIN%DeffLiq(:,:) = 2._r8 * 1.0e6_r8 * reff_cosp(1:ncol,1:pver,I_LSCLIQ)
-    else where (mr_ccliq(1:ncol,1:pver) > 0._r8)
-        cospstateIN%DeffLiq(:,:) = 2._r8 * 1.0e6_r8 * reff_cosp(1:ncol,1:pver,I_CVCLIQ)
+    where ((mr_lsliq(1:ncol,1:nlay) > 0._r8) .and. (mr_ccliq(1:ncol,1:nlay) > 0._r8))
+        cospstateIN%DeffLiq(:,:) = 2._r8 * 1.0e6_r8 * (mr_lsliq(1:ncol,1:nlay) + mr_ccliq(1:ncol,1:nlay)) / &
+        (mr_lsliq(1:ncol,1:nlay) / reff_cosp(1:ncol,1:nlay,I_LSCLIQ) + mr_ccliq(1:ncol,1:nlay) / reff_cosp(1:ncol,1:nlay,I_CVCLIQ))
+    else where (mr_lsliq(1:ncol,1:nlay) > 0._r8)
+        cospstateIN%DeffLiq(:,:) = 2._r8 * 1.0e6_r8 * reff_cosp(1:ncol,1:nlay,I_LSCLIQ)
+    else where (mr_ccliq(1:ncol,1:nlay) > 0._r8)
+        cospstateIN%DeffLiq(:,:) = 2._r8 * 1.0e6_r8 * reff_cosp(1:ncol,1:nlay,I_CVCLIQ)
     end where
-    cospstateIN%DeffIce(1:ncol,1:pver) = dei(1:ncol,1:pver)
+    cospstateIN%DeffIce(1:ncol,1:nlay) = dei(1:ncol,ktop:pver)
 
     call t_stopf("construct_cospstateIN")
 
@@ -4087,7 +4087,8 @@ CONTAINS
           x%atlid_beta_tot(Npoints,Ncolumns,Nlevels),    &
           x%atlid_cfad_sr(Npoints,SR_BINS,Nlvgrid),      &
           x%atlid_lidarcld(Npoints,Nlvgrid),             &
-          x%atlid_cldlayer(Npoints,LIDAR_NCAT))
+          x%atlid_cldlayer(Npoints,LIDAR_NCAT), stat=istat)
+       call handle_allocate_error(istat, sub, 'atlid*')
     endif
 
     ! RTTOV - Allocate output for multiple instruments
@@ -4293,6 +4294,26 @@ CONTAINS
      if (associated(y%lidar_only_freq_cloud))     then
         deallocate(y%lidar_only_freq_cloud)
         nullify(y%lidar_only_freq_cloud)
+     endif
+     if (associated(y%atlid_beta_mol))            then
+        deallocate(y%atlid_beta_mol)
+        nullify(y%atlid_beta_mol)
+     endif
+     if (associated(y%atlid_beta_tot))            then
+        deallocate(y%atlid_beta_tot)
+        nullify(y%atlid_beta_tot)
+     endif
+     if (associated(y%atlid_cfad_sr))             then
+        deallocate(y%atlid_cfad_sr)
+        nullify(y%atlid_cfad_sr)
+     endif
+     if (associated(y%atlid_lidarcld))            then
+        deallocate(y%atlid_lidarcld)
+        nullify(y%atlid_lidarcld)
+     endif
+     if (associated(y%atlid_cldlayer))            then
+        deallocate(y%atlid_cldlayer)
+        nullify(y%atlid_cldlayer)
      endif
      if (associated(y%isccp_totalcldarea))        then
         deallocate(y%isccp_totalcldarea)
