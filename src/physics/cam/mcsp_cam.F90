@@ -210,7 +210,7 @@ subroutine mcsp_cam_tend(state, ptend, ztodt, pbuf)
    real(r8) :: conv_depth(pcols)            ! pressure depth of deep convection [Pa]
    real(r8) :: mcsp_dt_max(pcols)           ! heating amplitude [K/s]
 
-   character(len=40)  :: scheme_name
+   character(len=40)  :: scheme_name           ! set by the scheme for the CCPP energy check; unused here
    character(len=512) :: errmsg
    integer            :: errflg
    !-----------------------------------------------------------------------------

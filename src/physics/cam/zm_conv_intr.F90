@@ -363,8 +363,8 @@ subroutine zm_conv_init(pref_edge)
     fracis_idx      = pbuf_get_index('FRACIS')
 
     ! Present only when a consumer (MCSP) registered them
-    ttend_dp_core_idx = pbuf_get_index('TTEND_DP_CORE', errflg)
-    qtend_dp_core_idx = pbuf_get_index('QTEND_DP_CORE', errflg)
+    ttend_dp_core_idx = pbuf_get_index('TTEND_DP_CORE', errcode=errflg)
+    qtend_dp_core_idx = pbuf_get_index('QTEND_DP_CORE', errcode=errflg)
 
 end subroutine zm_conv_init
 !=========================================================================================
