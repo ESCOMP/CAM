@@ -44,7 +44,6 @@ module mo_usrrxt
   integer :: tag_C3H6_OH_ndx
   integer :: tag_CH3CO3_NO2_ndx
 
-!lke-TS1
   integer :: usr_PBZNIT_M_ndx
   integer :: tag_ACBZO2_NO2_ndx
   integer :: usr_ISOPNITA_aer_ndx
@@ -55,7 +54,7 @@ module mo_usrrxt
   integer :: usr_NTERPOOH_aer_ndx
   integer :: usr_NC4CHO_aer_ndx
   integer :: usr_NC4CH2OH_aer_ndx
-!TS2
+!T2
  integer :: usr_ISOPZD1O2_ndx
  integer :: usr_ISOPZD4O2_ndx
  integer :: usr_ISOPFDN_aer_ndx
@@ -125,7 +124,41 @@ module mo_usrrxt
  integer :: usr_TERPHFN_aer_ndx
  integer :: usr_TERPDHDP_aer_ndx
  integer :: usr_TERPACID_aer_ndx
-!
+!T3,T6
+  integer :: usr_FURPAN_M_ndx
+  integer :: usr_C2H5O2_NOa_ndx
+  integer :: usr_C2H5O2_NOn_ndx
+  integer :: usr_NC3H7O2_NOa_ndx
+  integer :: usr_NC3H7O2_NOn_ndx
+  integer :: usr_IC3H7O2_NOa_ndx
+  integer :: usr_IC3H7O2_NOn_ndx
+  integer :: usr_NBUPO2_NOa_ndx
+  integer :: usr_NBUPO2_NOn_ndx
+  integer :: usr_NBUO2_NOa_ndx
+  integer :: usr_NBUO2_NOn_ndx
+  integer :: usr_TBUO2_NOa_ndx
+  integer :: usr_TBUO2_NOn_ndx
+  integer :: usr_NBUPOHO2_NOa_ndx
+  integer :: usr_NBUPOHO2_NOn_ndx
+  integer :: usr_NPENTO2A_NOa_ndx
+  integer :: usr_NPENTO2A_NOn_ndx
+  integer :: usr_NPENTO2B_NOa_ndx
+  integer :: usr_NPENTO2B_NOn_ndx
+  integer :: usr_IPENTO2A_NOa_ndx
+  integer :: usr_IPENTO2A_NOn_ndx
+  integer :: usr_IPENTO2B_NOa_ndx
+  integer :: usr_IPENTO2B_NOn_ndx
+  integer :: usr_C6ALKO2_NOa_ndx
+  integer :: usr_C6ALKO2_NOn_ndx
+  integer :: usr_C6ALKOHO2_NOa_ndx
+  integer :: usr_C6ALKOHO2_NOn_ndx
+  integer :: tag_C2H5CO3_NO2_ndx
+  integer :: usr_PPN_M_ndx
+  integer :: usr_NBUO_ndx
+  integer :: usr_NPENTOA_ndx
+  integer :: usr_IPENTOB_ndx
+  integer :: usr_C6ALKOHO2_ndx
+!XNOx
   integer :: usr_OA_O2_NDX
   integer :: usr_XNO2NO3_M_ndx
   integer :: usr_NO2XNO3_M_ndx
@@ -183,7 +216,6 @@ module mo_usrrxt
   integer, parameter :: num_strat_tau = 22
   integer :: usr_strat_tau_ndx(num_strat_tau)
 !
-!lke++
   integer :: usr_COhc_OH_ndx
   integer :: usr_COme_OH_ndx
   integer :: usr_CO01_OH_ndx
@@ -228,7 +260,6 @@ module mo_usrrxt
   integer :: usr_CO40_OH_ndx
   integer :: usr_CO41_OH_ndx
   integer :: usr_CO42_OH_ndx
-!lke--
 
 ! ================================================
 ! Halogen recycling on seasalts
@@ -360,14 +391,14 @@ contains
     usr_DMS_OH_ndx       = get_rxt_ndx( 'usr_DMS_OH' )
     usr_HO2_aer_ndx      = get_rxt_ndx( 'usr_HO2_aer' )
     usr_GLYOXAL_aer_ndx  = get_rxt_ndx( 'usr_GLYOXAL_aer' )
- !
+
     tag_NO2_NO3_ndx      = get_rxt_ndx( 'tag_NO2_NO3' )
     tag_NO2_OH_ndx       = get_rxt_ndx( 'tag_NO2_OH' )
     tag_NO2_HO2_ndx      = get_rxt_ndx( 'tag_NO2_HO2' )
     tag_C2H4_OH_ndx      = get_rxt_ndx( 'tag_C2H4_OH' )
     tag_C3H6_OH_ndx      = get_rxt_ndx( 'tag_C3H6_OH' )
     tag_CH3CO3_NO2_ndx   = get_rxt_ndx( 'tag_CH3CO3_NO2' )
-!lke-TS1
+
     usr_PBZNIT_M_ndx     = get_rxt_ndx( 'usr_PBZNIT_M' )
     tag_ACBZO2_NO2_ndx   = get_rxt_ndx( 'tag_ACBZO2_NO2' )
     usr_ISOPNITA_aer_ndx = get_rxt_ndx( 'usr_ISOPNITA_aer' )
@@ -378,7 +409,7 @@ contains
     usr_NTERPOOH_aer_ndx = get_rxt_ndx( 'usr_NTERPOOH_aer' )
     usr_NC4CHO_aer_ndx   = get_rxt_ndx( 'usr_NC4CHO_aer' )
     usr_NC4CH2OH_aer_ndx = get_rxt_ndx( 'usr_NC4CH2OH_aer' )
-!TS2
+!T2
     usr_ISOPZD1O2_ndx        = get_rxt_ndx( 'usr_ISOPZD1O2' )
     usr_ISOPZD4O2_ndx        = get_rxt_ndx( 'usr_ISOPZD4O2' )
     usr_ISOPFDN_aer_ndx      = get_rxt_ndx( 'usr_ISOPFDN_aer' )
@@ -447,9 +478,44 @@ contains
     usr_TERPHFN_aer_ndx        = get_rxt_ndx( 'usr_TERPHFN_aer' )
     usr_TERPDHDP_aer_ndx        = get_rxt_ndx( 'usr_TERPDHDP_aer' )
     usr_TERPACID_aer_ndx        = get_rxt_ndx( 'usr_TERPACID_aer' )
- !
- ! additional reactions for O3A/XNO
- !
+!T3,T6
+    usr_FURPAN_M_ndx     = get_rxt_ndx( 'usr_FURPAN_M' )
+    usr_C2H5O2_NOa_ndx     = get_rxt_ndx( 'usr_C2H5O2_NOa' )
+    usr_C2H5O2_NOn_ndx     = get_rxt_ndx( 'usr_C2H5O2_NOn' )
+    usr_NC3H7O2_NOa_ndx    = get_rxt_ndx( 'usr_NC3H7O2_NOa' )
+    usr_NC3H7O2_NOn_ndx    = get_rxt_ndx( 'usr_NC3H7O2_NOn' )
+    usr_IC3H7O2_NOa_ndx    = get_rxt_ndx( 'usr_IC3H7O2_NOa' )
+    usr_IC3H7O2_NOn_ndx    = get_rxt_ndx( 'usr_IC3H7O2_NOn' )
+    usr_NBUPO2_NOa_ndx     = get_rxt_ndx( 'usr_NBUPO2_NOa' )
+    usr_NBUPO2_NOn_ndx     = get_rxt_ndx( 'usr_NBUPO2_NOn' )
+    usr_NBUO2_NOa_ndx      = get_rxt_ndx( 'usr_NBUO2_NOa' )
+    usr_NBUO2_NOn_ndx      = get_rxt_ndx( 'usr_NBUO2_NOn' )
+    usr_TBUO2_NOa_ndx      = get_rxt_ndx( 'usr_TBUO2_NOa' )
+    usr_TBUO2_NOn_ndx      = get_rxt_ndx( 'usr_TBUO2_NOn' )
+    usr_NBUPOHO2_NOa_ndx   = get_rxt_ndx( 'usr_NBUPOHO2_NOa' )
+    usr_NBUPOHO2_NOn_ndx   = get_rxt_ndx( 'usr_NBUPOHO2_NOn' )
+    usr_NPENTO2A_NOa_ndx   = get_rxt_ndx( 'usr_NPENTO2A_NOa' )
+    usr_NPENTO2A_NOn_ndx   = get_rxt_ndx( 'usr_NPENTO2A_NOn' )
+    usr_NPENTO2B_NOa_ndx   = get_rxt_ndx( 'usr_NPENTO2B_NOa' )
+    usr_NPENTO2B_NOn_ndx   = get_rxt_ndx( 'usr_NPENTO2B_NOn' )
+    usr_IPENTO2A_NOa_ndx   = get_rxt_ndx( 'usr_IPENTO2A_NOa' )
+    usr_IPENTO2A_NOn_ndx   = get_rxt_ndx( 'usr_IPENTO2A_NOn' )
+    usr_IPENTO2B_NOa_ndx   = get_rxt_ndx( 'usr_IPENTO2B_NOa' )
+    usr_IPENTO2B_NOn_ndx   = get_rxt_ndx( 'usr_IPENTO2B_NOn' )
+    usr_C6ALKO2_NOa_ndx    = get_rxt_ndx( 'usr_C6ALKO2_NOa' )
+    usr_C6ALKO2_NOn_ndx    = get_rxt_ndx( 'usr_C6ALKO2_NOn' )
+    usr_C6ALKOHO2_NOa_ndx  = get_rxt_ndx( 'usr_C6ALKOHO2_NOa' )
+    usr_C6ALKOHO2_NOn_ndx  = get_rxt_ndx( 'usr_C6ALKOHO2_NOn' )
+    tag_C2H5CO3_NO2_ndx    = get_rxt_ndx( 'tag_C2H5CO3_NO2' )
+    usr_PPN_M_ndx          = get_rxt_ndx( 'usr_PPN_M' )
+    usr_NBUO_ndx           = get_rxt_ndx( 'usr_NBUO' )
+    usr_NPENTOA_ndx        = get_rxt_ndx( 'usr_NPENTOA' )
+    usr_IPENTOB_ndx        = get_rxt_ndx( 'usr_IPENTOB' )
+    usr_C6ALKOHO2_ndx      = get_rxt_ndx( 'usr_C6ALKOHO2' )
+
+!
+! additional reactions for O3A/XNO
+!
     usr_OA_O2_ndx        = get_rxt_ndx( 'usr_OA_O2' )
     usr_XNO2NO3_M_ndx    = get_rxt_ndx( 'usr_XNO2NO3_M' )
     usr_NO2XNO3_M_ndx    = get_rxt_ndx( 'usr_NO2XNO3_M' )
@@ -689,9 +755,7 @@ contains
     aq_so2_h2o2_ndx  = get_rxt_ndx( 'aq_so2_h2o2' )
     aq_so2_o3_ndx  = get_rxt_ndx( 'aq_so2_o3' )
 
-!lke++
 ! CO tags
-!
     usr_COhc_OH_ndx      = get_rxt_ndx( 'usr_COhc_OH' )
     usr_COme_OH_ndx      = get_rxt_ndx( 'usr_COme_OH' )
     usr_CO01_OH_ndx      = get_rxt_ndx( 'usr_CO01_OH' )
@@ -736,7 +800,6 @@ contains
     usr_CO40_OH_ndx      = get_rxt_ndx( 'usr_CO40_OH' )
     usr_CO41_OH_ndx      = get_rxt_ndx( 'usr_CO41_OH' )
     usr_CO42_OH_ndx      = get_rxt_ndx( 'usr_CO42_OH' )
-!lke--
 
     if (masterproc) then
        write(iulog,*) ' '
@@ -764,7 +827,14 @@ contains
                             ,usr_TERPHFN_aer_ndx,usr_TERPDHDP_aer_ndx,usr_TERPACID_aer_ndx,tag_TERPACO3_NO2_ndx &
                             ,usr_TERPAPAN_M_ndx,tag_TERPA3CO3_NO2_ndx, usr_TERPA3PAN_M_ndx,usr_ICHE_aer_ndx,usr_ISOPFNC_aer_ndx &
                             ,usr_ISOPFDNC_aer_ndx                                                     &
-                            ,usr_IO_IO_a_ndx, usr_IO_IO_b_ndx, usr_IO_OIO_ndx, usr_OIO_OIO_ndx        &
+                            ,usr_C2H5O2_NOa_ndx, usr_C2H5O2_NOn_ndx, usr_NC3H7O2_NOa_ndx, usr_NC3H7O2_NOn_ndx &
+                            ,usr_IC3H7O2_NOa_ndx, usr_IC3H7O2_NOn_ndx, usr_NBUPO2_NOa_ndx, usr_NBUPO2_NOn_ndx, usr_NBUO2_NOa_ndx &
+                            ,usr_NBUO2_NOn_ndx, usr_TBUO2_NOa_ndx, usr_TBUO2_NOn_ndx, usr_NBUPOHO2_NOa_ndx, usr_NBUPOHO2_NOn_ndx &
+                            ,usr_NPENTO2A_NOa_ndx, usr_NPENTO2A_NOn_ndx, usr_NPENTO2B_NOa_ndx, usr_NPENTO2B_NOn_ndx &
+                            ,usr_IPENTO2A_NOa_ndx, usr_IPENTO2B_NOa_ndx, usr_C6ALKO2_NOa_ndx, usr_C6ALKO2_NOn_ndx &
+                            ,usr_C6ALKOHO2_NOa_ndx, usr_C6ALKOHO2_NOn_ndx, tag_C2H5CO3_NO2_ndx, usr_PPN_M_ndx &
+                            ,usr_NBUO_ndx, usr_NPENTOA_ndx, usr_IPENTOB_ndx, usr_C6ALKOHO2_ndx, usr_FURPAN_M_ndx &
+			    ,usr_IO_IO_a_ndx, usr_IO_IO_b_ndx, usr_IO_OIO_ndx, usr_OIO_OIO_ndx        &
                             ,usr_HOI_NO3_ndx                                                          &
                             ,usr_I2O2_a_ndx,  usr_I2O2_b_ndx,  usr_I2O4_ndx,   usr_IONO2_ndx          &
                             ,id_hocl,id_hcl,id_hbr,id_hi,id_hobr,id_hoi,id_clono2,id_brono2,id_iono2  &
@@ -858,39 +928,39 @@ contains
     real(r8), parameter :: gamma_no2  = 8.0e-6_r8       ! Liu et al., Environ.Sci.&Tech, 53, 3517, 2019 doi:10.1021/acs.est.8b06367
     real(r8), parameter :: gamma_no3  = 0.002_r8        ! JPL19
     real(r8), parameter :: gamma_glyoxal  = 2.0e-4_r8   !  Washenfelder et al, JGR, 2011
-!TS1 species
+!T1 species
     real(r8), parameter :: gamma_isopnita  = 0.005_r8        ! from Fisher et al., ACP, 2016
     real(r8), parameter :: gamma_isopnitb  = 0.005_r8        !
     real(r8), parameter :: gamma_onitr     = 0.005_r8        !
     real(r8), parameter :: gamma_honitr    = 0.005_r8        !
     real(r8), parameter :: gamma_terpnit   = 0.01_r8         !
     real(r8), parameter :: gamma_nterpooh  = 0.01_r8         !
-    real(r8), parameter :: gamma_nc4cho    = 0.02_r8        !
+    real(r8), parameter :: gamma_nc4cho    = 0.02_r8         !
     real(r8), parameter :: gamma_nc4ch2oh  = 0.005_r8        !
-!TS2 species
-    real(r8), parameter :: gamma_isopfdn  = 0.1_r8          ! Marais 2015 for C5-LVOC
-    real(r8), parameter :: gamma_isopfnp  = 0.1_r8          ! Marais 2015 for C5-LVOC
+!T2 species
+    real(r8), parameter :: gamma_isopfdn  = 0.1_r8         ! Marais 2015 for C5-LVOC
+    real(r8), parameter :: gamma_isopfnp  = 0.1_r8         ! Marais 2015 for C5-LVOC
     real(r8), parameter :: gamma_isopn2b  = 0.02_r8        ! All isoprene nitrates Wolfe
     real(r8), parameter :: gamma_isopn1d  = 0.02_r8        !
     real(r8), parameter :: gamma_isopn4d  = 0.02_r8        !
     real(r8), parameter :: gamma_inoohd   = 0.02_r8        !
-    real(r8), parameter :: gamma_inheb    = 0.02_r8       !Marais 2015 for IEPOX
-    real(r8), parameter :: gamma_inhed    = 0.02_r8       !Marais 2015 for IEPOX
+    real(r8), parameter :: gamma_inheb    = 0.02_r8        ! Marais 2015 for IEPOX
+    real(r8), parameter :: gamma_inhed    = 0.02_r8        ! Marais 2015 for IEPOX
     real(r8), parameter :: gamma_macrn    = 0.02_r8        !
-    real(r8), parameter :: gamma_isophfp  = 0.1_r8          !Marais 2015 for C5-LVOC
-    real(r8), parameter :: gamma_iepox    = 0.0042_r8       !Marais 2015 for IEPOX
-    real(r8), parameter :: gamma_dhpmpal  = 0.1_r8          !Marais 2015 for C5-LVOC
-    real(r8), parameter :: gamma_iche     = 0.0042_r8       !Marais 2015 for IEPOX
-    real(r8), parameter :: gamma_isopfnc  = 0.1_r8          ! Marais 2015 for C5-LVOC
-    real(r8), parameter :: gamma_isopfdnc = 0.1_r8          ! Marais 2015 for C5-LVOC
+    real(r8), parameter :: gamma_isophfp  = 0.1_r8         ! Marais 2015 for C5-LVOC
+    real(r8), parameter :: gamma_iepox    = 0.0042_r8      ! Marais 2015 for IEPOX
+    real(r8), parameter :: gamma_dhpmpal  = 0.1_r8         ! Marais 2015 for C5-LVOC
+    real(r8), parameter :: gamma_iche     = 0.0042_r8      ! Marais 2015 for IEPOX
+    real(r8), parameter :: gamma_isopfnc  = 0.1_r8         ! Marais 2015 for C5-LVOC
+    real(r8), parameter :: gamma_isopfdnc = 0.1_r8         ! Marais 2015 for C5-LVOC
     real(r8), parameter :: gamma_terpnt   = 0.02_r8        !
     real(r8), parameter :: gamma_terpnt1  = 0.02_r8        !
     real(r8), parameter :: gamma_terpnpt  = 0.02_r8        !
     real(r8), parameter :: gamma_terpnpt1 = 0.02_r8        !
-    real(r8), parameter :: gamma_terpfdn  = 0.1_r8        !
-    real(r8), parameter :: gamma_sqtn     = 0.1_r8        !
-    real(r8), parameter :: gamma_terphfn  = 0.1_r8        !
-    real(r8), parameter :: gamma_terpdhdp = 0.1_r8        !
+    real(r8), parameter :: gamma_terpfdn  = 0.1_r8         !
+    real(r8), parameter :: gamma_sqtn     = 0.1_r8         !
+    real(r8), parameter :: gamma_terphfn  = 0.1_r8         !
+    real(r8), parameter :: gamma_terpdhdp = 0.1_r8         !
     real(r8), parameter :: gamma_terpacid = 0.01_r8        !
 
     integer  ::  i, k
@@ -913,7 +983,7 @@ contains
     real(r8) ::  kinf_m(ncol)
     real(r8) ::  o2(ncol)
     real(r8) ::  c_n2o5, c_ho2, c_no2, c_no3, c_glyoxal
-!TS1 species
+!T1 species
     real(r8) ::  c_isopnita, c_isopnitb, c_onitr, c_honitr, c_terpnit, c_nterpooh
     real(r8) ::  c_nc4cho, c_nc4ch2oh
 !T2 species
@@ -1052,12 +1122,17 @@ contains
     integer :: ntot_amode, nbins, naero
 
     real(r8), pointer :: sfc_array(:,:,:), dm_array(:,:,:)
- !TS2
+ !T2
     real(r8) ::  aterm(ncol)
     real(r8) ::  natom
     real(r8) ::  nyield
     real(r8) ::  acorr
     real(r8) ::  exp_natom
+!T3
+    real(r8) :: nCON, exp_nCON     ! number of carbon, oxygen and nitrogen atoms in R group
+    real(r8) :: fac_A(ncol), fac_B(ncol), fac_z(ncol), fac_Ro(ncol), RONO2_yield(ncol)
+    real(r8) :: fac_F, scale_a, scale_b
+    
     character(len=*), parameter :: subname = 'usrrxt'
 
     real(r8) :: total_sslt_mass
@@ -1376,6 +1451,17 @@ contains
        end if
 
 !-----------------------------------------------------------------
+!       ... furpan + m --> furfaco3 + no2 (10% faster than PAN [J.Roberts])
+!-----------------------------------------------------------------
+       if( usr_FURPAN_M_ndx > 0 ) then
+          if( tag_CH3CO3_NO2_ndx > 0 ) then
+             rxt(:,k,usr_FURPAN_M_ndx) = 1.1_r8 * rxt(:,k,tag_CH3CO3_NO2_ndx) * 1.111e28_r8 * exp_fac(:)
+          else
+             rxt(:,k,usr_FURPAN_M_ndx) = 0._r8
+          end if
+       end if
+
+!-----------------------------------------------------------------
 !	... mpan + m --> mco3 + no2 + m (JPL15-10)
 !-----------------------------------------------------------------
        if( usr_MPAN_M_ndx > 0 ) then
@@ -1392,8 +1478,18 @@ contains
              rxt(:,k,usr_XMPAN_M_ndx) = 0._r8
           end if
        end if
+       
+!-----------------------------------------------------------------
+!       ... ppn + m --> c2h5co3 + no2 + m (JPL19-5)
+!-----------------------------------------------------------------
+       if( usr_PPN_M_ndx > 0 ) then
+          if( tag_C2H5CO3_NO2_ndx > 0 ) then
+             rxt(:,k,usr_PPN_M_ndx) = rxt(:,k,tag_C2H5CO3_NO2_ndx) * 1.111e28_r8 * exp_fac(:)
+          else
+             rxt(:,k,usr_PPN_M_ndx) = 0._r8
+          end if
+       end if
 
-!lke-TS1
 !-----------------------------------------------------------------
 !       ... pbznit + m --> acbzo2 + no2 + m
 !-----------------------------------------------------------------
@@ -1404,6 +1500,7 @@ contains
              rxt(:,k,usr_PBZNIT_M_ndx) = 0._r8
           end if
        end if
+       
 !-----------------------------------------------------------------
 !       ... TERPAPAN + m --> TERPACO3 + no2 + m
 !-----------------------------------------------------------------
@@ -1434,6 +1531,7 @@ contains
              rxt(:,k,usr_TERPA3PAN_M_ndx) = 0._r8
           end if
        end if
+       
 !-----------------------------------------------------------------
 !       ... xooh + oh -> h2o + oh
 !-----------------------------------------------------------------
@@ -1507,7 +1605,52 @@ contains
           ko(:) = fc(:)*m(:,k)/(1._r8 + fc(:)*m(:,k)/1.5e-12_r8)
           rxt(:,k,usr_SO2_OH_ndx) = ko(:)*.6_r8**(1._r8 + (log10(fc(:)*m(:,k)/1.5e-12_r8))**2._r8)**(-1._r8)
        end if
-!RHS TS2
+
+!T3,T6
+!-----------------------------------------------------------------
+!       ... NBUO --> CH3CHO + C2H5O2  Vereecken and Peeters 2009
+!-----------------------------------------------------------------
+       if( usr_NBUO_ndx > 0 ) then
+          call comp_exp( exp_fac, -6139.3_r8*tinv, ncol )
+          rxt(:,k,usr_NBUO_ndx) = 1.12e9_r8 * temp(:ncol,k)**1.7_r8 * exp_fac(:)
+       end if
+
+!-----------------------------------------------------------------
+!       ... NPENTOA --> PROPANAL + C2H5O2  Vereecken and Peeters 2009
+!-----------------------------------------------------------------
+       if( usr_NPENTOA_ndx > 0 ) then
+          call comp_exp( exp_fac, -6139.3_r8*tinv, ncol )
+          rxt(:,k,usr_NPENTOA_ndx) = 2.24e9_r8 * temp(:ncol,k)**1.7_r8 * exp_fac(:)
+       end if
+
+!-----------------------------------------------------------------
+!       ... IPENTOB --> CH3CHO + IC3H7O2  Vereecken and Peeters 2009
+!-----------------------------------------------------------------
+       if( usr_IPENTOB_ndx > 0 ) then
+          call comp_exp( exp_fac, -4428.3_r8*tinv, ncol )
+          rxt(:,k,usr_IPENTOB_ndx) = 1.12e9_r8 * temp(:ncol,k)**1.7_r8 * exp_fac(:)
+       end if
+
+!-----------------------------------------------------------------
+!       ... C6ALKOHO2  --> C6KETOOH + HO2  Vereecken and Nozière 2020
+!-----------------------------------------------------------------
+       if( usr_C6ALKOHO2_ndx > 0 ) then
+          call comp_exp( exp_fac, -5905._r8*tinv, ncol )
+          rxt(:,k,usr_C6ALKOHO2_ndx) = 0.303_r8 * temp(:ncol,k)**3.39_r8 * exp_fac(:)
+
+          ! Commented below are based on Praske 2017
+          !call comp_exp( exp_fac, -8688._r8*tinv, ncol )
+          !term1(:) = 9.1036e10_r8 * exp_fac(:)
+          !call comp_exp( exp_fac, 7.547e7_r8*tinv**3._r8, ncol )
+          !term1(:) =  term1(:) * exp_fac(:) * 0.5_r8
+          !call comp_exp( exp_fac, -9144.2_r8*tinv, ncol )
+          !term2(:) = 7.7343e10_r8 * exp_fac(:)
+          !call comp_exp( exp_fac, 7.5879e7_r8*tinv**3._r8, ncol )
+          !term2(:) =  term2(:) * exp_fac(:) * 0.5_r8
+          !rxt(:,k,usr_C6ALKOHO2_ndx) = 0.75_r8 * (term1(:) + term2(:))
+       end if
+
+!T2
 !-----------------------------------------------------------------
 !       ... ISOPZD1O2 --> HPALD etc. Wennberg 2018 for rate
 !-----------------------------------------------------------------
@@ -1868,6 +2011,259 @@ contains
           rxt(:,k,usr_NC4CHOO2_NOn_ndx) = 2.7e-12_r8 * exp_fac(:)*aterm(:)/(aterm(:)+acorr*nyield)
           rxt(:,k,usr_NC4CHOO2_NOa_ndx) = 2.7e-12_r8 * exp_fac(:)*acorr*nyield/(aterm(:)+acorr*nyield)
        end if
+
+!T3,T6
+!-----------------------------------------------------------------
+!       ... C2H5O2_NOa Temp/Pressure Dependent Nitrate Yield
+!-----------------------------------------------------------------
+       if( usr_C2H5O2_NOn_ndx > 0 ) then
+          nCON = 2.0_r8
+          exp_nCON = exp( nCON )
+          fac_A(:) = 2.0e-22_r8 * exp_nCON * m(:,k)
+          fac_B(:) = 0.43_r8 * ( 300._r8 * tinv(:) )**8._r8
+          fac_F = 0.41_r8
+          fac_z(:) = 1._r8 / ( 1._r8 + log10( fac_A(:) / fac_B(:) )**2._r8 )
+          scale_a = 1._r8 ! We assume there's no difference between prim/sec/tert radicals
+          scale_b = 1._r8 ! 1 for alkyl peroxy
+          fac_Ro(:) = ( fac_A(:) / (1._r8 + fac_A(:)/fac_B(:)) )*fac_F**fac_z(:)
+          RONO2_yield(:) = scale_a * scale_b * ( fac_Ro(:) / (1 + fac_Ro(:)) )
+
+          call comp_exp( exp_fac, 365._r8*tinv, ncol )
+          rxt(:,k,usr_C2H5O2_NOn_ndx) = 2.6e-12_r8 * exp_fac(:) * RONO2_yield(:)
+          rxt(:,k,usr_C2H5O2_NOa_ndx) = 2.6e-12_r8 * exp_fac(:) * ( 1._r8 - RONO2_yield(:) )
+       end if
+!-----------------------------------------------------------------
+!       ... NC3H7O2_NOa Temp/Pressure Dependent Nitrate Yield
+!-----------------------------------------------------------------
+       if( usr_NC3H7O2_NOn_ndx > 0 ) then
+          nCON = 3.0_r8
+          exp_nCON = exp( nCON )
+          fac_A(:) = 2.0e-22_r8 * exp_nCON * m(:,k)
+          fac_B(:) = 0.43_r8 * ( 300._r8 * tinv(:) )**8._r8
+          fac_F = 0.41_r8
+          fac_z(:) = 1._r8 / ( 1._r8 + log10( fac_A(:) / fac_B(:) )**2._r8 )
+          scale_a = 1._r8 ! We assume there's no difference between prim/sec/tert radicals
+          scale_b = 1._r8 ! 1 for alkyl peroxy
+          fac_Ro(:) = ( fac_A(:) / (1._r8 + fac_A(:)/fac_B(:)) )*fac_F**fac_z(:)
+          RONO2_yield(:) = scale_a * scale_b * ( fac_Ro(:) / (1 + fac_Ro(:)) )
+
+          call comp_exp( exp_fac, 360._r8*tinv, ncol )
+          rxt(:,k,usr_NC3H7O2_NOn_ndx) = 2.7e-12_r8 * exp_fac(:) * RONO2_yield(:)
+          rxt(:,k,usr_NC3H7O2_NOa_ndx) = 2.7e-12_r8 * exp_fac(:) * ( 1._r8 - RONO2_yield(:) )
+       end if
+
+!-----------------------------------------------------------------
+!       ... IC3H7O2_NOa Temp/Pressure Dependent Nitrate Yield
+!-----------------------------------------------------------------
+       if( usr_IC3H7O2_NOn_ndx > 0 ) then
+          nCON = 3.0_r8
+          exp_nCON = exp( nCON )
+          fac_A(:) = 2.0e-22_r8 * exp_nCON * m(:,k)
+          fac_B(:) = 0.43_r8 * ( 300._r8 * tinv(:) )**8._r8
+          fac_F = 0.41_r8
+          fac_z(:) = 1._r8 / ( 1._r8 + log10( fac_A(:) / fac_B(:) )**2._r8 )
+          scale_a = 1._r8 ! We assume there's no difference between prim/sec/tert radicals
+          scale_b = 1._r8 ! 1 for alkyl peroxy
+          fac_Ro(:) = ( fac_A(:) / (1._r8 + fac_A(:)/fac_B(:)) )*fac_F**fac_z(:)
+          RONO2_yield(:) = scale_a * scale_b * ( fac_Ro(:) / (1 + fac_Ro(:)) )
+
+          call comp_exp( exp_fac, 360._r8*tinv, ncol )
+          rxt(:,k,usr_IC3H7O2_NOn_ndx) = 2.7e-12_r8 * exp_fac(:) * RONO2_yield(:)
+          rxt(:,k,usr_IC3H7O2_NOa_ndx) = 2.7e-12_r8 * exp_fac(:) * ( 1._r8 - RONO2_yield(:) )
+       end if
+!-----------------------------------------------------------------
+!       ... NBUPO2_NOa Temp/Pressure Dependent Nitrate Yield
+!-----------------------------------------------------------------
+       if( usr_NBUPO2_NOn_ndx > 0 ) then
+          nCON = 4.0_r8
+          exp_nCON = exp( nCON )
+          fac_A(:) = 2.0e-22_r8 * exp_nCON * m(:,k)
+          fac_B(:) = 0.43_r8 * ( 300._r8 * tinv(:) )**8._r8
+          fac_F = 0.41_r8
+          fac_z(:) = 1._r8 / ( 1._r8 + log10( fac_A(:) / fac_B(:) )**2._r8 )
+          scale_a = 1._r8 ! We assume there's no difference between prim/sec/tert radicals
+          scale_b = 1._r8 ! 1 for alkyl peroxy
+          fac_Ro(:) = ( fac_A(:) / (1._r8 + fac_A(:)/fac_B(:)) )*fac_F**fac_z(:)
+          RONO2_yield(:) = scale_a * scale_b * ( fac_Ro(:) / (1 + fac_Ro(:)) )
+
+          call comp_exp( exp_fac, 360._r8*tinv, ncol )
+          rxt(:,k,usr_NBUPO2_NOn_ndx) = 2.7e-12_r8 * exp_fac(:) * RONO2_yield(:)
+          rxt(:,k,usr_NBUPO2_NOa_ndx) = 2.7e-12_r8 * exp_fac(:) * ( 1._r8 - RONO2_yield(:) )
+       end if
+
+!-----------------------------------------------------------------
+!       ... NBUO2_NOa Temp/Pressure Dependent Nitrate Yield
+!-----------------------------------------------------------------
+       if( usr_NBUO2_NOn_ndx > 0 ) then
+          nCON = 4.0_r8
+          exp_nCON = exp( nCON )
+          fac_A(:) = 2.0e-22_r8 * exp_nCON * m(:,k)
+          fac_B(:) = 0.43_r8 * ( 300._r8 * tinv(:) )**8._r8
+          fac_F = 0.41_r8
+          fac_z(:) = 1._r8 / ( 1._r8 + log10( fac_A(:) / fac_B(:) )**2._r8 )
+          scale_a = 1._r8 ! We assume there's no difference between prim/sec/tert radicals
+          scale_b = 1._r8 ! 1 for alkyl peroxy
+          fac_Ro(:) = ( fac_A(:) / (1._r8 + fac_A(:)/fac_B(:)) )*fac_F**fac_z(:)
+          RONO2_yield(:) = scale_a * scale_b * ( fac_Ro(:) / (1 + fac_Ro(:)) )
+
+          call comp_exp( exp_fac, 360._r8*tinv, ncol )
+          rxt(:,k,usr_NBUO2_NOn_ndx) = 2.7e-12_r8 * exp_fac(:) * RONO2_yield(:)
+          rxt(:,k,usr_NBUO2_NOa_ndx) = 2.7e-12_r8 * exp_fac(:) * ( 1._r8 - RONO2_yield(:) )
+       end if
+!-----------------------------------------------------------------
+!       ... TBUO2_NOa Temp/Pressure Dependent Nitrate Yield
+!-----------------------------------------------------------------
+       if( usr_TBUO2_NOn_ndx > 0 ) then
+          nCON = 4.0_r8
+          exp_nCON = exp( nCON )
+          fac_A(:) = 2.0e-22_r8 * exp_nCON * m(:,k)
+          fac_B(:) = 0.43_r8 * ( 300._r8 * tinv(:) )**8._r8
+          fac_F = 0.41_r8
+          fac_z(:) = 1._r8 / ( 1._r8 + log10( fac_A(:) / fac_B(:) )**2._r8 )
+          scale_a = 1._r8 ! We assume there's no difference between prim/sec/tert radicals
+          scale_b = 1._r8 ! 1 for alkyl peroxy
+          fac_Ro(:) = ( fac_A(:) / (1._r8 + fac_A(:)/fac_B(:)) )*fac_F**fac_z(:)
+          RONO2_yield(:) = scale_a * scale_b * ( fac_Ro(:) / (1 + fac_Ro(:)) )
+
+          call comp_exp( exp_fac, 360._r8*tinv, ncol )
+          rxt(:,k,usr_TBUO2_NOn_ndx) = 2.7e-12_r8 * exp_fac(:) * RONO2_yield(:)
+          rxt(:,k,usr_TBUO2_NOa_ndx) = 2.7e-12_r8 * exp_fac(:) * ( 1._r8 - RONO2_yield(:) )
+       end if
+!-----------------------------------------------------------------
+!       ... NBUPOHO2_NOa Temp/Pressure Dependent Nitrate Yield
+!-----------------------------------------------------------------
+       if( usr_NBUPOHO2_NOn_ndx > 0 ) then
+          nCON = 5.0_r8
+          exp_nCON = exp( nCON )
+          fac_A(:) = 2.0e-22_r8 * exp_nCON * m(:,k)
+          fac_B(:) = 0.43_r8 * ( 300._r8 * tinv(:) )**8._r8
+          fac_F = 0.41_r8
+          fac_z(:) = 1._r8 / ( 1._r8 + log10( fac_A(:) / fac_B(:) )**2._r8 )
+          scale_a = 1._r8 ! We assume there's no difference between prim/sec/tert radicals
+          scale_b = 1._r8 ! 1 for alkyl peroxy
+          fac_Ro(:) = ( fac_A(:) / (1._r8 + fac_A(:)/fac_B(:)) )*fac_F**fac_z(:)
+          RONO2_yield(:) = scale_a * scale_b * ( fac_Ro(:) / (1 + fac_Ro(:)) )
+
+          call comp_exp( exp_fac, 360._r8*tinv, ncol )
+          rxt(:,k,usr_NBUPOHO2_NOn_ndx) = 2.7e-12_r8 * exp_fac(:) * RONO2_yield(:)
+          rxt(:,k,usr_NBUPOHO2_NOa_ndx) = 2.7e-12_r8 * exp_fac(:) * ( 1._r8 - RONO2_yield(:) )
+       end if
+!-----------------------------------------------------------------
+!       ... NPENTO2A_NOa Temp/Pressure Dependent Nitrate Yield
+!-----------------------------------------------------------------
+       if( usr_NPENTO2A_NOn_ndx > 0 ) then
+          nCON = 5.0_r8
+          exp_nCON = exp( nCON )
+          fac_A(:) = 2.0e-22_r8 * exp_nCON * m(:,k)
+          fac_B(:) = 0.43_r8 * ( 300._r8 * tinv(:) )**8._r8
+          fac_F = 0.41_r8
+          fac_z(:) = 1._r8 / ( 1._r8 + log10( fac_A(:) / fac_B(:) )**2._r8 )
+          scale_a = 1._r8 ! We assume there's no difference between prim/sec/tert radicals
+          scale_b = 1._r8 ! 1 for alkyl peroxy
+          fac_Ro(:) = ( fac_A(:) / (1._r8 + fac_A(:)/fac_B(:)) )*fac_F**fac_z(:)
+          RONO2_yield(:) = scale_a * scale_b * ( fac_Ro(:) / (1 + fac_Ro(:)) )
+
+          call comp_exp( exp_fac, 360._r8*tinv, ncol )
+          rxt(:,k,usr_NPENTO2A_NOn_ndx) = 2.7e-12_r8 * exp_fac(:) * RONO2_yield(:)
+          rxt(:,k,usr_NPENTO2A_NOa_ndx) = 2.7e-12_r8 * exp_fac(:) * ( 1._r8 - RONO2_yield(:) )
+       end if
+!-----------------------------------------------------------------
+!       ... NPENTO2B_NOa Temp/Pressure Dependent Nitrate Yield
+!-----------------------------------------------------------------
+       if( usr_NPENTO2B_NOn_ndx > 0 ) then
+          nCON = 5.0_r8
+          exp_nCON = exp( nCON )
+          fac_A(:) = 2.0e-22_r8 * exp_nCON * m(:,k)
+          fac_B(:) = 0.43_r8 * ( 300._r8 * tinv(:) )**8._r8
+          fac_F = 0.41_r8
+          fac_z(:) = 1._r8 / ( 1._r8 + log10( fac_A(:) / fac_B(:) )**2._r8 )
+          scale_a = 1._r8 ! We assume there's no difference between prim/sec/tert radicals
+          scale_b = 1._r8 ! 1 for alkyl peroxy
+          fac_Ro(:) = ( fac_A(:) / (1._r8 + fac_A(:)/fac_B(:)) )*fac_F**fac_z(:)
+          RONO2_yield(:) = scale_a * scale_b * ( fac_Ro(:) / (1 + fac_Ro(:)) )
+
+          call comp_exp( exp_fac, 360._r8*tinv, ncol )
+          rxt(:,k,usr_NPENTO2B_NOn_ndx) = 2.7e-12_r8 * exp_fac(:) * RONO2_yield(:)
+          rxt(:,k,usr_NPENTO2B_NOa_ndx) = 2.7e-12_r8 * exp_fac(:) * ( 1._r8 - RONO2_yield(:) )
+       end if
+!-----------------------------------------------------------------
+!       ... IPENTO2A_NOa Temp/Pressure Dependent Nitrate Yield
+!-----------------------------------------------------------------
+       if( usr_IPENTO2A_NOn_ndx > 0 ) then
+          nCON = 5.0_r8
+          exp_nCON = exp( nCON )
+          fac_A(:) = 2.0e-22_r8 * exp_nCON * m(:,k)
+          fac_B(:) = 0.43_r8 * ( 300._r8 * tinv(:) )**8._r8
+          fac_F = 0.41_r8
+          fac_z(:) = 1._r8 / ( 1._r8 + log10( fac_A(:) / fac_B(:) )**2._r8 )
+          scale_a = 1._r8 ! We assume there's no difference between prim/sec/tert radicals
+          scale_b = 1._r8 ! 1 for alkyl peroxy
+          fac_Ro(:) = ( fac_A(:) / (1._r8 + fac_A(:)/fac_B(:)) )*fac_F**fac_z(:)
+          RONO2_yield(:) = scale_a * scale_b * ( fac_Ro(:) / (1 + fac_Ro(:)) )
+
+          call comp_exp( exp_fac, 360._r8*tinv, ncol )
+          rxt(:,k,usr_IPENTO2A_NOn_ndx) = 2.7e-12_r8 * exp_fac(:) * RONO2_yield(:)
+          rxt(:,k,usr_IPENTO2A_NOa_ndx) = 2.7e-12_r8 * exp_fac(:) * ( 1._r8 - RONO2_yield(:) )
+       end if
+!-----------------------------------------------------------------
+!       ... IPENTO2B_NOa Temp/Pressure Dependent Nitrate Yield
+!-----------------------------------------------------------------
+       if( usr_IPENTO2B_NOn_ndx > 0 ) then
+          nCON = 5.0_r8
+          exp_nCON = exp( nCON )
+          fac_A(:) = 2.0e-22_r8 * exp_nCON * m(:,k)
+          fac_B(:) = 0.43_r8 * ( 300._r8 * tinv(:) )**8._r8
+          fac_F = 0.41_r8
+          fac_z(:) = 1._r8 / ( 1._r8 + log10( fac_A(:) / fac_B(:) )**2._r8 )
+          scale_a = 1._r8 ! We assume there's no difference between prim/sec/tert radicals
+          scale_b = 1._r8 ! 1 for alkyl peroxy
+          fac_Ro(:) = ( fac_A(:) / (1._r8 + fac_A(:)/fac_B(:)) )*fac_F**fac_z(:)
+          RONO2_yield(:) = scale_a * scale_b * ( fac_Ro(:) / (1 + fac_Ro(:)) )
+
+          call comp_exp( exp_fac, 360._r8*tinv, ncol )
+          rxt(:,k,usr_IPENTO2B_NOn_ndx) = 2.7e-12_r8 * exp_fac(:) * RONO2_yield(:)
+          rxt(:,k,usr_IPENTO2B_NOa_ndx) = 2.7e-12_r8 * exp_fac(:) * ( 1._r8 - RONO2_yield(:) )
+       end if
+!-----------------------------------------------------------------
+!       ... C6ALKO2_NOa Temp/Pressure Dependent Nitrate Yield
+!-----------------------------------------------------------------
+       if( usr_C6ALKO2_NOn_ndx > 0 ) then
+          nCON = 6.0_r8
+          exp_nCON = exp( nCON )
+          fac_A(:) = 2.0e-22_r8 * exp_nCON * m(:,k)
+          fac_B(:) = 0.43_r8 * ( 300._r8 * tinv(:) )**8._r8
+          fac_F = 0.41_r8
+          fac_z(:) = 1._r8 / ( 1._r8 + log10( fac_A(:) / fac_B(:) )**2._r8 )
+          scale_a = 1._r8 ! We assume there's no difference between prim/sec/tert radicals
+          scale_b = 1._r8 ! 1 for alkyl peroxy
+          fac_Ro(:) = ( fac_A(:) / (1._r8 + fac_A(:)/fac_B(:)) )*fac_F**fac_z(:)
+          RONO2_yield(:) = scale_a * scale_b * ( fac_Ro(:) / (1 + fac_Ro(:)) )
+
+          call comp_exp( exp_fac, 360._r8*tinv, ncol )
+          rxt(:,k,usr_C6ALKO2_NOn_ndx) = 2.7e-12_r8 * exp_fac(:) * RONO2_yield(:)
+          rxt(:,k,usr_C6ALKO2_NOa_ndx) = 2.7e-12_r8 * exp_fac(:) * ( 1._r8 - RONO2_yield(:) )
+       end if
+
+!-----------------------------------------------------------------
+!       ... C6ALKOHO2_NOa Temp/Pressure Dependent Nitrate Yield
+!-----------------------------------------------------------------
+       if( usr_C6ALKOHO2_NOn_ndx > 0 ) then
+          nCON = 7.0_r8
+          exp_nCON = exp( nCON )
+          fac_A(:) = 2.0e-22_r8 * exp_nCON * m(:,k)
+          fac_B(:) = 0.43_r8 * ( 300._r8 * tinv(:) )**8._r8
+          fac_F = 0.41_r8
+          fac_z(:) = 1._r8 / ( 1._r8 + log10( fac_A(:) / fac_B(:) )**2._r8 )
+          scale_a = 1._r8 ! We assume there's no difference between prim/sec/tert radicals
+          scale_b = 1._r8 ! 1 for alkyl peroxy
+          fac_Ro(:) = ( fac_A(:) / (1._r8 + fac_A(:)/fac_B(:)) )*fac_F**fac_z(:)
+          RONO2_yield(:) = scale_a * scale_b * ( fac_Ro(:) / (1 + fac_Ro(:)) )
+
+          call comp_exp( exp_fac, 360._r8*tinv, ncol )
+          rxt(:,k,usr_C6ALKOHO2_NOn_ndx) = 2.7e-12_r8 * exp_fac(:) * RONO2_yield(:)
+          rxt(:,k,usr_C6ALKOHO2_NOa_ndx) = 2.7e-12_r8 * exp_fac(:) * ( 1._r8 - RONO2_yield(:) )
+       end if
+
 !
 ! reduced hydrocarbon scheme
 !
@@ -2941,7 +3337,6 @@ contains
          end do
       end if
 
-!lke++
 !-----------------------------------------------------------------
 !      ... CO tags
 !-----------------------------------------------------------------
@@ -3082,7 +3477,6 @@ contains
             rxt(:ncol,:,usr_CO42_OH_ndx) = rxt(:ncol,:,usr_CO_OH_ndx)
          end if
       end if
-!lke--
 !
 ! jfl : additional BAM removal reactions.  Zero out below the tropopause
 !
