@@ -50,6 +50,9 @@ subroutine read_namelist(nlfilename, single_column, scmlat, scmlon)
    use cldfrc2m,            only: cldfrc2m_readnl
    use rk_stratiform_cam,   only: rk_stratiform_cam_readnl
    use zm_conv_intr,        only: zm_conv_readnl
+   !++ MCSP
+   use mcsp_intr,           only: mcsp_readnl
+   !-- MCSP
    use hk_conv,             only: hkconv_readnl
    use uwshcu,              only: uwshcu_readnl
    use pkg_cld_sediment,    only: cld_sediment_readnl
@@ -153,6 +156,9 @@ subroutine read_namelist(nlfilename, single_column, scmlat, scmlon)
    call cldfrc_readnl(nlfilename)
    call cldfrc2m_readnl(nlfilename)
    call zm_conv_readnl(nlfilename)
+   !++ MCSP
+   call mcsp_readnl(nlfilename)
+   !-- MCSP
    call rk_stratiform_cam_readnl(nlfilename)
    call hkconv_readnl(nlfilename)
    call uwshcu_readnl(nlfilename)
