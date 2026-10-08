@@ -3871,14 +3871,15 @@ if (!$simple_phys) {
     add_default($nl, 'zmconv_parcel_hscale');
 }
 
-# MCSP
+# MCSP (mesoscale coherent structure parameterization); all coefficients default
+# to zero, which leaves the scheme inactive.
 if (!$simple_phys) {
-    add_default($nl, 'MCSP_heat_coeff');
-    add_default($nl, 'MCSP_moisture_coeff');
-    add_default($nl, 'MCSP_uwind_coeff');
-    add_default($nl, 'MCSP_vwind_coeff');
-    add_default($nl, 'MCSP_storm_speed_pref');
-    add_default($nl, 'MCSP_conv_depth_min');
+    add_default($nl, 'mcsp_heat_coeff');
+    add_default($nl, 'mcsp_moisture_coeff');
+    add_default($nl, 'mcsp_uwind_coeff');
+    add_default($nl, 'mcsp_vwind_coeff');
+    add_default($nl, 'mcsp_storm_speed_pref');
+    add_default($nl, 'mcsp_conv_depth_min');
     add_default($nl, 'mcsp_shear_min');
 }
 

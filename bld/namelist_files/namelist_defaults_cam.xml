@@ -2968,14 +2968,14 @@
 <zmconv_parcel_pbl                                                    > .false. </zmconv_parcel_pbl>
 <zmconv_parcel_hscale                                                 >  0.5    </zmconv_parcel_hscale>
 
-<!-- MCSP scheme -->
-<MCSP_heat_coeff                                               >  0.0D0  </MCSP_heat_coeff >
-<MCSP_moisture_coeff                                           >  0.0D0  </MCSP_moisture_coeff >
-<MCSP_uwind_coeff                                              >  0.0D0  </MCSP_uwind_coeff >
-<MCSP_vwind_coeff                                              >  0.0D0  </MCSP_vwind_coeff >
-<MCSP_storm_speed_pref                                         >60000.0  </MCSP_storm_speed_pref>
-<MCSP_conv_depth_min                                           >50000.0  </MCSP_conv_depth_min>
-<mcsp_shear_min                                                >  3.0    </mcsp_shear_min>
+<!-- MCSP (mesoscale coherent structure parameterization); inactive while all coefficients are zero -->
+<mcsp_heat_coeff                                                      > 0.0D0   </mcsp_heat_coeff>
+<mcsp_moisture_coeff                                                  > 0.0D0   </mcsp_moisture_coeff>
+<mcsp_uwind_coeff                                                     > 0.0D0   </mcsp_uwind_coeff>
+<mcsp_vwind_coeff                                                     > 0.0D0   </mcsp_vwind_coeff>
+<mcsp_storm_speed_pref                                                > 60000.0D0 </mcsp_storm_speed_pref>
+<mcsp_conv_depth_min                                                  > 50000.0D0 </mcsp_conv_depth_min>
+<mcsp_shear_min                                                       > 3.0D0   </mcsp_shear_min>
 
 <!-- Cloud sedimentation -->
 

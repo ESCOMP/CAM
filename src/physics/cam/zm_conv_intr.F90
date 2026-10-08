@@ -38,13 +38,6 @@ module zm_conv_intr
       zm_conv_tend,               &! return tendencies
       zm_conv_tend_2               ! return tendencies
 
-  !++ MCSP
-  public :: ttend_s
-
-  real(r8) :: ttend_s(pcols,pver)
-  !-- MCSP
-
-
    public zmconv_ke, zmconv_ke_lnd  ! needed by convect_shallow
 
    integer ::& ! indices for fields in the physics buffer
@@ -91,6 +84,12 @@ module zm_conv_intr
    integer  ::    fracis_idx       = 0
    integer  ::    nevapr_dpcu_idx  = 0
    integer  ::    dgnum_idx        = 0
+
+   ! Core ZM heating and moistening (after zm_convr_run, before precipitation
+   ! evaporation and momentum transport), exported through the physics buffer for
+   ! consumers that register these fields (currently MCSP); left unfilled otherwise.
+   integer  ::    ttend_dp_core_idx = -1
+   integer  ::    qtend_dp_core_idx = -1
 
    integer :: nmodes
    integer :: nbulk
@@ -363,6 +362,10 @@ subroutine zm_conv_init(pref_edge)
     cld_idx         = pbuf_get_index('CLD')
     fracis_idx      = pbuf_get_index('FRACIS')
 
+    ! Present only when a consumer (MCSP) registered them
+    ttend_dp_core_idx = pbuf_get_index('TTEND_DP_CORE', errflg)
+    qtend_dp_core_idx = pbuf_get_index('QTEND_DP_CORE', errflg)
+
 end subroutine zm_conv_init
 !=========================================================================================
 !subroutine zm_conv_tend(state, ptend, tdt)
@@ -444,6 +447,8 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
    real(r8), pointer :: lambdadpcu(:,:) ! slope of cloud liquid size distr
    real(r8), pointer :: mudpcu(:,:)     ! width parameter of droplet size distr
    real(r8), pointer :: mconzm(:,:)     !convective mass fluxes
+   real(r8), pointer :: ttend_dp_core(:,:)  ! core ZM temperature tendency, for MCSP [K/s]
+   real(r8), pointer :: qtend_dp_core(:,:)  ! core ZM water vapor tendency, for MCSP [kg/kg/s]
 
    real(r8), pointer :: mu(:,:)    ! (pcols,pver)
    real(r8), pointer :: eu(:,:)    ! (pcols,pver)
@@ -590,11 +595,17 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
       jcbot(ideep(i)) = real(maxg(i), r8)
    end do
 
-   call outfld('CAPE', cape, pcols, lchnk)        ! RBN - CAPE output
+   ! Export the core ZM tendencies to consumers that registered these fields
+   if (ttend_dp_core_idx > 0) then
+      call pbuf_get_field(pbuf, ttend_dp_core_idx, ttend_dp_core)
+      ttend_dp_core(:ncol,:pver) = ptend_loc%s(:ncol,:pver)/cpair
+   end if
+   if (qtend_dp_core_idx > 0) then
+      call pbuf_get_field(pbuf, qtend_dp_core_idx, qtend_dp_core)
+      qtend_dp_core(:ncol,:pver) = ptend_loc%q(:ncol,:pver,1)
+   end if
 
-   !++ MCSP
-   ttend_s = ptend_loc%s(:pcols,:)
-   !-- MCSP
+   call outfld('CAPE', cape, pcols, lchnk)        ! RBN - CAPE output
 !
 ! Output fractional occurance of ZM convection
 !

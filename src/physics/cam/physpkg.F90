@@ -140,9 +140,7 @@ contains
     use ghg_data,           only: ghg_data_register
     use vertical_diffusion, only: vd_register
     use convect_deep,       only: convect_deep_register
-    !++ MCSP
-    use mcsp_intr,          only: mcsp_register
-    !-- MCSP
+    use mcsp_cam,           only: mcsp_cam_register
     use convect_shallow,    only: convect_shallow_register
     use radiation,          only: radiation_register
     use co2_cycle,          only: co2_register
@@ -314,8 +312,8 @@ contains
        ! deep convection
        call convect_deep_register
 
-       ! MCSP
-       call mcsp_register()
+       ! MCSP (mesoscale coherent structure parameterization)
+       call mcsp_cam_register()
 
        !  shallow convection
        call convect_shallow_register
@@ -721,9 +719,7 @@ contains
     use cldfrc2m,           only: cldfrc2m_init
     use co2_cycle,          only: co2_init, co2_transport
     use convect_deep,       only: convect_deep_init
-    !++ MCSP
-    use mcsp_intr,          only: mcsp_intr_init
-    !-- MCSP
+    use mcsp_cam,           only: mcsp_cam_init
     use convect_shallow,    only: convect_shallow_init
     use constituents,       only: cnst_get_ind
     use cam_diagnostics,    only: diag_init
@@ -916,10 +912,7 @@ contains
     call cldfrc2m_init()
 
     call convect_deep_init(pref_edge)
-
-    !++ MCSP
-    call mcsp_intr_init()
-    !-- MCSP
+    call mcsp_cam_init()
 
     if( microp_scheme == 'RK' ) then
        call rk_stratiform_cam_init()
@@ -2141,6 +2134,7 @@ contains
     use air_composition, only: thermodynamic_active_species_liq_num,thermodynamic_active_species_liq_idx
     use air_composition, only: thermodynamic_active_species_ice_num,thermodynamic_active_species_ice_idx
     use convect_deep,    only: convect_deep_tend, convect_deep_tend_2
+    use mcsp_cam,        only: mcsp_cam_tend, do_mcsp
     use time_manager,    only: is_first_step, get_nstep
     use convect_shallow, only: convect_shallow_tend
     use check_energy,    only: check_energy_timestep_init, check_energy_cam_chng
@@ -2177,14 +2171,6 @@ contains
     use aerosol_state_mod, only: aerosol_state
     use aerosol_instances_mod, only: aerosol_instances_get_props, &
          aerosol_instances_get_num_models, aerosol_instances_get_state
-    !++ MCSP
-    use mcsp_intr,       only: mcsp_tend
-    use save_ttend_from_convect_deep, only : save_ttend_from_convect_deep_timestep_init, save_ttend_from_convect_deep_run
-    use save_qtend_from_convect_deep, only : save_qtend_from_convect_deep_timestep_init, save_qtend_from_convect_deep_run
-    use zm_conv_intr,    only: ttend_s
-    use convect_deep,    only: jctop1
-    use physconst,       only: cpair
-    !-- MCSP
 
     ! Arguments
 
@@ -2224,12 +2210,6 @@ contains
     real(r8) dlf(pcols,pver)                   ! Detraining cld H20 from shallow + deep convections
     real(r8) dlf2(pcols,pver)                  ! Detraining cld H20 from shallow convections
     real(r8) rtdt                              ! 1./ztodt
-    !++ MCSP
-    real(r8) ttend_dp(pcols,pver)              ! temperature tendency from deep convection
-    real(r8) qtend_dp(pcols,pver)              ! water vapor from deep convection
-    character(len=512) :: errmsg
-    integer            :: errflg
-    !-- MCSP
 
     integer lchnk                              ! chunk identifier
     integer ncol                               ! number of atmospheric columns
@@ -2484,22 +2464,12 @@ contains
            flx_heat, cmfmc, cmfcme, zdu, rliq, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
     end if
 
-    !++ MCSP
-    call save_ttend_from_convect_deep_timestep_init(ncol, pver, ttend_dp, errmsg, errflg)
-    call save_qtend_from_convect_deep_timestep_init(ncol, pver, qtend_dp, errmsg, errflg)
-    !-- MCSP
-
     call convect_deep_tend(  &
          cmfmc,      cmfcme,             &
          zdu,       &
          rliq,      &
          ztodt,   &
          state,   ptend, cam_in%landfrac, pbuf)
-
-    !++ MCSP 
-    call save_ttend_from_convect_deep_run(ncol, pver, ttend_s, cpair, ttend_dp, errmsg, errflg)
-    call save_qtend_from_convect_deep_run(ncol, pver, ptend%q(:,:,1), qtend_dp, errmsg, errflg)
-    !-- MCSP
 
     if ( (trim(cam_take_snapshot_after) == "convect_deep_tend") .and. &
          (trim(cam_take_snapshot_before) == trim(cam_take_snapshot_after))) then
@@ -2521,26 +2491,6 @@ contains
 
     call t_stopf('convect_deep_tend')
 
-    !++ MCSP
-    call t_startf ('MCSP_tend')
-
-    if (trim(cam_take_snapshot_before) == "mcsp_tend") then
-       call cam_snapshot_all_outfld_tphysbc(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf, &
-           flx_heat, cmfmc, cmfcme, zdu, rliq, dlf, dlf2, rliq2, det_s, det_ice, net_flx)     
-    end if
-
-    call mcsp_tend( state, ptend, ztodt, jctop1, ttend_dp, qtend_dp)
-
-    call physics_update(state, ptend, ztodt, tend)
-
-    if (trim(cam_take_snapshot_after) == "mcsp_tend") then
-       call cam_snapshot_all_outfld_tphysbc(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf, &
-           flx_heat, cmfmc, cmfcme, zdu, rliq, dlf, dlf2, rliq2, det_s, det_ice, net_flx)     
-    end if
-
-    call t_stopf('MCSP_tend')
-    !-- MCSP
-
     call pbuf_get_field(pbuf, prec_dp_idx, prec_dp )
     call pbuf_get_field(pbuf, snow_dp_idx, snow_dp )
     call pbuf_get_field(pbuf, prec_sh_idx, prec_sh )
@@ -2560,6 +2510,40 @@ contains
     ! Check energy integrals, including "reserved liquid"
     flx_cnd(:ncol) = prec_dp(:ncol) + rliq(:ncol)
     call check_energy_cam_chng(state, tend, "convect_deep", nstep, ztodt, zero, flx_cnd, snow_dp, zero)
+
+    !===================================================
+    ! Mesoscale coherent structure parameterization (MCSP)
+    !===================================================
+    ! Redistributes the deep convective heating and moistening; active only when a
+    ! coefficient is set in mcsp_nl. Reads CLDTOP, TTEND_DP_CORE and QTEND_DP_CORE
+    ! from pbuf, which convect_deep_tend has just set.
+    if (do_mcsp) then
+       call t_startf('mcsp_cam_tend')
+
+       if (trim(cam_take_snapshot_before) == "mcsp_cam_tend") then
+          call cam_snapshot_all_outfld_tphysbc(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf, &
+              flx_heat, cmfmc, cmfcme, zdu, rliq, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
+       end if
+
+       call mcsp_cam_tend(state, ptend, ztodt, pbuf)
+
+       if ( (trim(cam_take_snapshot_after) == "mcsp_cam_tend") .and. &
+            (trim(cam_take_snapshot_before) == trim(cam_take_snapshot_after))) then
+          call cam_snapshot_ptend_outfld(ptend, lchnk)
+       end if
+
+       call physics_update(state, ptend, ztodt, tend)
+
+       if (trim(cam_take_snapshot_after) == "mcsp_cam_tend") then
+          call cam_snapshot_all_outfld_tphysbc(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf, &
+              flx_heat, cmfmc, cmfcme, zdu, rliq, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
+       end if
+
+       ! MCSP conserves column dry static energy, kinetic energy and water by construction
+       call check_energy_cam_chng(state, tend, "mcsp", nstep, ztodt, zero, zero, zero, zero)
+
+       call t_stopf('mcsp_cam_tend')
+    end if
 
     !
     ! Call Hack (1994) convection scheme to deal with shallow/mid-level convection
