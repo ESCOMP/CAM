@@ -4926,7 +4926,7 @@ end subroutine clubb_init_cnst
           end do
           do i=1, ncol
             rprddp(i,kcam)  = -1._r8*mf_sqtac(i,k_clubb)
-            evapcdp(i,kcam) = -1._r8*mf_sqtev(i,k_clubb)
+            evapcdp(i,kcam) = mf_sqtev(i,k_clubb)
           end do
         end do
 
