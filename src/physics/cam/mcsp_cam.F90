@@ -210,6 +210,7 @@ subroutine mcsp_cam_tend(state, ptend, ztodt, pbuf)
    real(r8) :: conv_depth(pcols)            ! pressure depth of deep convection [Pa]
    real(r8) :: mcsp_dt_max(pcols)           ! heating amplitude [K/s]
 
+   character(len=40)  :: scheme_name
    character(len=512) :: errmsg
    integer            :: errflg
    !-----------------------------------------------------------------------------
@@ -245,7 +246,7 @@ subroutine mcsp_cam_tend(state, ptend, ztodt, pbuf)
                  mcsp_dt_out(:ncol,:), mcsp_dq_out(:ncol,:),                        &
                  mcsp_du_out(:ncol,:), mcsp_dv_out(:ncol,:),                        &
                  mcsp_freq(:ncol), mcsp_shear(:ncol), conv_depth(:ncol), mcsp_dt_max(:ncol), &
-                 errmsg, errflg)
+                 scheme_name, errmsg, errflg)
    if (errflg /= 0) then
       call endrun('mcsp_cam_tend: ' // trim(errmsg))
    end if
