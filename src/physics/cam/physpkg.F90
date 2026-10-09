@@ -42,6 +42,9 @@ module physpkg
 
   use offline_driver,  only: offline_driver_dorun
 
+! clubb_mf dependency removed: CLUBB-MF is only supported with cam7
+! physics (enforced in bld/build-namelist)
+
   implicit none
   private
   save

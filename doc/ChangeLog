@@ -1,3 +1,323 @@
+Tag name: cam6_4_207
+Originator(s): jtruesdal, adamrher
+Date: Oct 9, 2026
+One-line Summary: Update CLUBB+MF (EDMF) to the latest version; CLUBB+MF is
+  now selected with deep_scheme='CLUBB_MF'
+Github PR URL: https://github.com/ESCOMP/CAM/pull/1576
+
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+
+- Update CLUBB+MF to latest version (#1370)
+  Brings the updated CLUBB+MF (clubb_mf) code into CAM. The CLUBB interface
+  (clubb_inter.F90) is extended to support the enhanced integrate_mf call, new
+  EDMF diagnostics/outputs, and additional namelist controls for CLUBB+MF
+  behavior (radiation coupling, microphysics, TKE contribution, cold pool,
+  etc.).  The majority of the code updates reside in clubb_mf.F90.
+
+  - clubb_mf is now agnostic to the direction of the vertical levels: loops
+    and indices are adjusted as needed depending on whether the input arrays
+    are top-down or bottom-up.
+  - The number of vertical levels for the new MF arrays is now consistent
+    with the associated thermodynamic or momentum grid.
+  - CLUBB+MF is now selected with deep_scheme='CLUBB_MF'.  The MF plume
+    ensemble provides the deep-convection fields (PREC_DP, SNOW_DP, ICWMRDP,
+    DP_FRAC, RPRDDP, NEVAPR_DPCU) and populates the ZM-style gathered pbuf
+    arrays (ZM_MU, ZM_EU, ZM_DU, ZM_MD, ZM_ED, ZM_DP, ZM_DSUBCLD, ZM_JT,
+    ZM_MAXG, ZM_IDEEP) and the plume-ensemble updraft speed (MF_WUP), so
+    that convective tracer transport (convtran2) and aerosol convective
+    processing (aero_convproc) are driven by the MF plumes.  The old
+    do_clubb_mf namelist variable is removed (it is derived from
+    deep_scheme).
+  - CLUBB+MF is only supported with cam7 physics (enforced in
+    build-namelist).
+  - History output of interpolated fields now supports an arbitrary number
+    of extra (non-horizontal) dimensions, which is needed to output the
+    plume-ensemble ('nens') diagnostics on an interpolated history grid.
+
+- CLUBB advected-moments read loop runs one level past state%q
+  (out-of-bounds) in clubb_intr.F90 (#1590)
+  The advected-moments read loop is now bounded by nzt_clubb rather than
+  nzm_clubb.  The logicals do_rainturb and clubb_do_adv are also now
+  initialized to .false.
+
+	Note: The clubb-mf update is a major refactor including new functionality and is
+	answer changing from the cam6_4_206 version of clubb_mf
+
+Related follow-up: the roots solver is duplicated in clubb_mf and uwshcu.F90
+(see #1696).
+Related follow-up: Minimize space from 200+ clubb_mf variables that are unused when its not chosen as the deep scheme.
+(see #1697).
+
+Describe any changes made to build system: N/A
+  (see build-namelist changes below)
+
+Describe any changes made to the namelist:
+- deep_scheme: new valid value 'CLUBB_MF'.
+- do_clubb_mf: removed.  It is now derived from deep_scheme='CLUBB_MF'.
+- New clubb_mf_nl namelist variables (defaults are only added by
+  build-namelist when deep_scheme='CLUBB_MF'):
+    do_clubb_mf_precip, do_clubb_mf_rad, do_clubb_mf_addtke,
+    clubb_mf_Lopt, clubb_mf_a0, clubb_mf_b0, clubb_mf_alphturb,
+    clubb_mf_max_L0, clubb_mf_fdd, do_clubb_mf_coldpool, clubb_mf_ddalph,
+    clubb_mf_ddbeta, clubb_mf_pwfac, clubb_mf_ddexp, clubb_mf_pwmin,
+    clubb_mf_pwmax, clubb_mf_cldfrac_fac, do_clubb_mf_ustar,
+    do_clubb_mf_mixd, clubb_mf_up_ndt, clubb_mf_cp_ndt, do_clubb_mf_rhtke,
+    do_clubb_mf_cmt, do_clubb_mf_lscale_perplume, do_clubb_mf_coldpool_init,
+    do_clubb_mf_coldpool_perplume, clubb_mf_kseed, do_clubb_mf_aloft,
+    do_clubb_mf_aspd, do_clubb_mf_pblcull, do_clubb_mf_invswitch
+- do_clubb_mf_diag: documentation updated; note deep_scheme='CLUBB_MF' must
+  also be set.
+- clubb_mf_Lopt (entrainment length scale option, default 6): valid values
+  are 0,1,2,3,6,7,8.  Options 4 and 5 (dilute CAPE) are removed.
+- Changed defaults for existing clubb_mf_nl variables (only used with
+  deep_scheme='CLUBB_MF'):
+    clubb_mf_L0:   50.0 -> 200.0
+    clubb_mf_ent0: 0.22 -> 0.2
+    clubb_mf_nup:  10   -> 25
+- New deep_scheme-dependent CLUBB defaults:
+    clubb_l_predict_upwp_vpwp = .false. for cam7 with deep_scheme='CLUBB_MF'
+    clubb_l_do_expldiff_rtm_thlm = .false. with clubb_sgs and
+      deep_scheme='CLUBB_MF'
+- With deep_scheme='CLUBB_MF': convproc_do_aer is set to .true. and
+  use_gw_convect_dp is set to .false. (CLUBB_MF does not provide TTEND_DP).
+
+List any changes to the defaults for the boundary datasets: N/A
+
+Describe any substantial timing or memory changes:
+- For configurations that do not use deep_scheme='CLUBB_MF'
+  we carry 200+ extra 2d local variables which are being addressed in issue $1697)
+- With CLUBB_MF the default number of plumes, clubb_mf_nup, increased
+  from 10 to 25.)
+
+Code reviewed by: cacraigucar, adamrher, jet
+
+List all files eliminated: N/A
+
+List all files added and what they do: N/A
+
+List all existing files that have been modified, and describe the changes:
+
+M  .gitmodules
+M  src/dynamics/fv3
+   - Update the CAM_FV3_interface external tag from fv3int_061924 to
+     fv3int_100726 (updates the dummy write_interpolated_scalar/vector
+     interfaces to match the new extra-dimension signature).
+
+M  bld/build-namelist
+   - Move the do_clubb_sgs handling ahead of the deep_scheme handling so it
+     is available for the CLUBB_MF dependency checks.
+   - Add checks that deep_scheme='CLUBB_MF' requires do_clubb_sgs to be
+     active and cam7 physics.
+   - Add default convproc_do_aer=.true. when deep_scheme='CLUBB_MF'.
+   - Add the CLUBB-MF namelist defaults (only when deep_scheme='CLUBB_MF');
+     remove the do_clubb_mf default.
+   - clubb_l_predict_upwp_vpwp and clubb_l_do_expldiff_rtm_thlm defaults now
+     depend on deep_scheme.
+   - Set use_gw_convect_dp=.false. for deep_scheme='CLUBB_MF'.
+   - Reorder the microp_aero_wsub_scale/wsubi_scale add_default calls (no
+     change in values).
+
+M  bld/namelist_files/namelist_defaults_cam.xml
+M  bld/namelist_files/namelist_definition.xml
+   - New CLUBB+MF namelist variables, new deep_scheme value, removal of
+     do_clubb_mf, and changed/new defaults (see namelist section above).
+
+M  cime_config/testdefs/testlist_cam.xml
+   - ERC_D_Ln9.ne3pg3_ne3pg3_mt232 nochem_clubbmf test: compset changed from
+     FHIST to FHISTC_LTso (CLUBB+MF requires cam7 physics).
+
+M  cime_config/testdefs/testmods_dirs/cam/nochem_clubbmf/user_nl_cam
+M  cime_config/testdefs/testmods_dirs/cam/outfrq9s_clubbmf/user_nl_cam
+   - Remove do_clubb_mf=.true. and change deep_scheme='off' to
+     deep_scheme='CLUBB_MF'.
+
+M  src/chemistry/aerosol/aero_convproc.F90
+   - When deep_scheme='CLUBB_MF', use the plume-ensemble updraft speed
+     (MF_WUP) for the aerosol activation updraft velocity in the deep
+     convective processing instead of the mu/(rhoair*zm_areafrac) estimate.
+     The ZM path is unchanged.
+
+M  src/control/cam_history.F90
+   - Pass the field's extra dimensions (fdims(2:frank)) to
+     write_interpolated for interpolated history output instead of a single
+     computed level count.
+
+M  src/dynamics/fv/interp_mod.F90
+M  src/dynamics/mpas/interp_mod.F90
+   - Stub write_interpolated_scalar/vector interfaces: numlev replaced by
+     ext_dims(:) to match the SE interface.
+
+M  src/dynamics/se/interp_mod.F90
+   - write_interpolated_scalar/vector now take ext_dims(:) in place of numlev
+     and support up to 3 extra dimensions (endrun if more are requested).
+
+M  src/physics/cam/clubb_intr.F90
+   - Extend the CLUBB+MF interface to the new integrate_mf: new pbuf fields
+     (ZTOPMN, ZTOPMA, ZTOP_MACMIC, DDCP, DDCPMN, DDCP_MACMIC, CBM1,
+     CBM1_MACMIC and the *_MACMIC plume budget fields) and macmic
+     sub-cycle accumulation.
+   - New 'nens' history coordinate (plume ensemble) and 46 new edmf_*
+     history fields (plume ensemble properties, forcing/flux budget terms,
+     cold pool, CAPE, etc.).
+   - New internal routines compute_mf_plumes and output_mf_diagnostics, and
+     mf_pinterp.
+   - The MF plume cloud is attributed to the deep convection fields
+     (DP_FRAC/ICWMRDP) rather than the shallow fields; PREC_DP/SNOW_DP,
+     RPRDDP, NEVAPR_DPCU and the ZM_*/MF_WUP gathered arrays are populated
+     from the plume ensemble.
+   - Fix out-of-bounds advected-moments read loop (nzm_clubb -> nzt_clubb)
+     and initialize do_rainturb and clubb_do_adv (#1590).
+
+M  src/physics/cam/clubb_mf.F90
+   - Updated CLUBB+MF science and call interface (new integrate_mf
+     arguments; radiation coupling, microphysics, TKE contribution, cold
+     pool and other options controlled by the new namelist variables).
+   - Vertical-direction agnostic: loops and indexing adapt to top-down or
+     bottom-up input arrays.  MF arrays are sized consistently with the
+     thermodynamic or momentum grid.
+   - New routines: buoyancy_sort_mixfrac (buoyancy-sorting mixing fraction,
+     module-level with an explicit interface), mf_pinterp, get_Lscale,
+     oneplume, roots, hybridRNG and hormann.
+   - The do_condensation option (and its arguments to get_Lscale and
+     oneplume) and its .false. path are removed.
+   - The clubb_mf_Lopt=4,5 (dilute CAPE) options are removed, along with the
+     routines copied from ZM that supported them (buoyan_dilute,
+     parcel_dilute, qsat_hPa).  clubb_mf_readnl now aborts if clubb_mf_Lopt
+     is not one of 0,1,2,3,6,7,8.
+   - Hard-coded values are replaced by named parameters.
+   - Downdraft clamp replaced (adamrher): the sub-cloud downdraft profile now
+     ends (dnw=dna=0 below that level) when it decays to the minimum
+     downdraft speed, rather than being clamped at that speed and zeroed
+     afterwards.
+   - Bug fixes (answer changing), including: cbm1 is now set (to zm(ksfcm))
+     before the early returns in integrate_mf; the plume-top/cloud-base
+     index search no longer indexes zm with an unset (zero) index (falls
+     back to the model top); an out-of-bounds array access is fixed.
+   - Order-of-operation differences relative to the original (cam6_4_124)
+     clubb_mf cause roundoff-level differences.
+
+M  src/physics/cam/convect_deep.F90
+   - Add deep_scheme='CLUBB_MF': register the standard deep convection pbuf
+     fields (ICWMRDP, RPRDDP, NEVAPR_DPCU, 'global' PREC_DP/SNOW_DP) plus the
+     ZM_* gathered arrays and MF_WUP; do not clear PREC_DP/SNOW_DP, set
+     fracis=1, and add clubb_mf_convtran2 to do convective tracer transport
+     (via zm_conv_convtran_run) with the plume-ensemble mass fluxes.
+
+M  src/physics/cam/gw_drag_cam.F90
+   - Only look up TTEND_DP when deep_scheme='ZM' (CLUBB_MF does not provide
+     it).
+
+M  src/physics/cam/physpkg.F90
+   - Comment only: CLUBB-MF is only supported with cam7 physics.
+
+M  src/physics/cam7/physpkg.F90
+   - For CLUBB+MF, accumulate PREC_DP, SNOW_DP, DP_FRAC, ICWMRDP and CONCLD
+     over the macmic sub-cycle and use the sub-cycle mean afterwards; rebuild
+     the total cloud fraction from the averaged deep fraction.
+   - Include the MF plume precipitation in the energy-check condensate flux
+     (flx_cnd), and avoid double-counting PREC_DP/SNOW_DP in the
+     convect_deep energy check.
+   - Remove the unused PREC_SH/SNOW_SH pbuf lookups.
+
+If there were any failures reported from running test_driver.sh on any test
+platform, and checkin with these failures has been OK'd by the gatekeeper,
+then copy the lines from the td.*.status files for the failed tests to the
+appropriate machine below.  All failed tests must be justified.
+
+derecho/intel/aux_cam:
+  ERC_D_Ln9.f09_f09_mt232.FHIST_BDRD.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+  ERC_D_Ln9.f19_f19_mt232.QPC6.derecho_intel.cam-outfrq3s_cosp (Overall: DIFF) details:
+  ERC_D_Ln9.mpasa120_mpasa120.F2000climo.derecho_intel.cam-outfrq9s_mpasa120 (Overall: DIFF) details:
+  ERC_D_Ln9.mpasa120_mpasa120.FHISTC_LTso.derecho_intel.cam-outfrq9s_mpasa120 (Overall: DIFF) details:
+  ERC_D_Ln9.mpasa120_mpasa120.QPC7.derecho_intel.cam-outfrq9s_mpasa120 (Overall: DIFF) details:
+  ERC_D_Ln9.ne30pg2_ne30pg2_mt232.QPC7.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+  ERC_D_Ln9.ne30pg3_ne30pg3_mt232.F1850C_LTso.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+  ERC_D_Ln9.ne3_ne3_mg37.QPC7.derecho_intel.cam-outfrq9s_rttov (Overall: DIFF) details:
+  ERC_Ln9.C96_C96_mt232.F2000climo.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+  ERI_D_Ln18.f09_f09_mt232.FHIST.derecho_intel.cam-outfrq3s_eri (Overall: DIFF) details:
+  ERI_D_Ln18.ne30pg3_ne30pg3_mt232.FHISTC_LTso.derecho_intel.cam-outfrq3s_eri (Overall: DIFF) details:
+  ERP_D_Ln9.ne30pg3_ne30pg3_mt232.F1850C_MTso.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+  ERP_D_Ln9_P64x2.f09_f09_mg17.QSC6.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+  ERP_Ln9.f19_f19_mg17.FWsc1850.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+  ERR_Ln9.ne16pg3_ne16pg3_mt232.FHISTC_LTso.derecho_intel.cam-outfrq9s_bwic (Overall: DIFF) details:
+  ERS_Ln9.f09_f09_mg17.FX2000.derecho_intel.cam-outfrq9s_ltr (Overall: DIFF) details:
+  SMS_D_Ln9.f09_f09_mg17.FSD.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+  SMS_D_Ln9.ne0ARCTICne30x4_ne0ARCTICne30x4_mt12.FHIST.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+  SMS_D_Ln9.ne30pg3_ne30pg3_mt232.FHISTC_MTso.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+  SMS_D_Ln9.ne30pg3_ne30pg3_mt233.1850_CAM70%MT%CT4S2_CLM60%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV_SESP.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+  SMS_Ln9.f19_f19_mt232.F2000climo.derecho_intel.cam-silhs (Overall: DIFF) details:
+    - DIFF due to scaling 4 output fields to different units. Only the 4 are different otherwise BFB
+
+  ERP_Ld3.ne16pg3_ne16pg3_mg17.FHISTC_WAt1ma.derecho_intel.cam-reduced_hist1d (Overall: NLFAIL) details:
+  ERP_Ld3.ne30pg3_ne30pg3_mt232.FHISTC_MTt4s.derecho_intel.cam-outfrq1d_aoa (Overall: NLFAIL) details:
+  ERP_Ln9.f09_f09_mg17.FCSD_HCO.derecho_intel.cam-outfrq9s (Overall: NLFAIL) details:
+  ERP_Ln9.ne30pg3_ne30pg3_mg17.FCnudged.derecho_intel.cam-outfrq9s (Overall: NLFAIL) details:
+  ERP_Ln9.ne30pg3_ne30pg3_mg17.FHISTC_WAma.derecho_intel.cam-outfrq9s (Overall: NLFAIL) details:
+  ERS_Ln9.f19_f19_mg17.FXSD.derecho_intel.cam-outfrq9s (Overall: NLFAIL) details:
+  ERS_Ln9.ne30pg3_ne30pg3_mg17.FHISTC_WXma.derecho_intel.cam-outfrq9s_ctem (Overall: NLFAIL) details:
+  SMS_C2_D_Ln9.ne16pg3_ne16pg3_mg17.FHISTC_WXma.derecho_intel.cam-outfrq9s (Overall: NLFAIL) details:
+  SMS_D_Ld5.f09_f09_mt232.PC6.derecho_intel.cam-cam6_port_f09 (Overall: NLFAIL) details:
+  SMS_D_Ln9.f09_f09_mg17.FCts2nudged.derecho_intel.cam-outfrq9s_leapday (Overall: NLFAIL) details:
+  SMS_D_Ln9.f09_f09_mg17.FCvbsxHIST.derecho_intel.cam-outfrq9s (Overall: NLFAIL) details:
+  SMS_D_Ln9.f19_f19_mg17.FCARMA2000climo.derecho_intel.cam-outfrq9s_carma_rad_diag (Overall: NLFAIL) details:
+  SMS_D_Ln9.f19_f19_mg17.FCHIST_SLH.derecho_intel.cam-outfrq9s (Overall: NLFAIL) details:
+  SMS_D_Ln9.f19_f19_mg17.FWma2000climo.derecho_intel.cam-outfrq9s (Overall: NLFAIL) details:
+  SMS_D_Ln9.f19_f19_mg17.FWma2000climo.derecho_intel.cam-outfrq9s_waccm_ma_mam4 (Overall: NLFAIL) details:
+  SMS_D_Ln9.f19_f19_mg17.QPC2000climo.derecho_intel.cam-outfrq3s_usecase (Overall: NLFAIL) details:
+  SMS_D_Ln9_P1280x1.ne30pg3_ne30pg3_mt232.FHISTC_MTt1s.derecho_intel.cam-outfrq9s_Leung_dust (Overall: NLFAIL) details:
+  SMS_Ld1.f09_f09_mg17.FCHIST_GC.derecho_intel.cam-outfrq1d (Overall: NLFAIL) details:
+  SMS_Ld1.f09_f09_mg17.FW2000climo.derecho_intel.cam-outfrq1d (Overall: NLFAIL) details:
+  SMS_Ld1.ne30pg3_ne30pg3_mg17.FC2010climo.derecho_intel.cam-outfrq1d (Overall: NLFAIL) details:
+  SMS_Lh12.f09_f09_mg17.FCSD_HCO.derecho_intel.cam-outfrq3h (Overall: NLFAIL) details:
+  SMS_Ln9.f09_f09_mg17.F2010climo.derecho_intel.cam-nudging (Overall: NLFAIL) details:
+  SMS_Ln9.f09_f09_mg17.FW1850.derecho_intel.cam-reduced_hist3s (Overall: NLFAIL) details:
+  SMS_Ln9.ne30pg3_ne30pg3_mg17.FW2000climo.derecho_intel.cam-outfrq9s_rrtmgp (Overall: NLFAIL) details:
+    - NLFAIL is expected and due to changes in namelist documented above.
+  SMS_D_Ln9_P1536x1.ne0CONUSne30x8_ne0CONUSne30x8_mt12.FCHIST.derecho_intel.cam-outfrq9s (Overall: NLFAIL) details:
+    - intermittent failure in CTSM code (lnd_set_decomp_and_domain.F90)  - It happened to work this time
+
+derecho/nvhpc/aux_cam:
+  ERS_Ln9.ne30pg3_ne30pg3_mt232.FHISTC_LTso.derecho_nvhpc.cam-outfrq9s_gpu_default (Overall: DIFF)
+
+izumi/nag/aux_cam:
+  ERC_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_nag.cam-outfrq3s_subcol (Overall: FAIL)
+    - pre-existing failure -- see https://github.com/ESCOMP/CAM/issues/1514
+
+  ERC_D_Ln9.f10_f10_mg37.QPWmaC6.izumi_nag.cam-outfrq9s_tuvx_waccm_ma_mam5 (Overall: NLFAIL)
+    - NLFAIL is expected and due to changes in namelist documented above.
+
+  ERC_D_Ln9.f10_f10_mt232.FHIST.izumi_nag.cam-outfrq3s_cospsathist (Overall: DIFF)
+  ERC_D_Ln9.mpasa480_mpasa480_mt232.QPC7.izumi_nag.cam-outfrq9s_mpasa480 (Overall: DIFF)
+  ERC_D_Ln9.ne3pg3_ne3pg3_mt232.FHISTC_LTso.izumi_nag.cam-cosp_rad_diags (Overall: DIFF)
+  ERC_D_Ln9.ne3pg3_ne3pg3_mt232.FHISTC_LTso.izumi_nag.cam-outfrq9s_nochem (Overall: DIFF)
+  SMS_D_Ln9.f10_f10_mt232.F1850.izumi_nag.cam-outfrq9s (Overall: DIFF)
+  SMS_D_Ln9.ne3pg3_ne3pg3_mt232.QPC7.izumi_nag.cam-carma_test_tracers (Overall: DIFF)
+    - DIFF due to scaling 4 output fields to different units. Only the 4 are different otherwise BFB
+
+izumi/gnu/aux_cam:
+  ERC_D_Ln9.C48_C48_mg17.QPC6.izumi_gnu.cam-outfrq9s (Overall: DIFF)
+  ERC_D_Ln9.f19_f19_mt232.FHIST.izumi_gnu.cam-lonlat_fv_diags (Overall: DIFF)
+  ERC_D_Ln9.mpasa480_mpasa480_mt232.FHISTC_LTso.izumi_gnu.cam-outfrq9s_mpasa480 (Overall: DIFF)
+  ERC_D_Ln9.ne3pg3_ne3pg3_mt232.FHISTC_LTso.izumi_gnu.cam-nochem_clubbmf (Overall: DIFF)
+  ERC_D_Ln9.ne3pg3_ne3pg3_mt232.FHISTC_LTso.izumi_gnu.cam-sat_lcltod (Overall: DIFF)
+  ERC_D_Ln9.ne3pg3_ne3pg3_mt232.QPC7.izumi_gnu.cam-outfrq9s (Overall: DIFF)
+  ERS_Ln9_P24x1.mpasa480_mpasa480.F2000climo.izumi_gnu.cam-outfrq9s_mpasa480 (Overall: DIFF)
+  SUB_D_Ln9.ne3pg3_ne3pg3_mt232.FHIST.izumi_gnu.cam-outfrq9s (Overall: DIFF)
+    - DIFF due to scaling 4 output fields to different units. Only the 4 are different otherwise BFB
+
+  SMS_D_Ln3.ne3pg3_ne3pg3_mt232.PC7.izumi_gnu.cam-pc7_ne3pg3 (Overall: NLFAIL)
+  SMS_D_Ln9.f10_f10_mg37.FWmaHIST.izumi_gnu.cam-outfrq9s_mee_fluxes (Overall: NLFAIL)
+    - NLFAILS are expected and due to changes in namelist documented above.
+
+CAM tag used for the baseline comparison tests if different than previous
+tag: NA
+
+Summarize any changes to answers:
+- configurations using deep_scheme='CLUBB_MF' are climage changing compared to the old do_club_mf=.true.
+- clubbmf is climate changing but off by default.
+- all other configurations are B4B with the exception of the units change for 4 output fields
+- what platforms/compilers: derecho/intel
+
 ===============================================================
 
 Tag name: cam6_4_206

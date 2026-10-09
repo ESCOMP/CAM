@@ -45,7 +45,7 @@
 	path = src/dynamics/fv3
 	url = https://github.com/ESCOMP/CAM_FV3_interface.git
         fxrequired = AlwaysRequired
-        fxtag = fv3int_061924
+        fxtag = fv3int_100726
 	fxDONOTUSEurl = https://github.com/ESCOMP/CAM_FV3_interface.git
 
 [submodule "geoschem"]
