@@ -44,7 +44,7 @@ module aero_deposition_cam
 
   ! CAM4 bulk dust bin sizes (https://doi.org/10.1002/2013MS000279)
   real(r8), parameter :: bulk_dst_edges(n_bulk_dst_bins+1) = &
-       (/0.1e-6_r8, 1.0e-6_r8, 2.5e-6_r8, 5.0e-6_r8, 10.e-6_r8/)
+       (/0.1e-6_r8, 1.0e-6_r8, 2.5e-6_r8, 5.0e-6_r8, 40.e-6_r8/)
 
 contains
 

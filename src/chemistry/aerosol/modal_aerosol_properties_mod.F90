@@ -850,9 +850,9 @@ contains
     integer,  intent(out) :: error_code            ! error code (0 if no error)
     character(len=*), intent(out) :: error_string  ! error string
 
-    real(r8) :: dns_dst ! kg/m3
+    real(r8) :: dns_spc, Vtotal ! kg/m3, m3/m2
     real(r8) :: sigma_g, vmd, tmp, massfrac_bin(size(bulk_fluxes))
-    real(r8) :: Ntype, Mtype, Mtotal, Ntot
+    real(r8) :: Mtype, Ntot
     integer :: k,l,m,mm, nbulk
     logical :: has_type, type_not_found
 
@@ -873,7 +873,7 @@ contains
 
     do m = 1,self%nbins()
        Mtype = 0._r8
-       Mtotal = 0._r8
+       Vtotal = 0._r8
        mm = self%indexer(m,0)
        Ntot = dep_fluxes(mm) ! #/m2
 
@@ -881,26 +881,23 @@ contains
 
        do l = 1,self%nspecies(m)
           mm = self%indexer(m,l)
-          call self%get(m,l, spectype=spectype, density=dns_dst) ! kg/m3
+          call self%get(m,l, spectype=spectype, density=dns_spc) ! kg/m3
           if (spectype==bulk_type) then
              Mtype = dep_fluxes(mm) ! kg/m2
              has_type = .true.
              type_not_found = .false.
           end if
-          Mtotal = Mtotal + dep_fluxes(mm) ! kg/m2
+          Vtotal = Vtotal + dep_fluxes(mm)/dns_spc ! m3/m2
        end do
        mode_has_type: if (has_type) then
           call rad_aer_get_info(self%list_idx_, m, mode_type=modetype)
-          if (Ntot>1.e-40_r8 .and. Mtype>1.e-40_r8 .and. Mtotal>1.e-40_r8) then
+          if (Ntot>1.e-40_r8 .and. Mtype>1.e-40_r8 .and. Vtotal>1.e-40_r8) then
 
              call rad_aer_get_mode_props(self%list_idx_, m, sigmag=sigma_g)
              tmp = sqrtwo*log(sigma_g)
 
-             ! type number concentration
-             Ntype = Ntot * Mtype/Mtotal ! #/m2
-
-             ! volume median diameter (meters)
-             vmd = (6._r8*Mtype/(pi*Ntype*dns_dst))**onethrd * exp(1.5_r8*(log(sigma_g))**2)
+             !volume median diameter (meters), from the mode's true total volume
+             vmd = (6._r8*Vtotal/(pi*Ntot))**onethrd * exp(1.5_r8*(log(sigma_g))**2)
 
              massfrac_bin = 0._r8
 
