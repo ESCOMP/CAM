@@ -40,7 +40,8 @@ module modal_aero_calcsize_cam
 
 #endif
 
-   use modal_aero_calcsize, only: modal_aero_calcsize_run, modal_aero_calcdry_run, calcsize_nsrflx
+   use modal_aero_calcsize, only: modal_aero_calcsize_run, modal_aero_calcdry_run, &
+                                  modal_aero_calcsize_diag_run, calcsize_nsrflx
 
    implicit none
    private
@@ -521,103 +522,40 @@ contains
       class(aerosol_state), intent(in), target :: aero_state
 
       ! local
-      integer  :: i, k, l1, n
-      integer  :: lchnk, ncol
-      integer  :: stat
+      integer  :: n
+      integer  :: ncol
       integer  :: nmodes
-      integer  :: nspec
 
-      real(r8), pointer :: dgncur_a(:,:) ! (pcols,pver)
+      real(r8), pointer :: dgncur_a(:,:,:) ! (pcols,pver,nmodes)
 
-      real(r8), parameter :: third = 1.0_r8/3.0_r8
-
-      real(r8), pointer :: mode_num(:,:) ! mode number mixing ratio
-      real(r8), pointer :: specmmr(:,:)  ! specie mmr
-      real(r8)          :: specdens      ! specie density
-
-      real(r8) :: dryvol_a(pcols,pver)   ! interstital aerosol dry volume (cm^3/mol_air)
-
-      real(r8) :: dgnum, dgnumhi, dgnumlo
-      real(r8) :: dgnyy, dgnxx           ! dgnumlo/hi of current mode
-      real(r8) :: drv_a                  ! dry volume (cm3/mol_air)
-      real(r8) :: dumfac, dummwdens      ! work variables
-      real(r8) :: num_a0                 ! initial number (#/mol_air)
-      real(r8) :: num_a                  ! final number (#/mol_air)
-      real(r8) :: voltonumbhi, voltonumblo
-      real(r8) :: v2nyy, v2nxx           ! voltonumblo/hi of current mode
-      real(r8) :: sigmag, alnsg
+      character(len=512) :: errmsg_local
+      integer            :: errflg_local
       !-----------------------------------------------------------------------
 
-      lchnk = state%lchnk
       ncol  = state%ncol
 
       nmodes = aero_props%nbins()
 
+      call pbuf_get_field(pbuf, dgnum_idx, dgncur_a)
+
+      ! fill with mode default diameter:
       do n = 1, nmodes
+         dgncur_a(:,:,n) = aero_props%dgnum(n)
+      end do
 
-         call pbuf_get_field(pbuf, dgnum_idx, dgncur_a, start=(/1,1,n/), kount=(/pcols,pver,1/))
-
-         ! get mode properties
-         dgnum = aero_props%dgnum(n)
-         dgnumhi = aero_props%dgnumhi(n)
-         dgnumlo = aero_props%dgnumlo(n)
-         sigmag = exp(aero_props%alogsig(n))
-
-         ! get mode number mixing ratio
-         call aero_state%get_ambient_num(n, mode_num)
-
-         dgncur_a(:,:) = dgnum
-         dryvol_a(:,:) = 0.0_r8
-
-         ! compute dry volume mixrats =
-         !      sum_over_components{ component_mass mixrat / density }
-         nspec = aero_props%nspecies(n)
-         do l1 = 1, nspec
-
-            call aero_state%get_ambient_mmr(species_ndx=l1, bin_ndx=n, mmr=specmmr)
-            call aero_props%get(n, l1, density=specdens)
-
-            ! need qmass*dummwdens = (kg/kg-air) * [1/(kg/m3)] = m3/kg-air
-            dummwdens = 1.0_r8 / specdens
-
-            do k=top_lev,pver
-               do i=1,ncol
-                  dryvol_a(i,k) = dryvol_a(i,k)    &
-                                  + max(0.0_r8, specmmr(i,k))*dummwdens
-               end do
-            end do
-         end do
-
-         alnsg  = log( sigmag )
-         dumfac = exp(4.5_r8*alnsg**2)*pi/6.0_r8
-         voltonumblo = 1._r8 / ( (pi/6._r8)*(dgnumlo**3)*exp(4.5_r8*alnsg**2) )
-         voltonumbhi = 1._r8 / ( (pi/6._r8)*(dgnumhi**3)*exp(4.5_r8*alnsg**2) )
-         v2nxx = voltonumbhi
-         v2nyy = voltonumblo
-         dgnxx = dgnumhi
-         dgnyy = dgnumlo
-
-         do k = top_lev, pver
-            do i = 1, ncol
-
-               drv_a = dryvol_a(i,k)
-               num_a0 = mode_num(i,k)
-               num_a = max( 0.0_r8, num_a0 )
-
-               if (drv_a > 0.0_r8) then
-                  if (num_a <= drv_a*v2nxx) then
-                     dgncur_a(i,k) = dgnxx
-                  else if (num_a >= drv_a*v2nyy) then
-                     dgncur_a(i,k) = dgnyy
-                  else
-                     dgncur_a(i,k) = (drv_a/(dumfac*num_a))**third
-                  end if
-               end if
-
-            end do
-         end do
-
-      end do ! nmodes
+      call modal_aero_calcsize_diag_run( &
+         aero_props = aero_props,           &
+         aero_state = aero_state,           &
+         ncol       = ncol,                 &
+         pver       = pver,                 &
+         top_lev    = top_lev,              &
+         pi         = pi,                   &
+         dgncur_a   = dgncur_a(:ncol,:,:),  &
+         errmsg     = errmsg_local,         &
+         errflg     = errflg_local)
+      if (errflg_local /= 0) then
+         call endrun('modal_aero_calcsize_diag: ' // trim(errmsg_local))
+      end if
 
       call modal_aero_calcdry(state, pbuf, aero_props, aero_state)
 

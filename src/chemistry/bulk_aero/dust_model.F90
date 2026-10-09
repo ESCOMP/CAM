@@ -192,7 +192,7 @@ contains
   !===============================================================================
   subroutine dust_depvel( temp, pmid, ram1, fv, ncol,  vlc_dry,vlc_trb,vlc_grv )
     use aerosol_depvel, only: aerosol_depvel_compute
-    use mo_constants,   only: dust_density
+    use dust_common,    only: dust_density
     use ppgrid,         only: pver
 
     real(r8), intent(in) :: temp(:,:)  ! temperature

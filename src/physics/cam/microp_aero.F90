@@ -42,7 +42,7 @@ use aerosol_instances_mod, only: aerosol_instances_get_num_models, &
 use nucleate_ice_cam, only: use_preexisting_ice, nucleate_ice_cam_readnl, nucleate_ice_cam_register, &
                             nucleate_ice_cam_init, nucleate_ice_cam_calc
 
-use ndrop,            only: ndrop_init, dropmixnuc
+use ndrop,            only: ndrop_init, dropmixnuc, psat
 use ndrop_bam,        only: ndrop_bam_init, ndrop_bam_calc, aername
 
 use hetfrz_classnuc_cam, only: hetfrz_classnuc_cam_readnl, hetfrz_classnuc_cam_register, hetfrz_classnuc_cam_init, &
@@ -127,8 +127,7 @@ integer :: coarse_so4_idx = -1  ! index of sulfate in coarse mode
 integer :: naer_all = 0
 integer :: npccn_idx, rndst_idx, nacon_idx
 
-! dropmixnuc CAM interface data
-integer, parameter :: psat = 6   ! number of supersaturations used to calc ccn concentration
+! dropmixnuc CAM interface data (psat from ndrop)
 character(len=8) :: ccn_name(psat)= &
                     (/'CCN1','CCN2','CCN3','CCN4','CCN5','CCN6'/)
 
@@ -233,9 +232,12 @@ subroutine microp_aero_init(phys_state,pbuf2d)
       tke_idx      = pbuf_get_index('tke')
    case ('CLUBB_SGS')
       wp2_idx = pbuf_get_index('WP2_nadv')
-   case default
-      kvh_idx      = pbuf_get_index('kvh')
    end select
+
+   ! use kvh for the subgrid vertical velocity
+   ! under eddy schemes without tke or CLUBB moments,
+   ! and by dropmixnuc regardless of the eddy scheme:
+   kvh_idx = pbuf_get_index('kvh')
 
    ! clim_modal_aero determines whether modal aerosols are used in the climate calculation.
    ! The modal aerosols can be either prognostic or prescribed.
@@ -262,9 +264,6 @@ subroutine microp_aero_init(phys_state,pbuf2d)
                       rh2o, gravit, latvap, cpair, rair)
 
       ! dropmixnuc CAM interface init (moved from ndrop_init).
-      ! dropmixnuc needs kvh from pbuf regardless of the eddy scheme.
-      kvh_idx = pbuf_get_index('kvh')
-
       allocate( &
          aer_cnst_idx(aero_props_obj%nbins(),0:maxval(aero_props_obj%nmasses())), &
          fieldname(aero_props_obj%ncnst_tot()),                 &
