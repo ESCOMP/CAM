@@ -50,6 +50,15 @@
       <option name="comment">CAM7-LT, Prescribed GHGs and bulk aerosols</option>
     </options>
   </test>
+  <test compset="FHISTC_LTso" grid="ne3pg3_ne3pg3_mt232" name="ERC_D_Ln9" testmods="cam/outfrq9s_mcsp">
+    <machines>
+      <machine name="derecho" compiler="intel" category="aux_cam"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:30:00</option>
+      <option name="comment">CAM7-LT, MCSP (mesoscale coherent structure parameterization) on</option>
+    </options>
+  </test>
   <test compset="FHISTC_LTso" grid="ne16pg3_ne16pg3_mt232" name="ERR_Ln9" testmods="cam/outfrq9s_bwic">
     <machines>
       <machine name="derecho" compiler="intel" category="aux_cam"/>

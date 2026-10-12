@@ -1,0 +1,12 @@
+mfilt=1,1,1,1,1,1
+ndens=1,1,1,1,1,1
+nhtfrq=9,9,9,9,9,9
+write_nstep0=.true.
+inithist='ENDOFRUN'
+! MCSP (mesoscale coherent structure parameterization) is off by default.
+! activate all four tendencies so every branch of the scheme is exercised.
+mcsp_heat_coeff=0.3D0
+mcsp_moisture_coeff=0.3D0
+mcsp_uwind_coeff=1.0D-5
+mcsp_vwind_coeff=1.0D-5
+fincl1='MCSP_DT','MCSP_DQ','MCSP_DU','MCSP_DV','MCSP_DT_max','MCSP_freq','MCSP_shear','MCSP_conv_depth'
