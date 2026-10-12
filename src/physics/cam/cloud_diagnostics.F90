@@ -219,7 +219,7 @@ subroutine cloud_diagnostics_calc(state,  pbuf)
 ! **** mixes interface and physics code temporarily
 !-----------------------------------------------------------------------
     use physics_types, only: physics_state
-    use physics_buffer,only: physics_buffer_desc, pbuf_get_field, pbuf_old_tim_idx
+    use physics_buffer,only: physics_buffer_desc, pbuf_get_field
     use cloud_optical_properties, only: cldovrlap, cldclw, cldems_rk, cldems
     use conv_water,    only: conv_water_in_rad, conv_water_4rad
     use radiation,     only: radiation_do
@@ -257,7 +257,6 @@ subroutine cloud_diagnostics_calc(state,  pbuf)
     real(r8), pointer :: totg_ice(:,:)  ! grid box total cloud ice mixing ratio
     real(r8), pointer :: totg_liq(:,:)  ! grid box total cloud liquid mixing ratio
     
-    integer :: itim_old
 
     real(r8) :: cwp   (pcols,pver)      ! in-cloud cloud (total) water path
     real(r8) :: gicewp(pcols,pver)      ! grid-box cloud ice water path
@@ -307,8 +306,7 @@ subroutine cloud_diagnostics_calc(state,  pbuf)
     ncol  = state%ncol
     lchnk = state%lchnk
 
-    itim_old = pbuf_old_tim_idx()
-    call pbuf_get_field(pbuf, cld_idx, cld, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
+    call pbuf_get_field(pbuf, cld_idx, cld )
 
     call pbuf_get_field(pbuf, gb_totcldicemr_idx, totg_ice)
     call pbuf_get_field(pbuf, gb_totcldliqmr_idx, totg_liq)

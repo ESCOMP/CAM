@@ -7,7 +7,7 @@ module ssatcontrail
     use ppgrid,         only: pcols, pver
     use physics_types,  only: physics_state, physics_ptend, physics_ptend_init
     use physconst,      only: cpair,mwdry,mwh2o, gravit, zvir, rair, pi, rearth, tmelt
-    use physics_buffer, only: pbuf_get_index, pbuf_get_field, physics_buffer_desc,  pbuf_old_tim_idx
+    use physics_buffer, only: pbuf_get_index, pbuf_get_field, physics_buffer_desc
     use constituents,   only: cnst_get_ind, pcnst
     use phys_grid,      only: get_wght_all_p
     use wv_saturation,  only: qsat_water, qsat_ice
@@ -42,7 +42,7 @@ contains
     real(r8), pointer, dimension(:,:) ::  cld    ! cloud fraction
     real(r8), pointer, dimension(:,:) :: ac_H2O
     real(r8), pointer, dimension(:,:) :: ac_SLANT_DIST
-    integer  :: itim, ifld
+    integer  :: ifld
     integer :: ixcldice, ixcldliq                  ! indices for CLDICE and CLDLIQ
     integer :: ixnumice, ixnumliq
     real(r8):: zi, zm, rog
@@ -116,9 +116,8 @@ contains
  
     call get_wght_all_p(lchnk, ncol, wght)
 
-    itim = pbuf_old_tim_idx()
     ifld = pbuf_get_index('CLD')
-    call pbuf_get_field(pbuf, ifld, cld, (/1,1,itim/),(/pcols,pver,1/))
+    call pbuf_get_field(pbuf, ifld, cld)
 
     ifld = pbuf_get_index('ac_H2O')
     call pbuf_get_field(pbuf,ifld,ac_H2O)

@@ -126,7 +126,7 @@ end subroutine check_energy_readnl
 !
 !-----------------------------------------------------------------------
 
-    use physics_buffer, only : pbuf_add_field, dtype_r8, dyn_time_lvls
+    use physics_buffer, only : pbuf_add_field, dtype_r8
     use physics_buffer, only : pbuf_register_subcol
     use subcol_utils,   only : is_subcol_on
 
@@ -134,12 +134,12 @@ end subroutine check_energy_readnl
 
 ! Request physics buffer space for fields that persist across timesteps.
 
-    call pbuf_add_field('TEOUT', 'global',dtype_r8 , (/pcols,dyn_time_lvls/),      teout_idx)
-    call pbuf_add_field('DTCORE','global',dtype_r8,  (/pcols,pver,dyn_time_lvls/),dtcore_idx)
+    call pbuf_add_field('TEOUT', 'global',dtype_r8 , (/pcols/),      teout_idx)
+    call pbuf_add_field('DTCORE','global',dtype_r8,  (/pcols,pver/),dtcore_idx)
     ! DQCORE refers to dycore tendency of water vapor
-    call pbuf_add_field('DQCORE','global',dtype_r8,  (/pcols,pver,dyn_time_lvls/),dqcore_idx)
-    call pbuf_add_field('DUCORE','global',dtype_r8,  (/pcols,pver,dyn_time_lvls/),ducore_idx)
-    call pbuf_add_field('DVCORE','global',dtype_r8,  (/pcols,pver,dyn_time_lvls/),dvcore_idx)
+    call pbuf_add_field('DQCORE','global',dtype_r8,  (/pcols,pver/),dqcore_idx)
+    call pbuf_add_field('DUCORE','global',dtype_r8,  (/pcols,pver/),ducore_idx)
+    call pbuf_add_field('DVCORE','global',dtype_r8,  (/pcols,pver/),dvcore_idx)
     if(is_subcol_on()) then
       call pbuf_register_subcol('TEOUT', 'phys_register', teout_idx)
       call pbuf_register_subcol('DTCORE', 'phys_register', dtcore_idx)

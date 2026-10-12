@@ -186,7 +186,7 @@ end subroutine conv_water_readnl
    !---------------------------------------------------------------------- !
 
 
-   use physics_buffer, only : physics_buffer_desc, pbuf_get_field, pbuf_old_tim_idx
+   use physics_buffer, only : physics_buffer_desc, pbuf_get_field
 
    use physics_types,   only: physics_state
    use cam_history,     only: outfld
@@ -224,8 +224,6 @@ end subroutine conv_water_readnl
    real(r8) :: tot_ice(pcols,pver)                ! Total IC ice
    real(r8) :: tot_liq(pcols,pver)                ! Total IC liquid
 
-   integer  :: itim_old                           ! Time index buff stuff.
-
    real(r8) :: totg_ice_sh(pcols,pver)   ! Grid-mean IWP from shallow convective cloud
    real(r8) :: totg_liq_sh(pcols,pver)   ! Grid-mean LWP from shallow convective cloud
    real(r8) :: totg_ice_dp(pcols,pver)   ! Grid-mean IWP from deep convective cloud
@@ -260,8 +258,7 @@ end subroutine conv_water_readnl
    call pbuf_get_field(pbuf, dp_frac_idx,  dp_frac )
    call pbuf_get_field(pbuf, rei_idx,      rei )
 
-   itim_old = pbuf_old_tim_idx()
-   call pbuf_get_field(pbuf, ast_idx,  ast,  start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
+   call pbuf_get_field(pbuf, ast_idx,  ast )
 
    ! Fields computed below and stored in pbuf.
    call pbuf_get_field(pbuf, gb_totcldicemr_idx, totg_ice)

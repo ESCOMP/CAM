@@ -98,6 +98,9 @@ integer :: zm_jt_idx          = 0
 integer :: zm_maxg_idx        = 0
 integer :: zm_ideep_idx       = 0
 
+logical :: use_plume_wup      = .false.
+integer :: mf_wup_idx         = 0
+
 integer :: cmfmc_sh_idx       = 0
 integer :: sh_e_ed_ratio_idx  = 0
 
@@ -167,6 +170,7 @@ subroutine aero_convproc_init(aero_props)
    integer :: npass_calc_updraft
    logical :: history_aerosol
    character(len=32) :: name_a, name_c
+   character(len=16) :: deep_scheme
 
    character(len=*), parameter :: prefix = 'aero_convproc_init: '
 
@@ -268,6 +272,18 @@ subroutine aero_convproc_init(aero_props)
    zm_jt_idx       = pbuf_get_index('ZM_JT')
    zm_maxg_idx     = pbuf_get_index('ZM_MAXG')
    zm_ideep_idx    = pbuf_get_index('ZM_IDEEP')
+
+   ! CLUBB_MF provides the plume-ensemble updraft speed (MF_WUP,
+   ! registered by convect_deep, populated by clubb_tend_cam); ZM keeps the
+   ! original mu/(rhoair*zm_areafrac) estimate
+   call phys_getopts(deep_scheme_out = deep_scheme)
+   if (trim(deep_scheme) == 'CLUBB_MF') then
+      use_plume_wup = .true.
+      mf_wup_idx    = pbuf_get_index('MF_WUP')
+      if (masterproc) write(iulog,*) prefix// &
+         'deep_scheme=CLUBB_MF: activation updraft speed taken from the '// &
+         'plume ensemble (MF_WUP) instead of mu/(rhoair*zm_areafrac)'
+   end if
 
    cmfmc_sh_idx    = pbuf_get_index('CMFMC_SH')
    sh_e_ed_ratio_idx = pbuf_get_index('SH_E_ED_RATIO', istat)
@@ -534,6 +550,7 @@ subroutine aero_convproc_dp_intr( aero_props,  &
    integer,  pointer :: maxg(:)        ! Index of cloud bottom for each column (pcols)
    integer,  pointer :: ideep(:)       ! Gathering array (pcols)
    integer           :: lengath        ! Gathered min lon indices over which to operate
+   real(r8), pointer :: wup_dp(:,:)    ! Gathered plume-ensemble updraft speed (m/s; pcols,pver)
 
    ! Initialize
 
@@ -564,14 +581,28 @@ subroutine aero_convproc_dp_intr( aero_props,  &
       dpdry(i,:) = state%pdeldry(ideep(i),:)/100._r8
    end do
 
-   call aero_convproc_tend( aero_props, 'deep', lchnk,   dt,      &
-                     state%t,    state%pmid, q, du,      eu,      &
-                     ed,         dp,         dpdry,      jt,      &
-                     maxg,       ideep,      1,          lengath, &
-                     dp_frac,    icwmrdp,    rprddp,     evapcdp, &
-                     fracice,     dqdt,      nsrflx,     qsrflx,  &
-                     xx_mfup_max, xx_wcldbase, xx_kcldbase,       &
-                     dcondt_resusp3d  )
+   ! pass the plume-ensemble updraft speed when CLUBB_MF drives
+   ! the deep interface; otherwise the original call (ZM) is unchanged
+   if (use_plume_wup) then
+      call pbuf_get_field(pbuf, mf_wup_idx, wup_dp)
+      call aero_convproc_tend( aero_props, 'deep', lchnk,   dt,      &
+                        state%t,    state%pmid, q, du,      eu,      &
+                        ed,         dp,         dpdry,      jt,      &
+                        maxg,       ideep,      1,          lengath, &
+                        dp_frac,    icwmrdp,    rprddp,     evapcdp, &
+                        fracice,     dqdt,      nsrflx,     qsrflx,  &
+                        xx_mfup_max, xx_wcldbase, xx_kcldbase,       &
+                        dcondt_resusp3d, wup_in=wup_dp )
+   else
+      call aero_convproc_tend( aero_props, 'deep', lchnk,   dt,      &
+                        state%t,    state%pmid, q, du,      eu,      &
+                        ed,         dp,         dpdry,      jt,      &
+                        maxg,       ideep,      1,          lengath, &
+                        dp_frac,    icwmrdp,    rprddp,     evapcdp, &
+                        fracice,     dqdt,      nsrflx,     qsrflx,  &
+                        xx_mfup_max, xx_wcldbase, xx_kcldbase,       &
+                        dcondt_resusp3d  )
+   end if
 
    call outfld( 'DP_MFUP_MAX', xx_mfup_max, pcols, lchnk )
    call outfld( 'DP_WCLDBASE', xx_wcldbase, pcols, lchnk )
@@ -588,7 +619,7 @@ subroutine aero_convproc_tend( aero_props, convtype, lchnk, dt,  &
                      cldfrac,    icwmr,      rprd,       evapc,      &
                      fracice,    dqdt,       nsrflx,     qsrflx,     &
                      xx_mfup_max, xx_wcldbase, xx_kcldbase,          &
-                     dcondt_resusp3d )
+                     dcondt_resusp3d, wup_in )
 
 !-----------------------------------------------------------------------
 !
@@ -668,6 +699,7 @@ subroutine aero_convproc_tend( aero_props, convtype, lchnk, dt,  &
    real(r8), intent(out) :: xx_wcldbase(pcols)
    real(r8), intent(out) :: xx_kcldbase(pcols)
    real(r8), intent(inout) :: dcondt_resusp3d(ncnstaer,pcols,pver)
+   real(r8), intent(in), optional :: wup_in(pcols,pver) ! Gathered plume-ensemble updraft speed (m/s)
 
 !--------------------------Local Variables------------------------------
 
@@ -776,6 +808,8 @@ subroutine aero_convproc_tend( aero_props, convtype, lchnk, dt,  &
    real(r8) tmpf                 ! work variables
    real(r8) xinv_ntsub           ! 1.0/ntsub
    real(r8) wup(pver)            ! working updraft velocity (m/s)
+   logical  do_wup_in            ! use the plume-ensemble updraft speed
+   real(r8) tmpwup               ! layer-mean plume updraft speed (m/s)
    real(r8) conu2(pcols,pver,2,ncnstaer)
    real(r8) dcondt2(pcols,pver,2,ncnstaer)
 
@@ -797,6 +831,9 @@ subroutine aero_convproc_tend( aero_props, convtype, lchnk, dt,  &
    else
       call endrun( '*** aero_convproc_tend -- convtype is not |deep| or |uwsh|' )
    end if
+
+   ! use the plume-ensemble updraft speed if supplied (deep only)
+   do_wup_in = present(wup_in) .and. (iconvtype == 1)
 
    nerr = 0
    nerrmax = 99
@@ -1078,6 +1115,16 @@ k_loop_main_bb: &
 ! shallow - wup = (mup in kg/m2/s) / [rhoair * (updraft area)]
                wup(k) = (mu_i(kp1) + mu_i(k))*0.5_r8*hund_ovr_g &
                       / (rhoair_i(k) * (cldfrac_i(k)*0.5_r8))
+            else if (do_wup_in) then
+! CLUBB_MF: layer-mean of the plume-ensemble mass-flux-weighted updraft speed
+               tmpwup = wup_in(i,k)
+               if (k < pver) tmpwup = 0.5_r8*(wup_in(i,k) + wup_in(i,k+1))
+               if (tmpwup > 0.01_r8) then
+                  wup(k) = tmpwup
+               else
+                  wup(k) = (mu_i(kp1) + mu_i(k))*0.5_r8*hund_ovr_g &
+                         / (rhoair_i(k) * zm_areafrac)
+               end if
             else
 ! deep - as in shallow, but assumed constant updraft_area with height zm_areafrac
                wup(k) = (mu_i(kp1) + mu_i(k))*0.5_r8*hund_ovr_g &

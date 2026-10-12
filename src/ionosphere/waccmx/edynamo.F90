@@ -32,8 +32,10 @@ module edynamo
   real(r8), allocatable, dimension(:,:) :: &
     zigm11,    & ! sigma11*cos(theta0)
     zigmc,     & ! sigmac
-    zigm1,     & ! for Hall conductance diagnostic
+    zigm1,     & ! for Hall conductance diagnostic (folded)
+    azigm1,    & ! for Hall conductance diagnostic (not folded)
     zigm2,     & ! sigma2
+    azigm2,    & ! for Ped conductance diagnostic (not folded)
     zigm22,    & ! sigma22/cos(theta0)
     rim1,rim2, & ! see description in comment below
     rhs,       & ! right-hand side of PDE
@@ -105,7 +107,7 @@ module edynamo
   logical, public :: debug_hist = .false.
 
   public :: alloc_edyn, ed1, ed2, ed1_glb, ed2_glb
-  public :: zigm11, zigmc, zigm2, zigm22, rim1, rim2
+  public :: zigm11, zigmc, zigm2, zigm22, rim1, rim2, azigm1, azigm2
   public :: dynamo
 
 contains
@@ -368,9 +370,15 @@ contains
     allocate(zigm1(mlon00:mlon11,mlat00:mlat11) ,stat=istat)
     if (istat /= 0) call endrun('alloc_edyn: zigm1')
     zigm1 = finit
+    allocate(azigm1(mlon00:mlon11,mlat00:mlat11) ,stat=istat)
+    if (istat /= 0) call endrun('alloc_edyn: azigm1')
+    azigm1 = finit
     allocate(zigm2(mlon00:mlon11,mlat00:mlat11) ,stat=istat)
     if (istat /= 0) call endrun('alloc_edyn: zigm2')
     zigm2 = finit
+    allocate(azigm2(mlon00:mlon11,mlat00:mlat11) ,stat=istat)
+    if (istat /= 0) call endrun('alloc_edyn: azigm2')
+    azigm2 = finit
     allocate(zigm22(mlon00:mlon11,mlat00:mlat11),stat=istat)
     if (istat /= 0) call endrun('alloc_edyn: zigm22')
     zigm22 = finit
@@ -528,7 +536,9 @@ contains
     zigm11 = finit
     zigm22 = finit
     zigm1  = finit
+    azigm1 = finit
     zigm2  = finit
+    azigm2 = finit
     zigmc  = finit
     rim1   = finit
     rim2   = finit
@@ -928,6 +938,10 @@ contains
     fmsub(:,:,5) = rim1  (mlon0:mlon1,mlat0:mlat1)
     fmsub(:,:,6) = rim2  (mlon0:mlon1,mlat0:mlat1)
     fmsub(:,:,7) = zigm1 (mlon0:mlon1,mlat0:mlat1)
+
+! Store zigm1 for coupling before folding hemispheres
+    azigm1(mlon0:mlon1,mlat0:mlat1) = zigm1(mlon0:mlon1,mlat0:mlat1)
+    azigm2(mlon0:mlon1,mlat0:mlat1) = zigm2(mlon0:mlon1,mlat0:mlat1)
 
     call mp_mag_foldhem(fmsub,mlon0,mlon1,mlat0,mlat1,nf2d)
     call mp_mag_periodic_f2d(fmsub,mlon0,mlon1,mlat0,mlat1,nf2d)

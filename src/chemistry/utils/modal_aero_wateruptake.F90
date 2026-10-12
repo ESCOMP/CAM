@@ -6,7 +6,7 @@ use shr_kind_mod,     only: r8 => shr_kind_r8
 use physconst,        only: pi, rhoh2o, rair
 use ppgrid,           only: pcols, pver
 use physics_types,    only: physics_state
-use physics_buffer,   only: physics_buffer_desc, pbuf_get_index, pbuf_old_tim_idx, pbuf_get_field
+use physics_buffer,   only: physics_buffer_desc, pbuf_get_index, pbuf_get_field
 
 use wv_saturation,    only: qsat_water
 use aerosol_properties_mod, only: aerosol_properties
@@ -204,7 +204,6 @@ subroutine modal_aero_wateruptake_dr(state, pbuf, aero_props, aero_state, &
    integer  :: stat
 
    integer :: i, k, l, m
-   integer :: itim_old
    integer :: nmodes
    integer :: nspec
    integer :: tropLev(pcols)
@@ -419,8 +418,7 @@ subroutine modal_aero_wateruptake_dr(state, pbuf, aero_props, aero_state, &
 
    ! relative humidity calc
 
-   itim_old    =  pbuf_old_tim_idx()
-   call pbuf_get_field(pbuf, cld_idx, cldn, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
+   call pbuf_get_field(pbuf, cld_idx, cldn )
 
    do k = top_lev, pver
       call qsat_water(t(1:ncol,k), pmid(1:ncol,k), es(1:ncol), qs(1:ncol), ncol)

@@ -2037,10 +2037,6 @@ sub write_filepath
         }
     }
 
-    # CESM has a standard source mods location.
-    my $CASEROOT = "$ENV{'CASEROOT'}";
-    print $fh "$CASEROOT/SourceMods/src.cam\n";
-
     # offline unit driver (defaults to stub)
     print $fh "$camsrcdir/src/unit_drivers\n";
     print $fh "$camsrcdir/src/unit_drivers/${offline_drv}\n";

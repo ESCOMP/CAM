@@ -20,9 +20,9 @@ module clubb_intr
   use shr_kind_mod,        only: r8=>shr_kind_r8
   use ppgrid,              only: pver, pverp, pcols, begchunk, endchunk
   use phys_control,        only: phys_getopts
-  use physconst,           only: cpair, gravit, rga, latvap, latice, zvir, rh2o, karman, pi, rair, omega
+  use physconst,           only: cpair, gravit, rga, latvap, latice, zvir, rh2o, karman, pi, rair, omega, rhoh2o
   use air_composition,     only: rairv, cpairv
-  use cam_history_support, only: max_fieldname_len
+  use cam_history_support, only: max_fieldname_len, fillvalue
 
   use spmd_utils,          only: masterproc
   use constituents,        only: pcnst, cnst_add, cnst_ndropmixed
@@ -162,8 +162,8 @@ module clubb_intr
                                       ! This is mainly for testing, it should not significantly change answers
 
   logical            :: lq(pcnst)
-  logical            :: do_rainturb
-  logical            :: clubb_do_adv
+  logical            :: do_rainturb = .false.
+  logical            :: clubb_do_adv = .false.
   logical            :: clubb_do_energyfix   = .true.
   integer            :: edsclr_dim       ! Number of scalars to transport in CLUBB
 
@@ -245,6 +245,7 @@ module clubb_intr
   real(r8) :: clubb_mult_coef = unset_r8
   real(r8) :: clubb_Skw_denom_coef = unset_r8
   real(r8) :: clubb_skw_max_mag = unset_r8
+  real(r8) :: clubb_a_const = unset_r8
   real(r8) :: clubb_up2_sfc_coef = unset_r8
   real(r8) :: clubb_C_wp2_splat = unset_r8
   real(r8) :: clubb_wpxp_L_thresh = unset_r8
@@ -557,7 +558,7 @@ module clubb_intr
     !------------------------------------------------ !
 
     !  Add CLUBB fields to pbuf
-    use physics_buffer,  only: pbuf_add_field, dtype_r8, dtype_i4, dyn_time_lvls
+    use physics_buffer,  only: pbuf_add_field, dtype_r8, dtype_i4
     use subcol_utils,    only: subcol_get_scheme
 
     integer :: cld_macmic_num_steps
@@ -603,13 +604,13 @@ module clubb_intr
     call pbuf_add_field('tke',        'global', dtype_r8, (/pcols, pverp/),               tke_idx)
     call pbuf_add_field('kvh',        'global', dtype_r8, (/pcols, pverp/),               kvh_idx)
     call pbuf_add_field('tpert',      'global', dtype_r8, (/pcols/),                      tpert_idx)
-    call pbuf_add_field('AST',        'global', dtype_r8, (/pcols,pver,dyn_time_lvls/),   ast_idx)
-    call pbuf_add_field('AIST',       'global', dtype_r8, (/pcols,pver,dyn_time_lvls/),   aist_idx)
-    call pbuf_add_field('ALST',       'global', dtype_r8, (/pcols,pver,dyn_time_lvls/),   alst_idx)
-    call pbuf_add_field('QIST',       'global', dtype_r8, (/pcols,pver,dyn_time_lvls/),   qist_idx)
-    call pbuf_add_field('QLST',       'global', dtype_r8, (/pcols,pver,dyn_time_lvls/),   qlst_idx)
-    call pbuf_add_field('CONCLD',     'global', dtype_r8, (/pcols,pver,dyn_time_lvls/),   concld_idx)
-    call pbuf_add_field('CLD',        'global', dtype_r8, (/pcols,pver,dyn_time_lvls/),   cld_idx)
+    call pbuf_add_field('AST',        'global', dtype_r8, (/pcols,pver,pver/),   ast_idx)
+    call pbuf_add_field('AIST',       'global', dtype_r8, (/pcols,pver,pver/),   aist_idx)
+    call pbuf_add_field('ALST',       'global', dtype_r8, (/pcols,pver,pver/),   alst_idx)
+    call pbuf_add_field('QIST',       'global', dtype_r8, (/pcols,pver,pver/),   qist_idx)
+    call pbuf_add_field('QLST',       'global', dtype_r8, (/pcols,pver,pver/),   qlst_idx)
+    call pbuf_add_field('CONCLD',     'global', dtype_r8, (/pcols,pver,pver/),   concld_idx)
+    call pbuf_add_field('CLD',        'global', dtype_r8, (/pcols,pver,pver/),   cld_idx)
     call pbuf_add_field('FICE',       'global', dtype_r8, (/pcols,pver/),                 fice_idx)
     call pbuf_add_field('CMELIQ',     'global', dtype_r8, (/pcols,pver/),                 cmeliq_idx)
     call pbuf_add_field('QSATFAC',    'global', dtype_r8, (/pcols,pver/),                 qsatfac_idx)
@@ -967,6 +968,7 @@ end subroutine clubb_init_cnst
          clubb_Skw_denom_coef, &
          clubb_skw_max_mag, &
          clubb_tridiag_solve_method, &
+         clubb_a_const, &
          clubb_up2_sfc_coef, &
          clubb_wpxp_L_thresh, &
          clubb_wpxp_Ri_exp, &
@@ -1215,6 +1217,8 @@ end subroutine clubb_init_cnst
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_l_stability_correct_tau_zm")
     call mpi_bcast(clubb_gamma_coefb, 1, mpi_real8,   mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_gamma_coefb")
+    call mpi_bcast(clubb_a_const, 1, mpi_real8,   mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_a_const")
     call mpi_bcast(clubb_up2_sfc_coef, 1, mpi_real8,   mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_up2_sfc_coef")
     call mpi_bcast(clubb_detliq_rad, 1, mpi_real8,   mstrid, mpicom, ierr)
@@ -1412,6 +1416,7 @@ end subroutine clubb_init_cnst
     if ( clubb_mult_coef                  == unset_r8 ) call endrun( sub//": FATAL: clubb_mult_coef is not set")
     if ( clubb_Skw_denom_coef             == unset_r8 ) call endrun( sub//": FATAL: clubb_Skw_denom_coef is not set")
     if ( clubb_skw_max_mag                == unset_r8 ) call endrun( sub//": FATAL: clubb_skw_max_mag is not set")
+    if ( clubb_a_const                    == unset_r8 ) call endrun( sub//": FATAL: clubb_a_const is not set")
     if ( clubb_up2_sfc_coef               == unset_r8 ) call endrun( sub//": FATAL: clubb_up2_sfc_coef is not set")
     if ( clubb_C_wp2_splat                == unset_r8 ) call endrun( sub//": FATAL: clubb_C_wp2_splat is not set")
     if ( clubb_bv_efold                   == unset_r8 ) call endrun( sub//": FATAL: clubb_bv_efold is not set")
@@ -1665,26 +1670,26 @@ end subroutine clubb_init_cnst
     call addfld ('NITENDICE',        (/ 'lev' /),  'A', 'kg/kg/s',   'NUMICE tendency from Ice Saturation Adjustment', sampled_on_subcycle = .true. )
 
     call addfld ('PBLH',                    horiz_only,   'A', 'm',         'PBL height',         sampled_on_subcycle=.true.)
-    call addfld ('PDFP_RTP2_CLUBB',  (/ 'lev' /),  'A', 'kg^2/kg^2', 'PDF Rtot Variance',  sampled_on_subcycle=.true.)
+    call addfld ('PDFP_RTP2_CLUBB',  (/ 'lev ' /),  'A', 'kg^2/kg^2', 'PDF Rtot Variance',  sampled_on_subcycle=.true.)
 
-    call addfld ('QCTENDICE',        (/ 'lev' /),  'A', 'kg/kg/s',  'CLDICE tendency from Ice Saturation Adjustment', sampled_on_subcycle=.true.)
-    call addfld ('NCTENDICE',        (/ 'lev' /),  'A', 'kg/kg/s',  'NUMICE tendency from Ice Saturation Adjustment', sampled_on_subcycle=.true.)
-    call addfld ('FQTENDICE',        (/ 'lev' /),  'A', 'fraction', 'Frequency of Ice Saturation Adjustment',         sampled_on_subcycle=.true.)
+    call addfld ('QCTENDICE',        (/ 'lev ' /),  'A', 'kg/kg/s',  'CLDICE tendency from Ice Saturation Adjustment', sampled_on_subcycle=.true.)
+    call addfld ('NCTENDICE',        (/ 'lev ' /),  'A', 'kg/kg/s',  'NUMICE tendency from Ice Saturation Adjustment', sampled_on_subcycle=.true.)
+    call addfld ('FQTENDICE',        (/ 'lev ' /),  'A', 'fraction', 'Frequency of Ice Saturation Adjustment',         sampled_on_subcycle=.true.)
 
-    call addfld ('DPDLFLIQ',         (/ 'lev' /),  'A', 'kg/kg/s',  'Detrained liquid water from deep convection',    sampled_on_subcycle=.true.)
-    call addfld ('DPDLFICE',         (/ 'lev' /),  'A', 'kg/kg/s',  'Detrained ice from deep convection',             sampled_on_subcycle=.true.)
-    call addfld ('DPDLFT',           (/ 'lev' /),  'A', 'K/s',      'T-tendency due to deep convective detrainment',  sampled_on_subcycle=.true.)
-    call addfld ('RELVAR',           (/ 'lev' /),  'A', '-',        'Relative cloud water variance',                  sampled_on_subcycle=.true.)
+    call addfld ('DPDLFLIQ',         (/ 'lev ' /),  'A', 'kg/kg/s',  'Detrained liquid water from deep convection',    sampled_on_subcycle=.true.)
+    call addfld ('DPDLFICE',         (/ 'lev ' /),  'A', 'kg/kg/s',  'Detrained ice from deep convection',             sampled_on_subcycle=.true.)
+    call addfld ('DPDLFT',           (/ 'lev ' /),  'A', 'K/s',      'T-tendency due to deep convective detrainment',  sampled_on_subcycle=.true.)
+    call addfld ('RELVAR',           (/ 'lev ' /),  'A', '-',        'Relative cloud water variance',                  sampled_on_subcycle=.true.)
     call addfld ('CLUBB_GRID_SIZE',  horiz_only,   'A', 'm',        'Horizontal grid box size seen by CLUBB',         sampled_on_subcycle=.true.)
 
 
-    call addfld ('ZMDLFI',           (/ 'lev' /),  'A', 'kg/kg/s',  'Detrained ice water from ZM convection',     sampled_on_subcycle=.true.)
-    call addfld ('CONCLD',           (/ 'lev' /),  'A', 'fraction', 'Convective cloud cover',                     sampled_on_subcycle=.true.)
-    call addfld ('CMELIQ',           (/ 'lev' /),  'A', 'kg/kg/s',  'Rate of cond-evap of liq within the cloud',  sampled_on_subcycle=.true.)
-    call addfld ('DETNLIQTND',       (/ 'lev' /),  'A', '1/kg/s',   'CLDNUM tendency in detrained water',         sampled_on_subcycle=.true.)
+    call addfld ('ZMDLFI',           (/ 'lev ' /),  'A', 'kg/kg/s',  'Detrained ice water from ZM convection',     sampled_on_subcycle=.true.)
+    call addfld ('CONCLD',           (/ 'lev ' /),  'A', 'fraction', 'Convective cloud cover',                     sampled_on_subcycle=.true.)
+    call addfld ('CMELIQ',           (/ 'lev ' /),  'A', 'kg/kg/s',  'Rate of cond-evap of liq within the cloud',  sampled_on_subcycle=.true.)
+    call addfld ('DETNLIQTND',       (/ 'lev ' /),  'A', '1/kg/s',   'CLDNUM tendency in detrained water',         sampled_on_subcycle=.true.)
 
     call addfld ('KVH_CLUBB',        (/ 'ilev' /), 'A', 'm2/s', 'CLUBB vertical diffusivity of heat/moisture on interface levels', sampled_on_subcycle=.true.)
-    call addfld ('QSATFAC',          (/ 'lev' /),  'A', '-',    'Subgrid cloud water saturation scaling factor',      sampled_on_subcycle=.true.)
+    call addfld ('QSATFAC',          (/ 'lev ' /),  'A', '-',    'Subgrid cloud water saturation scaling factor',      sampled_on_subcycle=.true.)
     call addfld ('ELEAK_CLUBB',      horiz_only,   'A', 'W/m2', 'CLUBB energy leak',                                  sampled_on_subcycle=.true.)
     call addfld ('TFIX_CLUBB',       horiz_only,   'A', 'K',    'Temperature increment to conserve energy',           sampled_on_subcycle=.true.)
 
@@ -2078,7 +2083,7 @@ end subroutine clubb_init_cnst
                               physics_state_copy, physics_ptend_init, &
                               physics_ptend_sum, physics_update, set_wet_to_dry
 
-    use physics_buffer, only: pbuf_old_tim_idx, pbuf_get_field, physics_buffer_desc
+    use physics_buffer, only: pbuf_get_field, physics_buffer_desc
     use physics_buffer, only: pbuf_set_field
     use shr_const_mod, only : shr_const_karman, shr_const_pi, shr_const_g
 
@@ -2091,6 +2096,7 @@ end subroutine clubb_init_cnst
     use tropopause,     only: tropopause_findChemTrop
     use time_manager,   only: get_nstep, is_first_restart_step, get_curr_calday, get_calday
     use perf_mod,       only: t_startf, t_stopf
+
 
 #ifdef CLUBB_SGS
     use spmd_utils, only: iam
@@ -2392,7 +2398,6 @@ end subroutine clubb_init_cnst
       s_awthlup_output,  s_awqtup_output, s_awuup_output, s_awvup_output,        &
       s_awthldn_output,  s_awqtdn_output, s_awudn_output, s_awvdn_output,        &
       s_awthl_output,    s_awqt_output,       &
-      s_awql_output,     s_awqi_output,       &
       s_awu_output,      s_awv_output,        &
       s_aww_output,                                                              &
       mf_thlflxup_output,mf_qtflxup_output, mf_uflxup_output, mf_vflxup_output,  &
@@ -2554,7 +2559,6 @@ end subroutine clubb_init_cnst
     call cnst_get_ind('NUMICE',ixnumice)
 
     !  Determine time step of physics buffer
-    itim_old = pbuf_old_tim_idx()
 
     !  Establish associations between pointers and physics buffer fields
     call pbuf_get_field(pbuf, wp2_idx,        wp2_pbuf )
@@ -2600,13 +2604,13 @@ end subroutine clubb_init_cnst
     call pbuf_get_field(pbuf, tke_idx,     tke_pbuf)
     call pbuf_get_field(pbuf, qrl_idx,     qrl_pbuf)
 
-    call pbuf_get_field(pbuf, cld_idx,     cld_pbuf,     start=(/1,1,itim_old/), kount=(/pcols,pver,1/))
-    call pbuf_get_field(pbuf, concld_idx,  concld_pbuf,  start=(/1,1,itim_old/), kount=(/pcols,pver,1/))
-    call pbuf_get_field(pbuf, ast_idx,     ast_pbuf,     start=(/1,1,itim_old/), kount=(/pcols,pver,1/))
-    call pbuf_get_field(pbuf, alst_idx,    alst_pbuf,    start=(/1,1,itim_old/), kount=(/pcols,pver,1/))
-    call pbuf_get_field(pbuf, aist_idx,    aist_pbuf,    start=(/1,1,itim_old/), kount=(/pcols,pver,1/))
-    call pbuf_get_field(pbuf, qlst_idx,    qlst_pbuf,    start=(/1,1,itim_old/), kount=(/pcols,pver,1/))
-    call pbuf_get_field(pbuf, qist_idx,    qist_pbuf,    start=(/1,1,itim_old/), kount=(/pcols,pver,1/))
+    call pbuf_get_field(pbuf, cld_idx,     cld_pbuf)
+    call pbuf_get_field(pbuf, concld_idx,  concld_pbuf)
+    call pbuf_get_field(pbuf, ast_idx,     ast_pbuf)
+    call pbuf_get_field(pbuf, alst_idx,    alst_pbuf)
+    call pbuf_get_field(pbuf, aist_idx,    aist_pbuf)
+    call pbuf_get_field(pbuf, qlst_idx,    qlst_pbuf)
+    call pbuf_get_field(pbuf, qist_idx,    qist_pbuf)
 
     call pbuf_get_field(pbuf, qsatfac_idx, qsatfac_pbuf)
 
@@ -3374,10 +3378,43 @@ end subroutine clubb_init_cnst
       call outfld( 'edmf_cfl'      , mf_cfl_output,             pcols, lchnk )
 
     end subroutine output_mf_diagnostics
-
 #endif
 
   end subroutine clubb_tend_cam
+
+  ! clamped linear-in-pressure interpolation of a midpoint
+  ! field to a target pressure level, mirroring the CLUBB-core pvertinterp
+  ! (advance_helper_module): below the lowest midpoint or above the highest
+  ! midpoint the boundary value is used.  Kept verbatim from the first
+  ! implementation for bit-for-bit reproducibility of the LTS trigger.
+  subroutine mf_pinterp(ncol, pmid, pout, fld, outv)
+    integer,  intent(in)  :: ncol
+    real(r8), intent(in)  :: pmid(:,:)   ! (ncol,pver) midpoint pressure (Pa), increasing downward
+    real(r8), intent(in)  :: pout        ! target pressure (Pa)
+    real(r8), intent(in)  :: fld(:,:)    ! (ncol,pver) field on midpoints
+    real(r8), intent(out) :: outv(ncol)
+
+    integer  :: i, k
+    real(r8) :: dpu, dpl
+
+    do i = 1, ncol
+      if (pout >= pmid(i,pver)) then
+        outv(i) = fld(i,pver)
+      else if (pout <= pmid(i,1)) then
+        outv(i) = fld(i,1)
+      else
+        do k = 1, pver-1
+          if (pout > pmid(i,k) .and. pout <= pmid(i,k+1)) then
+            dpu = pout - pmid(i,k)
+            dpl = pmid(i,k+1) - pout
+            outv(i) = (fld(i,k)*dpl + fld(i,k+1)*dpu) / (dpl + dpu)
+            exit
+          end if
+        end do
+      end if
+    end do
+
+  end subroutine mf_pinterp
 
   subroutine clubb_emissions_cam (state, cam_in, ptend)
 
