@@ -1054,7 +1054,7 @@ end subroutine clubb_init_cnst
                                              clubb_l_add_dycore_grid ) ! Out
 
     !  Call CLUBB+MF namelist
-    call clubb_mf_readnl(nlfile)
+    call clubb_mf_readnl(nlfile, masterproc)
 
     !  Read namelist to determine if CLUBB history should be called
     if (masterproc) then
