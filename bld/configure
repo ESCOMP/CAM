@@ -2155,11 +2155,11 @@ sub write_filepath
     }
 
     if ($clubb_sgs) {
-       print $fh "$camsrcdir/src/physics/clubb/src/CLUBB_core\n";
+       print $fh "$camsrcdir/src/atmos_phys/schemes/clubb/clubb/src/CLUBB_core\n";
     }
 
     if ($silhs) {
-       print $fh "$camsrcdir/src/physics/clubb/src/SILHS\n";
+       print $fh "$camsrcdir/src/atmos_phys/schemes/clubb/clubb/src/SILHS\n";
     }
 
     if ($phys_pkg eq 'cam7') {
@@ -2192,6 +2192,7 @@ sub write_filepath
     print $fh "$camsrcdir/src/atmos_phys/schemes/cloud_fraction\n";
     print $fh "$camsrcdir/src/atmos_phys/schemes/vertical_diffusion\n";
     print $fh "$camsrcdir/src/atmos_phys/schemes/holtslag_boville\n";
+    print $fh "$camsrcdir/src/atmos_phys/schemes/clubb\n";
     print $fh "$camsrcdir/src/atmos_phys/schemes/bretherton_park\n";
     print $fh "$camsrcdir/src/atmos_phys/schemes/beljaars_drag\n";
     print $fh "$camsrcdir/src/atmos_phys/schemes/microp_aero\n";
