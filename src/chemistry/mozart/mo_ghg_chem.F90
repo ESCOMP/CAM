@@ -30,7 +30,10 @@ module mo_ghg_chem
 
   integer :: n2o_rxt, ch4_rxt, cfc11_rxt, cfc12_rxt, lyman_alpha_rxt
   integer :: n2o_ndx, ch4_ndx, cfc11_ndx, cfc12_ndx
-  integer :: ghg_ndx(ncnst)
+  integer :: ghg_ndx(ncnst)                      ! chemistry species index (position in solsym, 1..gas_pcnst)
+  integer :: ghg_cnst_ndx(ncnst) = -1            ! constituent index (position in cnst_name, 1..pcnst); -1 if not a constituent
+  character(len=5), dimension(ncnst), parameter :: ghg_spc_names = & ! species names, same order as ghg_ndx
+       (/'N2O  ', 'CH4  ', 'CFC11', 'CFC12'/)
   character(len=6) :: ghg_bnd_names(ncnst)
 
   logical :: lyman_alpha = .false.
@@ -43,6 +46,7 @@ contains
 !-----------------------------------------------------------------
   subroutine ghg_chem_init(phys_state, bndtvg, h2orates)
     use mo_chem_utls, only : get_rxt_ndx, get_spc_ndx
+    use constituents, only : cnst_get_ind
     use cam_history,  only : addfld
 
     implicit none
@@ -60,10 +64,10 @@ contains
     cfc12_rxt = get_rxt_ndx( 'cfc12_loss' )
     lyman_alpha_rxt = get_rxt_ndx( 'lyman_alpha' )
 
-    n2o_ndx = get_spc_ndx('N2O')
-    ch4_ndx = get_spc_ndx('CH4')
-    cfc11_ndx = get_spc_ndx('CFC11')
-    cfc12_ndx = get_spc_ndx('CFC12')
+    n2o_ndx = get_spc_ndx(ghg_spc_names(1))
+    ch4_ndx = get_spc_ndx(ghg_spc_names(2))
+    cfc11_ndx = get_spc_ndx(ghg_spc_names(3))
+    cfc12_ndx = get_spc_ndx(ghg_spc_names(4))
 
     ids(1) = n2o_rxt   
     ids(2) = ch4_rxt   
@@ -95,6 +99,13 @@ contains
 
     ghg_ndx =       (/  n2o_ndx,  ch4_ndx, cfc11_ndx, cfc12_ndx /)
     ghg_bnd_names = (/ 'N2OVMR', 'CH4VMR',  'F11VMR',  'F12VMR' /)
+
+    ! Constituent indices of the GHGs, needed to query mo_flbc::has_flbc, which is
+    ! dimensioned and filled by constituent index (flbc_inti uses cnst_get_ind on
+    ! flbc_list).  The chemistry species indices in ghg_ndx must NOT be used for that.
+    do m = 1, ncnst
+       call cnst_get_ind( trim(ghg_spc_names(m)), ghg_cnst_ndx(m), abort=.false. )   ! -1 if not a constituent
+    end do
 
   end subroutine ghg_chem_init
 
@@ -175,10 +186,15 @@ contains
     integer,  intent(in)    :: ncol                           ! number columns in chunk
     real(r8), intent(inout) ::  vmr(ncol,pver,gas_pcnst)              ! xported species (vmr)
     integer  :: i,ndx
+    logical  :: flbc_set_by_file
 
     do i = 1,ncnst
-       ndx = ghg_ndx(i)
-       if ( has_flbc(ndx)) then
+       ndx = ghg_ndx(i)                                   ! chemistry species index: indexes vmr
+       ! has_flbc is indexed by CONSTITUENT index, not chemistry species index
+       flbc_set_by_file = .false.
+       if ( ghg_cnst_ndx(i) > 0 ) flbc_set_by_file = has_flbc(ghg_cnst_ndx(i))
+       if ( flbc_set_by_file ) then
+          ! flbc_set has already placed the lower-boundary-file value at level pver
           vmr(:ncol, pver-1, ndx) = vmr(:ncol, pver, ndx)
        else
           vmr(:ncol, pver-1:pver, ndx) = chem_surfvals_get(ghg_bnd_names(i))
