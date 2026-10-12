@@ -76,6 +76,9 @@ module aero_convproc_cam
    integer :: zm_maxg_idx        = 0
    integer :: zm_ideep_idx       = 0
 
+   logical :: use_plume_wup      = .false.
+   integer :: mf_wup_idx         = 0
+
    integer :: nbins = 0
    integer :: ncnstaer = 0
 
@@ -140,6 +143,7 @@ contains
       integer :: npass_calc_updraft
       logical :: history_aerosol
       character(len=32) :: name_a, name_c
+      character(len=16) :: deep_scheme
 
       character(len=*), parameter :: prefix = 'aero_convproc_init: '
 
@@ -232,6 +236,18 @@ contains
       zm_jt_idx       = pbuf_get_index('ZM_JT')
       zm_maxg_idx     = pbuf_get_index('ZM_MAXG')
       zm_ideep_idx    = pbuf_get_index('ZM_IDEEP')
+
+      ! CLUBB_MF provides the plume-ensemble updraft speed (MF_WUP,
+      ! registered by convect_deep, populated by clubb_tend_cam); ZM keeps the
+      ! original mu/(rhoair*zm_areafrac) estimate
+      call phys_getopts(deep_scheme_out = deep_scheme)
+      if (trim(deep_scheme) == 'CLUBB_MF') then
+         use_plume_wup = .true.
+         mf_wup_idx    = pbuf_get_index('MF_WUP')
+         if (masterproc) write(iulog,*) prefix// &
+            'deep_scheme=CLUBB_MF: activation updraft speed taken from the '// &
+            'plume ensemble (MF_WUP) instead of mu/(rhoair*zm_areafrac)'
+      end if
 
       if (masterproc ) then
 
@@ -495,6 +511,7 @@ contains
       integer,  pointer :: maxg(:)        ! Index of cloud bottom for each column (pcols)
       integer,  pointer :: ideep(:)       ! Gathering array (pcols)
       integer           :: lengath        ! Gathered min lon indices over which to operate
+      real(r8), pointer :: wup_dp(:,:)    ! Gathered plume-ensemble updraft speed (m/s; pcols,pver)
 
       ! Initialize
 
@@ -524,19 +541,38 @@ contains
          dpdry(i,:) = state%pdeldry(ideep(i),:)/100._r8
       end do
 
-      call aero_convproc_run( aero_props, 'deep', lchnk,   dt,      &
-                             state%t,    state%pmid, q, du,      eu,      &
-                             ed,         dp,         dpdry,      jt,      &
-                             maxg,       ideep,      1,          lengath, &
-                             dp_frac,    icwmrdp,    rprddp,     evapcdp, &
-                             fracice,     dqdt,      nsrflx,     qsrflx,  &
-                             xx_mfup_max, xx_wcldbase, xx_kcldbase,       &
-                             dcondt_resusp3d, conu2,  dcondt2,           &
-                             pver,       ncnstaer,   nbins,               &
-                             pi, rhoh2o, rh2o, gravit, latvap, cpair, rair, &
-                             convproc_do_evaprain_atonce,                 &
-                             convproc_pom_spechygro,                      &
-                             errmsg,     errflg )
+      ! pass the plume-ensemble updraft speed when CLUBB_MF drives
+      ! the deep interface; otherwise the original call (ZM) is unchanged
+      if (use_plume_wup) then
+         call pbuf_get_field(pbuf, mf_wup_idx, wup_dp)
+         call aero_convproc_run( aero_props, 'deep', lchnk,   dt,      &
+                                state%t,    state%pmid, q, du,      eu,      &
+                                ed,         dp,         dpdry,      jt,      &
+                                maxg,       ideep,      1,          lengath, &
+                                dp_frac,    icwmrdp,    rprddp,     evapcdp, &
+                                fracice,     dqdt,      nsrflx,     qsrflx,  &
+                                xx_mfup_max, xx_wcldbase, xx_kcldbase,       &
+                                dcondt_resusp3d, conu2,  dcondt2,           &
+                                pver,       ncnstaer,   nbins,               &
+                                pi, rhoh2o, rh2o, gravit, latvap, cpair, rair, &
+                                convproc_do_evaprain_atonce,                 &
+                                convproc_pom_spechygro,                      &
+                                errmsg,     errflg, wup_in=wup_dp )
+      else
+         call aero_convproc_run( aero_props, 'deep', lchnk,   dt,      &
+                                state%t,    state%pmid, q, du,      eu,      &
+                                ed,         dp,         dpdry,      jt,      &
+                                maxg,       ideep,      1,          lengath, &
+                                dp_frac,    icwmrdp,    rprddp,     evapcdp, &
+                                fracice,     dqdt,      nsrflx,     qsrflx,  &
+                                xx_mfup_max, xx_wcldbase, xx_kcldbase,       &
+                                dcondt_resusp3d, conu2,  dcondt2,           &
+                                pver,       ncnstaer,   nbins,               &
+                                pi, rhoh2o, rh2o, gravit, latvap, cpair, rair, &
+                                convproc_do_evaprain_atonce,                 &
+                                convproc_pom_spechygro,                      &
+                                errmsg,     errflg )
+      end if
       if (errflg /= 0) call endrun(trim(errmsg))
 
       call outfld( 'DP_MFUP_MAX', xx_mfup_max, pcols, lchnk )
