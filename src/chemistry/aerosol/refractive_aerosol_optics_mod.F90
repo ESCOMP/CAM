@@ -70,7 +70,8 @@ contains
 
   !------------------------------------------------------------------------------
   !------------------------------------------------------------------------------
-  function constructor(aero_props, aero_state, ibin, ncol, nlev, nsw, nlw, crefwsw, crefwlw) &
+  function constructor(aero_props, aero_state, ibin, ncol, nlev, top_lev, &
+       t, pmid, h2ommr, cldn, nsw, nlw, crefwsw, crefwlw) &
        result(newobj)
 
     class(aerosol_properties),intent(in), target :: aero_props   ! aerosol_properties object
@@ -78,6 +79,11 @@ contains
     integer, intent(in) :: ibin   ! bin number
     integer, intent(in) :: ncol   ! number of columns
     integer, intent(in) :: nlev   ! number of levels
+    integer, intent(in) :: top_lev ! top level for aerosol calculations
+    real(r8),intent(in) :: t(:,:)    ! temperature (K)
+    real(r8),intent(in) :: pmid(:,:) ! layer pressure (Pa)
+    real(r8),intent(in) :: h2ommr(:,:) ! specific humidity (kg/kg)
+    real(r8),intent(in) :: cldn(:,:) ! layer cloud fraction (0-1)
     integer, intent(in) :: nsw    ! number of short wave lengths
     integer, intent(in) :: nlw    ! number of long wave lengths
     complex(r8), intent(in) :: crefwsw(nsw) ! complex refractive index for water visible
@@ -150,7 +156,8 @@ contains
     end if
     newobj%crefwsw(:) = crefwsw(:)
 
-    call aero_state%water_uptake(aero_props, ibin,  ncol, nlev, dgnumwet, qaerwat)
+    call aero_state%water_uptake(aero_props, ibin,  ncol, nlev, top_lev, &
+                                 t, pmid, h2ommr, cldn, dgnumwet, qaerwat)
 
     nspec = aero_props%nspecies(ibin)
 
