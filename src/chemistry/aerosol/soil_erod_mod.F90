@@ -28,7 +28,7 @@ contains
     use ioFileMod,        only: getfil
     use netcdf,           only: nf90_open, nf90_nowrite, nf90_close, nf90_noerr,  &
                                 nf90_inq_dimid, nf90_inquire_dimension,           &
-                                nf90_inq_varid, nf90_get_var
+                                nf90_inq_varid, nf90_get_var, nf90_strerror
     use cam_shmem_mod,    only: cam_shmem_alloc_r8_2d, cam_shmem_fence,           &
                                 cam_shmem_free, cam_shmem_is_leader,              &
                                 cam_shmem_leader_comm, cam_shmem_npes_per_node
@@ -39,7 +39,7 @@ contains
     real(r8),         intent(in) :: dust_emis_fact
     character(len=*), intent(in) :: soil_erod_file
 
-    real(r8), pointer     ::  soil_erodibility_in(:,:) => null()  ! node-shared input field
+    real(r8), pointer     ::  soil_erodibility_in(:,:)  ! node-shared input field
     real(r8), allocatable :: dst_lons(:)
     real(r8), allocatable :: dst_lats(:)
     character(len=cl)     :: infile
@@ -51,7 +51,9 @@ contains
     real(r8) :: to_lats(pcols), to_lons(pcols)
     integer :: c, ncols, ierr
     real(r8), parameter :: zero=0._r8, twopi=2._r8*pi
+    character(len=*), parameter :: subname = 'soil_erod_init'
 
+    nullify(soil_erodibility_in)
     win_serod = -1
 
     soil_erod_fact = dust_emis_fact
@@ -74,11 +76,15 @@ contains
     ! (ranks_per_node - 1) redundant nlon*nlat copies of the input field.
     if (masterproc) then
        iret = nf90_open(trim(infile), NF90_NOWRITE, ncid)
-       if (iret /= nf90_noerr) call endrun('soil_erod_init: failed to open '//trim(infile))
+       if (iret /= nf90_noerr) call endrun(subname//': nf90_open failed for '//trim(infile)//': '//trim(nf90_strerror(iret)))
        iret = nf90_inq_dimid( ncid, 'lon', did )
+       if (iret /= nf90_noerr) call endrun(subname//': nf90_inq_dimid failed for lon: '//trim(nf90_strerror(iret)))
        iret = nf90_inquire_dimension( ncid, did, len=nlon )
+       if (iret /= nf90_noerr) call endrun(subname//': nf90_inquire_dimension failed for lon: '//trim(nf90_strerror(iret)))
        iret = nf90_inq_dimid( ncid, 'lat', did )
+       if (iret /= nf90_noerr) call endrun(subname//': nf90_inq_dimid failed for lat: '//trim(nf90_strerror(iret)))
        iret = nf90_inquire_dimension( ncid, did, len=nlat )
+       if (iret /= nf90_noerr) call endrun(subname//': nf90_inquire_dimension failed for lat: '//trim(nf90_strerror(iret)))
     end if
 
 #ifdef SPMD
@@ -99,12 +105,19 @@ contains
 
     if (masterproc) then
        iret = nf90_inq_varid( ncid, 'lon', vid )
+       if (iret /= nf90_noerr) call endrun(subname//': nf90_inq_varid failed for lon: '//trim(nf90_strerror(iret)))
        iret = nf90_get_var( ncid, vid, dst_lons )
+       if (iret /= nf90_noerr) call endrun(subname//': nf90_get_var failed for lon: '//trim(nf90_strerror(iret)))
        iret = nf90_inq_varid( ncid, 'lat', vid )
+       if (iret /= nf90_noerr) call endrun(subname//': nf90_inq_varid failed for lat: '//trim(nf90_strerror(iret)))
        iret = nf90_get_var( ncid, vid, dst_lats )
+       if (iret /= nf90_noerr) call endrun(subname//': nf90_get_var failed for lat: '//trim(nf90_strerror(iret)))
        iret = nf90_inq_varid( ncid, 'mbl_bsn_fct_geo', vid )
+       if (iret /= nf90_noerr) call endrun(subname//': nf90_inq_varid failed for mbl_bsn_fct_geo: '//trim(nf90_strerror(iret)))
        iret = nf90_get_var( ncid, vid, soil_erodibility_in )
+       if (iret /= nf90_noerr) call endrun(subname//': nf90_get_var failed for mbl_bsn_fct_geo: '//trim(nf90_strerror(iret)))
        iret = nf90_close( ncid )
+       if (iret /= nf90_noerr) call endrun(subname//': nf90_close failed for '//trim(infile)//': '//trim(nf90_strerror(iret)))
     end if
 
 #ifdef SPMD

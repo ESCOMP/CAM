@@ -1554,6 +1554,7 @@ contains
 
      if (use_shmem) then
         iret = pio_inquire_variable(fid, vid, name=varname)
+        if (iret /= pio_noerr) call endrun('read_2d_trc: pio_inquire_variable failed to get the variable name')
         if (fid%fh == file%curr_fileid%fh) then
            srcname = file%curr_filename
         else
@@ -1580,6 +1581,7 @@ contains
            iret = nf90_get_var( nfid, nfvid, wrk2d, start=strt, count=cnt )
            if (iret /= nf90_noerr) call endrun('read_2d_trc: nf90_get_var failed: '//trim(varname))
            iret = nf90_close( nfid )
+           if (iret /= nf90_noerr) call endrun('read_2d_trc: nf90_close failed: '//trim(locfn))
            if(order(1)/=1 .or. order(2)/=2 .or. cnt(1)/=file%nlon .or. cnt(2)/=file%nlat) then
               file%shr_src(:,:,1) = reshape( wrk2d(:,:),(/file%nlon,file%nlat/), order=order )
            else
@@ -1864,6 +1866,7 @@ contains
 
     if (use_shmem) then
        iret = pio_inquire_variable(fid, vid, name=varname)
+       if (iret /= pio_noerr) call endrun('read_3d_trc: pio_inquire_variable failed to get the variable name')
        if (fid%fh == file%curr_fileid%fh) then
           srcname = file%curr_filename
        else
@@ -1890,6 +1893,7 @@ contains
           iret = nf90_get_var( nfid, nfvid, wrk3d, start=strt, count=cnt )
           if (iret /= nf90_noerr) call endrun('read_3d_trc: nf90_get_var failed: '//trim(varname))
           iret = nf90_close( nfid )
+          if (iret /= nf90_noerr) call endrun('read_3d_trc: nf90_close failed: '//trim(locfn))
           if(order(1)/=1 .or. order(2)/=2 .or. order(3)/=3 .or. &
                cnt(1)/=file%nlon.or.cnt(2)/=file%nlat.or.cnt(3)/=file%nlev) then
              file%shr_src(:,:,:) = reshape( wrk3d(:,:,:),(/file%nlon,file%nlat,file%nlev/), order=order )
