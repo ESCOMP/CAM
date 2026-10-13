@@ -37,8 +37,7 @@ module clubb_intr
                                  hm_metadata_type, sclr_idx_type, &
                                  nparams
 
-  use clubb_mf,            only: do_clubb_mf, do_clubb_mf_diag, clubb_mf_nup, &
-                                 clubb_mf_up_ndt, clubb_mf_cp_ndt
+  use clubb_mf,            only: clubb_mf_init
   use cam_history_support, only: add_hist_coord
   use cloud_fraction,      only: dp1, dp2
 #endif
@@ -399,6 +398,30 @@ module clubb_intr
     clubb_l_host_applies_sfc_fluxes,                & ! Whether the host model applies the surface fluxes
     clubb_l_wp2_fill_holes_tke,                     & ! Whether TKE is taken from up2 and vp2 to fill holes in wp2
     clubb_l_add_dycore_grid                           ! Flag to remap values from dycore grid
+
+  ! ------------------------------------------------------------ !
+  !                CLUBB-MF namelist variables                   !
+  ! ------------------------------------------------------------ !
+
+  ! CLUBB-MF namelist variables (read in clubb_mf_readnl, passed to clubb_mf_init)
+  real(r8) :: clubb_mf_a0, clubb_mf_b0, clubb_mf_L0, clubb_mf_ent0,          &
+              clubb_mf_alphturb, clubb_mf_max_L0, clubb_mf_fdd,              &
+              clubb_mf_ddalph, clubb_mf_ddbeta, clubb_mf_pwfac,              &
+              clubb_mf_ddexp, clubb_mf_pwmin, clubb_mf_pwmax,                &
+              clubb_mf_cldfrac_fac
+
+  integer  :: clubb_mf_Lopt, clubb_mf_nup, clubb_mf_up_ndt,                 &
+              clubb_mf_cp_ndt, clubb_mf_kseed
+
+  logical  :: do_clubb_mf_diag, do_clubb_mf_precip, do_clubb_mf_rad,        &
+              do_clubb_mf_coldpool, do_clubb_mf_coldpool_init,              &
+              do_clubb_mf_coldpool_perplume, do_clubb_mf_lscale_perplume,   &
+              do_clubb_mf_ustar, do_clubb_mf_mixd, do_clubb_mf_rhtke,       &
+              do_clubb_mf_cmt, do_clubb_mf_addtke, do_clubb_mf_aloft,       &
+              do_clubb_mf_aspd, do_clubb_mf_pblcull, do_clubb_mf_invswitch
+
+  ! Derived from deep_scheme in clubb_mf_readnl (not a namelist variable)
+  logical  :: do_clubb_mf
 
   ! ------------------------------------------------------------ !
   !             Indices for physics buffer (pbuf)                !
@@ -829,7 +852,6 @@ end subroutine clubb_init_cnst
     use cam_abortutils,  only: endrun
     use spmd_utils,      only: mpicom, mstrid=>masterprocid, mpi_logical, mpi_real8, &
                                mpi_integer
-    use clubb_mf,        only: clubb_mf_readnl
 
     use clubb_api_module, only: &
       set_default_clubb_config_flags_api, & ! Procedure(s)
@@ -1054,7 +1076,7 @@ end subroutine clubb_init_cnst
                                              clubb_l_add_dycore_grid ) ! Out
 
     !  Call CLUBB+MF namelist
-    call clubb_mf_readnl(nlfile, masterproc)
+    call clubb_mf_readnl(nlfile)
 
     !  Read namelist to determine if CLUBB history should be called
     if (masterproc) then
@@ -1506,6 +1528,124 @@ end subroutine clubb_init_cnst
 
 #endif
   end subroutine clubb_readnl
+
+  subroutine clubb_mf_readnl(nlfile)
+
+  ! =============================================================================== !
+  ! MF namelists                                                                    !
+  ! =============================================================================== !
+
+    use namelist_utils,  only: find_group_name
+    use spmd_utils,      only: mpicom, mstrid=>masterprocid, mpi_real8, mpi_integer, mpi_logical
+    use phys_control,    only: phys_getopts
+    use cam_abortutils,  only: endrun
+
+    character(len=*), intent(in) :: nlfile  ! filepath for file containing namelist input
+
+    character(len=*), parameter :: sub = 'clubb_mf_readnl'
+
+    integer :: iunit, read_status, ierr
+    character(len=16) :: deep_scheme
+
+
+    namelist /clubb_mf_nl/ clubb_mf_Lopt, clubb_mf_a0, clubb_mf_b0, clubb_mf_L0, clubb_mf_ent0, clubb_mf_alphturb, &
+                           clubb_mf_nup, clubb_mf_max_L0, do_clubb_mf_diag, do_clubb_mf_precip, do_clubb_mf_rad, &
+                           clubb_mf_fdd, do_clubb_mf_coldpool, clubb_mf_ddalph, clubb_mf_ddbeta, clubb_mf_pwfac, do_clubb_mf_ustar, &
+                           clubb_mf_ddexp, do_clubb_mf_mixd, clubb_mf_up_ndt, clubb_mf_cp_ndt, do_clubb_mf_rhtke, do_clubb_mf_cmt, &
+                           do_clubb_mf_coldpool_init, do_clubb_mf_coldpool_perplume, do_clubb_mf_lscale_perplume, clubb_mf_kseed, &
+                           do_clubb_mf_addtke, do_clubb_mf_aloft, clubb_mf_pwmin, clubb_mf_pwmax, clubb_mf_cldfrac_fac, &
+                           do_clubb_mf_aspd, do_clubb_mf_pblcull, do_clubb_mf_invswitch
+
+    if (masterproc) then
+      open( newunit=iunit, file=trim(nlfile), status='old' )
+      call find_group_name(iunit, 'clubb_mf_nl', status=read_status)
+      if (read_status == 0) then
+         read(iunit, clubb_mf_nl, iostat=ierr)
+         if (ierr /= 0) then
+            call endrun('clubb_mf_readnl: ERROR reading namelist')
+         end if
+      end if
+      close(iunit)
+    end if
+
+    call mpi_bcast(clubb_mf_Lopt, 1, mpi_integer, mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_mf_Lopt")
+    call mpi_bcast(clubb_mf_a0,   1, mpi_real8,   mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_mf_a0")
+    call mpi_bcast(clubb_mf_b0,   1, mpi_real8,   mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_mf_b0")
+    call mpi_bcast(clubb_mf_L0,   1, mpi_real8,   mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_mf_L0")
+    call mpi_bcast(clubb_mf_ent0, 1, mpi_real8,   mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_mf_ent0")
+    call mpi_bcast(clubb_mf_alphturb,1, mpi_real8,   mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_mf_alphturb")
+    call mpi_bcast(clubb_mf_nup,  1, mpi_integer, mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_mf_nup")
+    call mpi_bcast(clubb_mf_max_L0,  1, mpi_real8,   mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_mf_max_L0")
+    call mpi_bcast(do_clubb_mf_diag, 1, mpi_logical, mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: do_clubb_mf_diag")
+    call mpi_bcast(do_clubb_mf_precip, 1, mpi_logical, mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: do_clubb_mf_precip")
+    call mpi_bcast(do_clubb_mf_rad, 1, mpi_logical, mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: do_clubb_mf_rad")
+    call mpi_bcast(clubb_mf_fdd,  1, mpi_real8,   mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_mf_fdd")
+    call mpi_bcast(do_clubb_mf_coldpool, 1, mpi_logical, mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: do_clubb_mf_coldpool")
+    call mpi_bcast(clubb_mf_ddalph,  1, mpi_real8,   mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_mf_ddalph")
+    call mpi_bcast(clubb_mf_ddbeta,  1, mpi_real8,   mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_mf_ddbeta")
+    call mpi_bcast(clubb_mf_pwfac,  1, mpi_real8,   mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_mf_pwfac")
+    call mpi_bcast(clubb_mf_up_ndt, 1, mpi_integer, mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_mf_up_ndt")
+    call mpi_bcast(clubb_mf_cp_ndt, 1, mpi_integer, mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_mf_cp_ndt")
+    call mpi_bcast(do_clubb_mf_ustar, 1, mpi_logical, mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: do_clubb_mf_ustar")
+    call mpi_bcast(clubb_mf_ddexp,  1, mpi_real8,   mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_mf_ddexp")
+    call mpi_bcast(do_clubb_mf_mixd, 1, mpi_logical, mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: do_clubb_mf_mixd")
+    call mpi_bcast(do_clubb_mf_rhtke, 1, mpi_logical, mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: do_clubb_mf_rhtke")
+    call mpi_bcast(do_clubb_mf_cmt, 1, mpi_logical, mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: do_clubb_mf_cmt")
+    call mpi_bcast(clubb_mf_kseed, 1, mpi_integer, mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_mf_kseed")
+    call mpi_bcast(do_clubb_mf_coldpool_init, 1, mpi_logical, mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: do_clubb_mf_coldpool_init")
+    call mpi_bcast(do_clubb_mf_coldpool_perplume, 1, mpi_logical, mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: do_clubb_mf_coldpool_perplume")
+    call mpi_bcast(do_clubb_mf_lscale_perplume, 1, mpi_logical, mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: do_clubb_mf_lscale_perplume")
+    call mpi_bcast(do_clubb_mf_addtke, 1, mpi_logical, mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: do_clubb_mf_addtke")
+    call mpi_bcast(do_clubb_mf_aloft, 1, mpi_logical, mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: do_clubb_mf_aloft")
+    call mpi_bcast(do_clubb_mf_aspd, 1, mpi_logical, mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: do_clubb_mf_aspd")
+    call mpi_bcast(do_clubb_mf_pblcull, 1, mpi_logical, mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: do_clubb_mf_pblcull")
+    call mpi_bcast(do_clubb_mf_invswitch, 1, mpi_logical, mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: do_clubb_mf_invswitch")
+    call mpi_bcast(clubb_mf_pwmin,  1, mpi_real8,   mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_mf_pwmin")
+    call mpi_bcast(clubb_mf_pwmax,  1, mpi_real8,   mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_mf_pwmax")
+    call mpi_bcast(clubb_mf_cldfrac_fac,  1, mpi_real8,   mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_mf_cldfrac_fac")
+
+    ! CLUBB-MF is selected with deep_scheme='CLUBB_MF'; deriving the
+    ! switch here (on all ranks) removes any possibility of an
+    ! inconsistent do_clubb_mf / deep_scheme combination
+    call phys_getopts(deep_scheme_out = deep_scheme)
+    do_clubb_mf = (trim(deep_scheme) == 'CLUBB_MF')
+
+  end subroutine clubb_mf_readnl
 
   ! =============================================================================== !
   !                                                                                 !
@@ -2056,6 +2196,22 @@ end subroutine clubb_init_cnst
     if (errflg /= 0) then
       call endrun("clubb_ini_cam: "//trim(errmsg))
     end if
+
+    call clubb_mf_init( &
+         clubb_mf_Lopt, clubb_mf_a0, clubb_mf_b0, clubb_mf_L0,                         &
+         clubb_mf_ent0, clubb_mf_alphturb, clubb_mf_nup, clubb_mf_max_L0,              &
+         clubb_mf_fdd, clubb_mf_ddalph, clubb_mf_ddbeta, clubb_mf_pwfac,               &
+         clubb_mf_ddexp, clubb_mf_up_ndt, clubb_mf_cp_ndt, clubb_mf_kseed,             &
+         clubb_mf_pwmin, clubb_mf_pwmax, clubb_mf_cldfrac_fac,                         &
+         do_clubb_mf, do_clubb_mf_diag, do_clubb_mf_precip, do_clubb_mf_rad,           &
+         do_clubb_mf_coldpool, do_clubb_mf_coldpool_init,                              &
+         do_clubb_mf_coldpool_perplume, do_clubb_mf_lscale_perplume,                   &
+         do_clubb_mf_ustar, do_clubb_mf_mixd, do_clubb_mf_rhtke,                       &
+         do_clubb_mf_cmt, do_clubb_mf_addtke, do_clubb_mf_aloft,                       &
+         do_clubb_mf_aspd, do_clubb_mf_pblcull, do_clubb_mf_invswitch,                 &
+         errmsg, errflg )
+
+    if (errflg /= 0) call endrun('clubb_init: '//trim(errmsg))
 
 #endif
     end subroutine clubb_ini_cam
