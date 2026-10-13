@@ -50,7 +50,7 @@
       <option name="comment">CAM7-LT, Prescribed GHGs and bulk aerosols</option>
     </options>
   </test>
-  <test compset="FHISTC_LTso" grid="ne16pg3_ne16pg3_mt233" name="ERR_Ld3" testmods="cam/outfrq9s_bwic_newyear">
+  <test compset="FHISTC_LTso" grid="ne16pg3_ne16pg3_mt233" name="ERR_Ld3" testmods="cam/outfrq1d_bwic_newyear">
     <machines>
       <machine name="derecho" compiler="intel" category="aux_cam"/>
     </machines>
@@ -1184,7 +1184,7 @@
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
-  <test compset="QPX2000" grid="ne16_ne16_mt233" name="SMS_D_Ln9" testmods="cam/outfrq9s_amie">
+  <test compset="QPX2000" grid="ne16_ne16_mg17" name="SMS_D_Ln9" testmods="cam/outfrq9s_amie">
     <machines>
       <machine name="derecho" compiler="intel" category="aux_cam"/>
       <machine name="derecho" compiler="intel" category="waccmx"/>
