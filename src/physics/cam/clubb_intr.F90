@@ -1719,6 +1719,9 @@ end subroutine clubb_init_cnst
     integer :: errflg
     character(len=200) :: errmsg
 
+    integer :: i
+    character(len=200) :: temp1, sub
+
     call phys_getopts(history_amwg_out=history_amwg, &
                       history_clubb_out=history_clubb, &
                       do_hb_above_clubb_out=do_hb_above_clubb)
@@ -2168,8 +2171,7 @@ end subroutine clubb_init_cnst
 
     ! Call the CAM-SIMA layer
     call clubb_init(pcols, pver, pverp, pcnst, & ! in
-                    masterproc, mpicom, mstrid, mpi_character, & ! in
-                    iulog, max_fieldname_len, & ! in
+                    masterproc, mpicom, mstrid, mpi_character, iulog, & ! in
                     sclr_dim, hydromet_dim, nzt_clubb, nzm_clubb, & ! in
                     l_implemented, l_input_fields, clubb_l_do_expldiff_rtm_thlm, & ! in
                     cnst_ndropmixed, subcol_scheme, & ! in
@@ -2196,6 +2198,65 @@ end subroutine clubb_init_cnst
 
     if (errflg /= 0) then
       call endrun("clubb_ini_cam: "//trim(errmsg))
+    end if
+
+    ! Add CLUBB stats fields to the history master field list
+    if (stats_metadata%l_stats) then
+
+      do i = 1, stats_zt(1)%num_output_fields
+        temp1 = trim(stats_zt(1)%file%grid_avg_var(i)%name)
+        sub   = temp1
+        if (len(temp1) > max_fieldname_len) sub = temp1(1:max_fieldname_len)
+        call addfld( trim(sub), (/ 'ilev' /), 'A', &
+                     trim(stats_zt(1)%file%grid_avg_var(i)%units), &
+                     trim(stats_zt(1)%file%grid_avg_var(i)%description), &
+                     sampled_on_subcycle=.true. )
+      end do
+
+      do i = 1, stats_zm(1)%num_output_fields
+        temp1 = trim(stats_zm(1)%file%grid_avg_var(i)%name)
+        sub   = temp1
+        if (len(temp1) > max_fieldname_len) sub = temp1(1:max_fieldname_len)
+        call addfld( trim(sub), (/ 'ilev' /), 'A', &
+                     trim(stats_zm(1)%file%grid_avg_var(i)%units), &
+                     trim(stats_zm(1)%file%grid_avg_var(i)%description), &
+                     sampled_on_subcycle=.true. )
+      end do
+
+      if (stats_metadata%l_output_rad_files) then
+
+        do i = 1, stats_rad_zt(1)%num_output_fields
+          temp1 = trim(stats_rad_zt(1)%file%grid_avg_var(i)%name)
+          sub   = temp1
+          if (len(temp1) > max_fieldname_len) sub = temp1(1:max_fieldname_len)
+          call addfld( trim(sub), (/ 'ilev' /), 'A', &
+                       trim(stats_rad_zt(1)%file%grid_avg_var(i)%units), &
+                       trim(stats_rad_zt(1)%file%grid_avg_var(i)%description), &
+                       sampled_on_subcycle=.true. )
+        end do
+
+        do i = 1, stats_rad_zm(1)%num_output_fields
+          temp1 = trim(stats_rad_zm(1)%file%grid_avg_var(i)%name)
+          sub   = temp1
+          if (len(temp1) > max_fieldname_len) sub = temp1(1:max_fieldname_len)
+          call addfld( trim(sub), (/ 'ilev' /), 'A', &
+                       trim(stats_rad_zm(1)%file%grid_avg_var(i)%units), &
+                       trim(stats_rad_zm(1)%file%grid_avg_var(i)%description), &
+                       sampled_on_subcycle=.true. )
+        end do
+
+      end if
+
+      do i = 1, stats_sfc(1)%num_output_fields
+        temp1 = trim(stats_sfc(1)%file%grid_avg_var(i)%name)
+        sub   = temp1
+        if (len(temp1) > max_fieldname_len) sub = temp1(1:max_fieldname_len)
+        call addfld( trim(sub), horiz_only, 'A', &
+                     trim(stats_sfc(1)%file%grid_avg_var(i)%units), &
+                     trim(stats_sfc(1)%file%grid_avg_var(i)%description), &
+                     sampled_on_subcycle=.true. )
+      end do
+
     end if
 
     call clubb_mf_init( &
@@ -2438,7 +2499,7 @@ end subroutine clubb_init_cnst
     !                   Local Variables                    !
     ! ---------------------------------------------------- !
 
-    integer :: i,l !Must be delcared outside "CLUBB_SGS" ifdef for det_s and det_ice zero-ing loops
+    integer :: i !Must be delcared outside "CLUBB_SGS" ifdef for det_s and det_ice zero-ing loops
 
 #ifdef CLUBB_SGS
 
