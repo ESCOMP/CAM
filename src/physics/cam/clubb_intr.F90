@@ -20,7 +20,8 @@ module clubb_intr
   use shr_kind_mod,        only: r8=>shr_kind_r8
   use ppgrid,              only: pver, pverp, pcols, begchunk, endchunk
   use phys_control,        only: phys_getopts
-  use physconst,           only: cpair, gravit, rga, latvap, latice, zvir, rh2o, karman, pi, rair, omega, rhoh2o
+  use physconst,           only: cpair, gravit, rga, latvap, latice, zvir, rh2o, &
+                                 karman, pi, rair, omega, rhoh2o, h2otrip
   use air_composition,     only: rairv, cpairv
   use cam_history_support, only: max_fieldname_len, fillvalue
 
@@ -2909,7 +2910,7 @@ end subroutine clubb_init_cnst
                     ts_nudge, rtm_min, rtm_nudge_max_altitude, & ! in
                     wp3_const, cld_macmic_num_steps, clubb_params_single_col, & ! in
                     cpair, cpairv(:,:,lchnk), rair, inv_p0_clubb, rairv(:,:,lchnk), zvir, latvap, latice, & ! in
-                    rga, gravit, clubb_rnevap_effic, do_cldcool, do_rainturb, & ! in
+                    h2otrip, rga, gravit, clubb_rnevap_effic, do_cldcool, do_rainturb, & ! in
                     l_implemented, grid_type, lq, deep_scheme, & ! in
                     state_loc%q, state_loc%t, state_loc%pmid, state_loc%zm, & ! in
                     state_loc%phis, state_loc%pdel, state_loc%pdeldry, state_loc%exner, & ! in
