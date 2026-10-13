@@ -2661,6 +2661,8 @@ end subroutine clubb_init_cnst
     ! Courant number limiter vars
     real(r8), dimension(state%ncol)      :: max_cfl_nadv, mf_freq_nadv
 
+    character(len=40) :: str
+
 #endif
 !BAS for new tropopause calculation but not used yet
     real(r8) :: calday
@@ -2968,7 +2970,8 @@ end subroutine clubb_init_cnst
                     errmsg, errflg ) ! out
 
     if (errflg /= 0) then
-      call endrun(errmsg)
+     write(str,*) 'From clubb_tend_cam: at chunk ',lchnk, ' : '
+     call endrun(str // errmsg)
     end if
 
     if (do_clubb_mf) then
@@ -3086,7 +3089,8 @@ end subroutine clubb_init_cnst
                     errmsg, errflg ) ! out
 
     if (errflg /= 0) then
-      call endrun(errmsg)
+     write(str,*) 'From clubb_tend_cam: at chunk ',lchnk, ' : '
+     call endrun(str // errmsg)
     end if
 
     !----------------------------------------- Output section -----------------------------------------
