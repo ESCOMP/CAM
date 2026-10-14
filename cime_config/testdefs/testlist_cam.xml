@@ -98,6 +98,15 @@
       <option name="comment">CAM7 low top 1850 coarse grid</option>
     </options>
   </test>
+  <test compset="F1850C_LTso" grid="ne30pg3_ne30pg3_mt233" name="ERC_D_Ln9_P128x4" testmods="cam/outfrq9s">
+    <machines>
+      <machine name="derecho" compiler="intel" category="aux_cam"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:30:00</option>
+      <option name="comment">SE dycore threaded test</option>
+    </options>
+  </test>
 
 <!--              @@@@@@@@@@@@@@@@@@@@@@@@@@@                 -->
 <!--              CAM test-supported COMPSETS                 -->
