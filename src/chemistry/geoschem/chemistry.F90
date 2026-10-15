@@ -997,7 +997,7 @@ contains
     use tracer_srcs,           only : tracer_srcs_init
 #if defined( MODAL_AERO )
     use aero_model,            only : aero_model_init
-    use mo_setsox,             only : sox_inti
+    use mo_setsox_cam,         only : sox_inti
     use mo_drydep,             only : drydep_inti
     use modal_aero_data,       only : ntot_amode, nspec_amode
 #endif
