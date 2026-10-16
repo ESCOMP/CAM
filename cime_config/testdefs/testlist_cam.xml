@@ -1932,7 +1932,7 @@
   </test>
 
 <!--              CAM Tests at non-scientific resolutions     -->
-  <test compset="F2000climo" grid="C48_C48_mt233" name="ERP_Ln9" testmods="cam/cosp">
+  <test compset="F2000climo" grid="C48_C48_mg17" name="ERP_Ln9" testmods="cam/cosp">
     <machines>
       <machine name="derecho" compiler="intel" category="fv3_cam"/>
     </machines>
@@ -1940,7 +1940,7 @@
       <option name="wallclock">00:10:00</option>
     </options>
   </test>
-  <test compset="F2000climo" grid="C48_C48_mt233" name="ERS_Ln9" testmods="cam/outfrq9s">
+  <test compset="F2000climo" grid="C48_C48_mg17" name="ERS_Ln9" testmods="cam/outfrq9s">
     <machines>
       <machine name="derecho" compiler="intel" category="fv3_cam"/>
     </machines>
@@ -1949,7 +1949,7 @@
     </options>
   </test>
 
-  <test compset="F2000climo" grid="C48_C48_mt233" name="SMS_Ln9" testmods="cam/silhs">
+  <test compset="F2000climo" grid="C48_C48_mg17" name="SMS_Ln9" testmods="cam/silhs">
     <machines>
       <machine name="derecho" compiler="intel" category="fv3_cam"/>
     </machines>
