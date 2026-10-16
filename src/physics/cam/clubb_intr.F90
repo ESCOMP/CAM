@@ -31,7 +31,7 @@ module clubb_intr
   use scamMOD,             only: single_column, scm_clubb_iop_name, scm_cambfb_mode
 
 #ifdef CLUBB_SGS
-  use clubb,               only: clubb_init, clubb1_run, clubb2_run, clubb3_run, stats_zero
+  use clubb,               only: clubb_setup_init, clubb1_run, clubb2_run, clubb3_run
   use clubb_api_module,    only: pdf_parameter, implicit_coefs_terms, &
                                  clubb_config_flags_type, grid, stats, &
                                  nu_vertical_res_dep, stats_metadata_type, &
@@ -46,8 +46,6 @@ module clubb_intr
   implicit none
 
   private
-
-  save
 
   ! Subroutines to make public
   public :: clubb_ini_cam, clubb_register_cam, clubb_tend_cam, clubb_emissions_cam, &
@@ -2170,31 +2168,31 @@ end subroutine clubb_init_cnst
     end if
 
     ! Call the CAM-SIMA layer
-    call clubb_init(pcols, pver, pverp, pcnst, & ! in
-                    masterproc, mpicom, mstrid, mpi_character, iulog, & ! in
-                    sclr_dim, hydromet_dim, nzt_clubb, nzm_clubb, & ! in
-                    l_implemented, l_input_fields, clubb_l_do_expldiff_rtm_thlm, & ! in
-                    cnst_ndropmixed, subcol_scheme, & ! in
-                    clubb_vars_zt, clubb_vars_zm, clubb_vars_sfc, & ! in
-                    clubb_vars_rad_zt, clubb_vars_rad_zm, & ! in
-                    edsclr_dim, clubb_params_single_col, & ! inout
-                    out_zt, out_zm, out_sfc, out_radzt, out_radzm, & ! inout
-                    clubb_C2rtthl, clubb_C8, clubb_c11, clubb_c11b, clubb_c14, & ! inout
-                    clubb_C_wp3_pr_turb, clubb_c_K10, clubb_mult_coef, & ! inout
-                    clubb_Skw_denom_coef, clubb_C2rt, clubb_C2thl, clubb_beta, & ! inout
-                    clubb_c6rt, clubb_c6rtb, clubb_c6rtc, clubb_c6thl, clubb_c6thlb, & ! inout
-                    clubb_c6thlc, clubb_wpxp_L_thresh, clubb_C7, clubb_C7b, & ! inout
-                    clubb_gamma_coef, clubb_c_K10h, clubb_lambda0_stability_coef, & ! inout
-                    clubb_lmin_coef, clubb_C8b, clubb_skw_max_mag, clubb_C1, clubb_C1b, & ! inout
-                    clubb_gamma_coefb, clubb_up2_sfc_coef, clubb_C4, clubb_C_uu_shr, & ! inout
-                    clubb_C_uu_buoy, clubb_c_K1, clubb_c_K2, clubb_nu2, clubb_c_K8, & ! inout
-                    clubb_c_K9, clubb_nu9, clubb_C_wp2_splat, clubb_C_invrs_tau_bkgnd, & ! inout
-                    clubb_C_invrs_tau_sfc, clubb_C_invrs_tau_shear, clubb_C_invrs_tau_N2, & ! inout
-                    clubb_C_invrs_tau_N2_wp2, clubb_C_invrs_tau_N2_xp2, clubb_C_invrs_tau_N2_wpxp, & ! inout
-                    clubb_C_invrs_tau_N2_clear_wp3, clubb_bv_efold, clubb_wpxp_Ri_exp, clubb_z_displace, & ! inout
-                    lq, stats_zt, stats_zm, stats_sfc, stats_rad_zt, stats_rad_zm, & ! inout
-                    stats_metadata, hm_metadata, clubb_config_flags, sclr_idx, & ! inout
-                    errmsg, errflg ) ! out
+    call clubb_setup_init(pcols, pver, pverp, pcnst, & ! in
+                          masterproc, mpicom, mstrid, mpi_character, iulog, & ! in
+                          sclr_dim, hydromet_dim, nzt_clubb, nzm_clubb, & ! in
+                          l_implemented, l_input_fields, clubb_l_do_expldiff_rtm_thlm, & ! in
+                          cnst_ndropmixed, subcol_scheme, & ! in
+                          clubb_vars_zt, clubb_vars_zm, clubb_vars_sfc, & ! in
+                          clubb_vars_rad_zt, clubb_vars_rad_zm, & ! in
+                          edsclr_dim, clubb_params_single_col, & ! inout
+                          out_zt, out_zm, out_sfc, out_radzt, out_radzm, & ! inout
+                          clubb_C2rtthl, clubb_C8, clubb_c11, clubb_c11b, clubb_c14, & ! inout
+                          clubb_C_wp3_pr_turb, clubb_c_K10, clubb_mult_coef, & ! inout
+                          clubb_Skw_denom_coef, clubb_C2rt, clubb_C2thl, clubb_beta, & ! inout
+                          clubb_c6rt, clubb_c6rtb, clubb_c6rtc, clubb_c6thl, clubb_c6thlb, & ! inout
+                          clubb_c6thlc, clubb_wpxp_L_thresh, clubb_C7, clubb_C7b, & ! inout
+                          clubb_gamma_coef, clubb_c_K10h, clubb_lambda0_stability_coef, & ! inout
+                          clubb_lmin_coef, clubb_C8b, clubb_skw_max_mag, clubb_C1, clubb_C1b, & ! inout
+                          clubb_gamma_coefb, clubb_up2_sfc_coef, clubb_C4, clubb_C_uu_shr, & ! inout
+                          clubb_C_uu_buoy, clubb_c_K1, clubb_c_K2, clubb_nu2, clubb_c_K8, & ! inout
+                          clubb_c_K9, clubb_nu9, clubb_C_wp2_splat, clubb_C_invrs_tau_bkgnd, & ! inout
+                          clubb_C_invrs_tau_sfc, clubb_C_invrs_tau_shear, clubb_C_invrs_tau_N2, & ! inout
+                          clubb_C_invrs_tau_N2_wp2, clubb_C_invrs_tau_N2_xp2, clubb_C_invrs_tau_N2_wpxp, & ! inout
+                          clubb_C_invrs_tau_N2_clear_wp3, clubb_bv_efold, clubb_wpxp_Ri_exp, clubb_z_displace, & ! inout
+                          lq, stats_zt, stats_zm, stats_sfc, stats_rad_zt, stats_rad_zm, & ! inout
+                          stats_metadata, hm_metadata, clubb_config_flags, sclr_idx, & ! inout
+                          errmsg, errflg ) ! out
 
     if (errflg /= 0) then
       call endrun("clubb_ini_cam: "//trim(errmsg))
@@ -2327,7 +2325,6 @@ end subroutine clubb_init_cnst
 
     ! Import setup for CLUBB error messaging
     use clubb_api_module, only: &
-      err_info_type,        &
       cleanup_err_info_api
 
     use cldfrc2m,                  only: rhmini_const, rhmaxi_const, rhminis_const, rhmaxis_const, &
@@ -2510,9 +2507,6 @@ end subroutine clubb_init_cnst
     type(physics_state) :: state_loc                ! Local copy of state variable
     type(physics_ptend) :: ptend_loc             ! Local tendency from processes, added up to return as ptend_all
 
-    type(err_info_type) :: &
-      err_info          ! err_info struct used in CLUBB containing err_code and err_header
-
     type(grid) :: &
       gr          ! CLUBB grid data structure
 
@@ -2557,7 +2551,7 @@ end subroutine clubb_init_cnst
       mf_dry_v,   mf_moist_v,    &
                   mf_moist_qc,   &
       s_ae,       s_aw,          &
-      s_aww,                     & 
+      s_aww,                     &
       s_awthlup,  s_awqtup,      &
       s_awuup,    s_awvup,       &
       s_awthldn,  s_awqtdn,      &
@@ -2569,7 +2563,7 @@ end subroutine clubb_init_cnst
 
       ! MF work arrays (of size NCOL)
       mf_thlflxup,   mf_qtflxup,   mf_uflxup,   mf_vflxup,  &
-      mf_thlflxdn,   mf_qtflxdn,   mf_uflxdn,   mf_vflxdn,  & 
+      mf_thlflxdn,   mf_qtflxdn,   mf_uflxdn,   mf_vflxdn,  &
       mf_thlflx,     mf_qtflx,     mf_uflx,     mf_vflx,    &
       mf_thvflx,   &
       mf_rcm,      &
@@ -2587,7 +2581,7 @@ end subroutine clubb_init_cnst
       mf_upbuoy,                                                  &
       mf_updet,                                                   &
       mf_upent
-      
+
     ! Variables used for output (zm)
     real(r8), dimension(pcols,pverp) :: &
       zi_output,                & ! output for momentum CLUBB grid                [m]
@@ -3025,7 +3019,7 @@ end subroutine clubb_init_cnst
                     mf_thlforcup_nadv, mf_qtforcup_nadv, mf_thlforcdn_nadv, & ! inout
                     mf_qtforcdn_nadv, mf_thlforc_nadv, mf_qtforc_nadv, & ! inout
                     ztopma, ztopmn, mf_sqtup, mf_sqtdn, prec_dp_pbuf, snow_dp_pbuf, ddcpmn, & ! inout
-                    s_mfup_macmic, s_entup_macmic, s_detup_macmic, s_mfdn_macmic, s_entdn_macmic, & ! inout 
+                    s_mfup_macmic, s_entup_macmic, s_detup_macmic, s_mfdn_macmic, s_entdn_macmic, & ! inout
                     s_detdn_macmic, s_awwup_macmic, s_awup_macmic, mf_sqtac_macmic, mf_sqtev_macmic, mf_kctop_macmic, & ! inout
                     rprddp, evapcdp, mu, md, du, eu, ed, dpg, dsubcld, jt, maxg, ideep, wup_gath, & ! inout
                     errmsg, errflg ) ! out
@@ -3135,7 +3129,7 @@ end subroutine clubb_init_cnst
                     rhminl_const, rhminl_adj_land_const, rhminh_const, & ! in
                     dp1, dp2, zvir, rair, cpair, gravit, karman, & ! in
                     calday, tropp_days, & ! in
-                    state_loc%lat, state_loc%phis, state_loc%t, state_loc%q, & ! in 
+                    state_loc%lat, state_loc%phis, state_loc%t, state_loc%q, & ! in
                     state_loc%pint, state_loc%pmid, state_loc%pdel, state_loc%pdeldry, & ! in
                     state_loc%zm, state_loc%zi, state_loc%u, state_loc%v, state_loc%exner, & ! in
                     cam_in%landfrac, cam_in%snowhland, cam_in%wsx, & ! in
@@ -3367,8 +3361,6 @@ end subroutine clubb_init_cnst
     endif
     call t_stopf('clubb_tend_cam:non_acc_region')
 
-    ! Cleanup err_info
-!    call cleanup_err_info_api(err_info)
 #endif
 
     call t_stopf('clubb_tend_cam')
