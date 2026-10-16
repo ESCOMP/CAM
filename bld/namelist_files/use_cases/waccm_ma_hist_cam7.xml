@@ -14,10 +14,6 @@
 <epp_all_filepath>atm/cam/solar/SolarForcingCMIP7-4.6_18491230-20240101_sumEPP_c20250630.nc</epp_all_filepath>
 <epp_all_varname>'epp_ion_rates'</epp_all_varname>
 
-<!--Species IC -->
-<ncdata dyn="se" hgrid="ne30np4" nlev="189">atm/waccm/ic/FHIST_WXma_ne30pg3_spinup03.cam.i.1980-01-01-00000_c250201.nc</ncdata>
-<ncdata dyn="se" hgrid="ne16np4" nlev="189">atm/waccm/ic/FHIST_WXma_ne16pg3_spinup02.cam.i.1980-01-01-00000_c250201.nc</ncdata>
-
 <!-- LBC, UBC Files -->
 <flbc_type>SERIAL</flbc_type>
 <flbc_list>
