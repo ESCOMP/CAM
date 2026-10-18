@@ -258,8 +258,8 @@
 <ncdata hgrid="mpasa480" nlev="58" aquaplanet="1" >atm/cam/inic/mpas/QPC7_mpasa480_L58_cami_c250527.nc</ncdata>
 
 <ncdata hgrid="mpasa120" nlev="32" >atm/cam/inic/mpas/cami_01-01-2000_00Z_mpasa120_L32_CFSR_c240508.nc</ncdata>
-<ncdata hgrid="mpasa120" nlev="58" >atm/cam/inic/mpas/cami_01-01-2000_00Z_mpasa120_L58_CFSR_c240814.nc</ncdata>
-<ncdata hgrid="mpasa120" nlev="93" >/glade/campaign/cgd/amp/aherring/mpas-uniform/mpasa120/inic/betacast_mpasa120_L93_ERA5ml_20000101_c261114_cdf5.nc</ncdata>
+<ncdata hgrid="mpasa120" nlev="58" >/glade/campaign/cgd/amp/aherring/mpas-uniform/mpasa120/inic/betacast_mpasa120_L58_ERA5ml_20000101_c261114_cdf5.nc</ncdata>
+<ncdata hgrid="mpasa120" nlev="93" >/glade/campaign/cgd/amp/aherring/mpas-uniform/mpasa120/inic/betacast_mpasa120_L93_ERA5ml_20000101_c261115_cdf5.nc</ncdata>
 <ncdata hgrid="mpasa120" nlev="58" aquaplanet="1" >atm/cam/inic/mpas/QPC7_mpasa120_L58_cami_c250527.nc</ncdata>
 <ncdata hgrid="mpasa120" nlev="70" waccm_phys="1">atm/waccm/ic/mpasa120_L70.waccm_topography_SC_c240904.nc</ncdata>
 <!-- Next entries are mostly used in EarthWorks, real-data ICs -->
@@ -2150,11 +2150,12 @@
 <do_iss phys="cam7"      > .true.  </do_iss>
 
 <!-- Sponge layer vertical diffusion factor -->
-<diff_sponge_fac               > 0.0D0 </diff_sponge_fac>
-<diff_sponge_fac  waccm_phys="1" waccmx="0"> 0.1D0 </diff_sponge_fac>
+<diff_sponge_fac                                          > 0.0D0 </diff_sponge_fac>
+<diff_sponge_fac  waccm_phys="1" waccmx="0"               > 0.1D0 </diff_sponge_fac>
 <diff_sponge_fac  waccm_phys="1" waccmx="0" model_top="lt"> 0.0D0 </diff_sponge_fac>
-<diff_sponge_fac  waccmx="1"              > 0.1D0 </diff_sponge_fac>
-<diff_sponge_fac  model_top="ht"         > 0.1D0 </diff_sponge_fac>
+<diff_sponge_fac  waccmx="1"                              > 0.1D0 </diff_sponge_fac>
+<diff_sponge_fac  hgrid="mpasa120" model_top="mt"         > 0.1D0 </diff_sponge_fac>
+<diff_sponge_fac  model_top="ht"                          > 0.1D0 </diff_sponge_fac>
 
 <!-- Use convective water in radiation calculation -->
 <conv_water_in_rad                  > 0 </conv_water_in_rad>
@@ -3497,8 +3498,11 @@
 <mpas_zd hgrid="mpasa120" waccm_phys="1"> 80000.0D0 </mpas_zd>
 <mpas_xnutr                   > 0.2D0 </mpas_xnutr>
 <mpas_cam_coef                > 0.0D0 </mpas_cam_coef>
-<mpas_cam_coef hgrid="mpasa120" waccm_phys="1"> 0.2D0 </mpas_cam_coef>
-<mpas_cam_damping_levels      > 0     </mpas_cam_damping_levels>
+<mpas_cam_coef hgrid="mpasa120" waccm_phys="1" > 0.2D0 </mpas_cam_coef>
+<mpas_cam_coef model_top="lt" > 0.2D0 </mpas_cam_coef>
+<mpas_cam_coef model_top="mt" > 1.0D0 </mpas_cam_coef>
+<mpas_cam_damping_levels      > 3 </mpas_cam_damping_levels>
+<mpas_cam_damping_levels model_top="mt" > 4 </mpas_cam_damping_levels>
 <mpas_rayleigh_damp_u         > .true. </mpas_rayleigh_damp_u>
 <mpas_rayleigh_damp_u_timescale_days> 5.0 </mpas_rayleigh_damp_u_timescale_days>
 <mpas_number_rayleigh_damp_u_levels> 5 </mpas_number_rayleigh_damp_u_levels>
