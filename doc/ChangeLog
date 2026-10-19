@@ -1,5 +1,64 @@
 ===============================================================
 
+Tag name:
+Originator(s): nusbaume
+Date:
+One-line Summary: Start the MPAS dycore clock at the current date on restarts
+Github PR URL:
+
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+
+  Fixes #1721: MPAS dycore timer resets for restart runs
+
+  The MPAS dycore clock was always started at RUN_STARTDATE, so on
+  continue runs the MPAS time-step diagnostics in atm.log (and the MPAS
+  "xtime" field) were reset to the run start date. The MPAS clock now
+  starts at CAM's current date, which is the run start date for initial
+  runs and the restart date for continue and branch runs.
+
+  This change was developed with AI assistance (Claude Code).
+
+Describe any changes made to build system: N/A
+
+Describe any changes made to the namelist: N/A
+
+List any changes to the defaults for the boundary datasets: N/A
+
+Describe any substantial timing or memory changes: N/A
+
+Code reviewed by:
+
+List all files eliminated: N/A
+
+List all files added and what they do: N/A
+
+List all existing files that have been modified, and describe the changes:
+
+M  src/dynamics/mpas/dyn_comp.F90
+  - Set MPAS config_start_time from get_curr_date instead of get_start_date
+  - Set MPAS config_run_duration to 'none' so the MPAS clock stop time
+    comes from config_stop_time
+
+If there were any failures reported from running test_driver.sh on any test
+platform, and checkin with these failures has been OK'd by the gatekeeper,
+then copy the lines from the td.*.status files for the failed tests to the
+appropriate machine below.  All failed tests must be justified.
+
+derecho/intel/aux_cam:
+
+derecho/nvhpc/aux_cam:
+
+izumi/nag/aux_cam:
+
+izumi/gnu/aux_cam:
+
+CAM tag used for the baseline comparison tests if different than previous
+tag:
+
+Summarize any changes to answers: bit-for-bit unchanged (expected)
+
+===============================================================
+
 Tag name: cam6_4_213
 Originator(s): peverwhee, billsacks
 Date: Oct 16, 2026
