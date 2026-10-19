@@ -299,10 +299,7 @@ subroutine cam_grid_snapshot_init(cam_snapshot_before_num, cam_snapshot_after_nu
 
 !--------------------------------------------------------
 ! This subroutine does the addfld calls for the physics grid coordinates in radians.
-! The history coordinates lat and lon are written in degrees, and converting them back to
-! radians in CAM-SIMA differs from the values CAM physics used by one ulp at some columns,
-! which seeds answer differences in every latitude-dependent scheme.
-! The CAM-SIMA null dycore prefers these fields when they are present on the snapshot.
+! The history coordinates lat and lon are written in degrees.
 !--------------------------------------------------------
 
    integer,intent(in) :: cam_snapshot_before_num, cam_snapshot_after_num
