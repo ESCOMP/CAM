@@ -834,8 +834,7 @@ contains
 ! Update constituents
     do m = 1, pcnst
        if (ptend%lq(m)) &
-            call multiply_tendency(ptend%q(:,:,m), &
-            ptend%cflx_srf(:,m), ptend%cflx_top(:,m))
+            call multiply_tendency(ptend%q(:,:,m))
             ptend%cflx_srf(:ncol,m) = ptend%cflx_srf(:ncol,m) * fac
             ptend%cflx_top(:ncol,m) = ptend%cflx_top(:ncol,m) * fac
     end do
@@ -843,7 +842,7 @@ contains
 
   contains
 
-    subroutine multiply_tendency(tend_arr, flx_srf, flx_top)
+    subroutine multiply_tendency(tend_arr)
       real(r8), intent(inout) :: tend_arr(:,:) ! Tendency array (pcols, plev)
 
       integer :: k
