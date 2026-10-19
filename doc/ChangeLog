@@ -1,5 +1,18 @@
 ===============================================================
 
+Tag name: cam6_4_
+Originator(s): pel, adamrher
+Date: Oct , 2026
+One-line Summary:
+Github PR URL:
+
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+- #1726: Fix typo in SE dycore sponge coefficient (nu_scale_top(3) = 3.9 -> 0.39)
+  Expect answer changes against baselines in all SE dycore configurations with
+  100 Pa < ptop <= 300 Pa (CAM6 top and CAM7 low top)
+
+===============================================================
+
 Tag name: cam6_4_213
 Originator(s): peverwhee, billsacks
 Date: Oct 16, 2026
