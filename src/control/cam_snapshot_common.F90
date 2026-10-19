@@ -382,30 +382,6 @@ subroutine cam_ptend_snapshot_init(cam_snapshot_after_num)
            'momentum tendency snapshot')
       call add_default('ptend_v', cam_snapshot_after_num, ' ')
 
-      call addfld('ptend_hflux_srf', horiz_only, 'I', 'W m-2',       &
-           'net zonal stress at surface snapshot')
-      call add_default('ptend_hflux_srf', cam_snapshot_after_num, ' ')
-
-      call addfld('ptend_hflux_top', horiz_only, 'I', 'W m-2',       &
-           'net zonal stress at top of model snapshot')
-      call add_default('ptend_hflux_top', cam_snapshot_after_num, ' ')
-
-      call addfld('ptend_taux_srf', horiz_only, 'I', 'Pa',           &
-           'net meridional stress at surface snapshot')
-      call add_default('ptend_taux_srf', cam_snapshot_after_num, ' ')
-
-      call addfld('ptend_taux_top', horiz_only, 'I', 'Pa',           &
-           'net zonal stress at top of model snapshot')
-      call add_default('ptend_taux_top', cam_snapshot_after_num, ' ')
-
-      call addfld('ptend_tauy_srf', horiz_only, 'I', 'Pa',           &
-           'net meridional stress at surface snapshot')
-      call add_default('ptend_tauy_srf', cam_snapshot_after_num, ' ')
-
-      call addfld('ptend_tauy_top', horiz_only, 'I', 'Pa',           &
-           'net meridional stress at top of model snapshot')
-      call add_default('ptend_tauy_top', cam_snapshot_after_num, ' ')
-
       do mcnst = 1, pcnst
          fname = 'ptend_'//trim(cnst_name(mcnst))
          lname = 'tendency of '//trim(cnst_longname(mcnst))
@@ -928,26 +904,14 @@ subroutine cam_snapshot_ptend_outfld(ptend, lchnk)
 
    if (ptend%ls) then
       call outfld('ptend_s', ptend%s, pcols, lchnk)
-
-      call outfld('ptend_hflux_srf', ptend%hflux_srf, pcols, lchnk)
-
-      call outfld('ptend_hflux_top', ptend%hflux_top, pcols, lchnk)
    end if
 
    if (ptend%lu) then
       call outfld('ptend_u', ptend%u, pcols, lchnk)
-
-      call outfld('ptend_taux_srf', ptend%taux_srf, pcols, lchnk)
-
-      call outfld('ptend_taux_top', ptend%taux_top, pcols, lchnk)
    end if
 
    if (ptend%lv) then
       call outfld('ptend_v', ptend%v, pcols, lchnk)
-
-      call outfld('ptend_tauy_srf', ptend%tauy_srf, pcols, lchnk)
-
-      call outfld('ptend_tauy_top', ptend%tauy_top, pcols, lchnk)
    end if
 
    do mcnst = 1, pcnst
