@@ -34,7 +34,6 @@ module prescribed_ghg
   character(len=256) :: filelist = ''
   character(len=256) :: datapath = ''
   character(len=32)  :: datatype = 'SERIAL'
-  logical            :: rmv_file = .false.
   integer            :: cycle_yr  = 0
   integer            :: fixed_ymd = 0
   integer            :: fixed_tod = 0
@@ -67,7 +66,6 @@ subroutine prescribed_ghg_readnl(nlfile)
    character(len=256) :: prescribed_ghg_filelist
    character(len=256) :: prescribed_ghg_datapath
    character(len=32)  :: prescribed_ghg_type
-   logical            :: prescribed_ghg_rmfile
    integer            :: prescribed_ghg_cycle_yr
    integer            :: prescribed_ghg_fixed_ymd
    integer            :: prescribed_ghg_fixed_tod
@@ -78,7 +76,6 @@ subroutine prescribed_ghg_readnl(nlfile)
       prescribed_ghg_filelist,  &
       prescribed_ghg_datapath,  &
       prescribed_ghg_type,      &
-      prescribed_ghg_rmfile,    &
       prescribed_ghg_cycle_yr,  &
       prescribed_ghg_fixed_ymd, &
       prescribed_ghg_fixed_tod      
@@ -90,7 +87,6 @@ subroutine prescribed_ghg_readnl(nlfile)
    prescribed_ghg_filelist = filelist
    prescribed_ghg_datapath = datapath
    prescribed_ghg_type     = datatype
-   prescribed_ghg_rmfile   = rmv_file
    prescribed_ghg_cycle_yr = cycle_yr
    prescribed_ghg_fixed_ymd= fixed_ymd
    prescribed_ghg_fixed_tod= fixed_tod
@@ -117,7 +113,6 @@ subroutine prescribed_ghg_readnl(nlfile)
    call mpibcast(prescribed_ghg_filelist, len(prescribed_ghg_filelist), mpichar, 0, mpicom)
    call mpibcast(prescribed_ghg_datapath, len(prescribed_ghg_datapath), mpichar, 0, mpicom)
    call mpibcast(prescribed_ghg_type,     len(prescribed_ghg_type),     mpichar, 0, mpicom)
-   call mpibcast(prescribed_ghg_rmfile,   1, mpilog,  0, mpicom)
    call mpibcast(prescribed_ghg_cycle_yr, 1, mpiint,  0, mpicom)
    call mpibcast(prescribed_ghg_fixed_ymd,1, mpiint,  0, mpicom)
    call mpibcast(prescribed_ghg_fixed_tod,1, mpiint,  0, mpicom)
@@ -129,7 +124,6 @@ subroutine prescribed_ghg_readnl(nlfile)
    filelist   = prescribed_ghg_filelist
    datapath   = prescribed_ghg_datapath
    datatype   = prescribed_ghg_type
-   rmv_file   = prescribed_ghg_rmfile
    cycle_yr   = prescribed_ghg_cycle_yr
    fixed_ymd  = prescribed_ghg_fixed_ymd
    fixed_tod  = prescribed_ghg_fixed_tod
@@ -176,7 +170,7 @@ end subroutine prescribed_ghg_readnl
     allocate(file%in_pbuf(size(specifier)))
     file%in_pbuf(:) = .true.
     call trcdata_init( specifier, filename, filelist, datapath, fields, file, &
-                       rmv_file, cycle_yr, fixed_ymd, fixed_tod, datatype)
+                       cycle_yr, fixed_ymd, fixed_tod, datatype)
         
     number_flds = 0
     if (associated(fields)) number_flds = size( fields )

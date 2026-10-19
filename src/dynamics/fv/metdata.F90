@@ -82,7 +82,6 @@ module metdata
   real(r8), allocatable :: met_ps_curr(:,:)   ! PS interpolated to next timestep
 
   logical :: met_cell_wall_winds = .false.  ! true => met data winds are defined on model grid cell walls
-  logical :: met_remove_file = .false.  ! delete metdata file when finished with it
 
   character(len=16) :: met_shflx_name = 'SHFLX'
   character(len=16) :: met_qflx_name = 'QFLX'
@@ -263,7 +262,6 @@ contains
    namelist /metdata_nl/ &
         met_data_file, &
         met_data_path, &
-        met_remove_file, &
         met_cell_wall_winds, &
         met_filenames_list, &
         met_rlx_top, &
@@ -308,7 +306,6 @@ contains
 
    call mpibcast (met_data_file  ,len(met_data_file) ,mpichar,0,mpicom)
    call mpibcast (met_data_path  ,len(met_data_path) ,mpichar,0,mpicom)
-   call mpibcast (met_remove_file    ,1 ,mpilog, 0, mpicom )
    call mpibcast (met_cell_wall_winds,1 ,mpilog, 0, mpicom )
    call mpibcast (met_filenames_list ,len(met_filenames_list),mpichar,0,mpicom)
    call mpibcast (met_rlx_top,        1 ,mpir8,  0, mpicom )
@@ -335,7 +332,6 @@ contains
 
    if (masterproc) then
        write(iulog,*)'Time-variant meteorological dataset (met_data_file) is: ', trim(met_data_file)
-       write(iulog,*)'Meteorological data file will be removed (met_remove_file): ', met_remove_file
        write(iulog,*)'Meteorological winds are on cell walls (met_cell_wall_winds): ', met_cell_wall_winds
        write(iulog,*)'Meteorological file names list file: ', trim(met_filenames_list)
        write(iulog,*)'Meteorological relax ramp region top at top is (km): ', met_rlx_top
@@ -1315,17 +1311,6 @@ contains
 
           ! close current file ...
           call pio_closefile( curr_fileid )
-          if (masterproc) then
-             ! remove if requested
-             if( met_remove_file ) then
-                call getfil( curr_filename, loc_fname, 0 )
-                write(iulog,*) 'check_files: removing file = ',trim(loc_fname)
-                ctmp = 'rm -f ' // trim(loc_fname)
-                write(iulog,*) 'check_files: fsystem issuing command - '
-                write(iulog,*) trim(ctmp)
-                call shr_sys_system( ctmp, istat )
-             end if
-          endif
 
           curr_filename = next_filename
           curr_fileid = next_fileid

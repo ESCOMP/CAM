@@ -39,7 +39,6 @@ module tracer_cnst
   character(len=256) :: filelist = ''
   character(len=256) :: datapath = ''
   character(len=32)  :: data_type = 'SERIAL'
-  logical            :: rmv_file = .false.
   integer            :: cycle_yr  = 0
   integer            :: fixed_ymd = 0
   integer            :: fixed_tod = 0
@@ -64,7 +63,7 @@ contains
     allocate(file%in_pbuf(size(specifier)))
     file%in_pbuf(:) = .false.
     call trcdata_init( specifier, filename, filelist, datapath, fields, file, &
-                       rmv_file, cycle_yr, fixed_ymd, fixed_tod, data_type)
+                       cycle_yr, fixed_ymd, fixed_tod, data_type)
 
     num_tracer_cnst = 0
     if (associated(fields)) num_tracer_cnst = size( fields )
@@ -109,7 +108,6 @@ contains
        tracer_cnst_datapath_in,  &
        tracer_cnst_type_in,      &
        tracer_cnst_specifier_in, &
-       tracer_cnst_rmfile_in,    &
        tracer_cnst_cycle_yr_in,  &
        tracer_cnst_fixed_ymd_in, &
        tracer_cnst_fixed_tod_in  &
@@ -122,7 +120,6 @@ contains
     character(len=*), intent(in), optional :: tracer_cnst_datapath_in
     character(len=*), intent(in), optional :: tracer_cnst_type_in
     character(len=*), intent(in), optional :: tracer_cnst_specifier_in(:)
-    logical,          intent(in), optional :: tracer_cnst_rmfile_in
     integer,          intent(in), optional :: tracer_cnst_cycle_yr_in
     integer,          intent(in), optional :: tracer_cnst_fixed_ymd_in
     integer,          intent(in), optional :: tracer_cnst_fixed_tod_in
@@ -141,9 +138,6 @@ contains
     endif
     if ( present(tracer_cnst_specifier_in) ) then
        specifier = tracer_cnst_specifier_in
-    endif
-    if ( present(tracer_cnst_rmfile_in) ) then
-       rmv_file = tracer_cnst_rmfile_in
     endif
     if ( present(tracer_cnst_cycle_yr_in) ) then
        cycle_yr = tracer_cnst_cycle_yr_in
@@ -165,7 +159,6 @@ contains
        tracer_cnst_datapath_out, &
        tracer_cnst_type_out,     &
        tracer_cnst_specifier_out,&
-       tracer_cnst_rmfile_out,   &
        tracer_cnst_cycle_yr_out, &
        tracer_cnst_fixed_ymd_out,&
        tracer_cnst_fixed_tod_out &
@@ -178,7 +171,6 @@ contains
     character(len=*), intent(out), optional :: tracer_cnst_datapath_out
     character(len=*), intent(out), optional :: tracer_cnst_type_out
     character(len=*), intent(out), optional :: tracer_cnst_specifier_out(:)
-    logical,          intent(out), optional :: tracer_cnst_rmfile_out
     integer,          intent(out), optional :: tracer_cnst_cycle_yr_out
     integer,          intent(out), optional :: tracer_cnst_fixed_ymd_out
     integer,          intent(out), optional :: tracer_cnst_fixed_tod_out
@@ -197,9 +189,6 @@ contains
     endif
     if ( present(tracer_cnst_specifier_out) ) then
        tracer_cnst_specifier_out = specifier
-    endif
-    if ( present(tracer_cnst_rmfile_out) ) then
-       tracer_cnst_rmfile_out = rmv_file
     endif
     if ( present(tracer_cnst_cycle_yr_out) ) then
        tracer_cnst_cycle_yr_out = cycle_yr

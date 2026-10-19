@@ -103,7 +103,6 @@ contains
     integer :: ierr
     character(len=1), parameter :: filelist = ''
     character(len=1), parameter :: datapath = ''
-    logical         , parameter :: rmv_file = .false.
     logical :: unstructured
     character(len=32) :: emis_type = ' '
     character(len=80) :: file_interp_type = ' '
@@ -291,7 +290,7 @@ contains
                           emissions(m)%filename, filelist, datapath, &
                           emissions(m)%fields,  &
                           emissions(m)%file, &
-                          rmv_file, emis_cycle_yr, emis_fixed_ymd, emis_fixed_tod, trim(emis_type) )
+                          emis_cycle_yr, emis_fixed_ymd, emis_fixed_tod, trim(emis_type) )
 
     enddo spc_loop
 

@@ -792,7 +792,6 @@ contains
     integer, allocatable           :: vndims(:)
     character(len=1),   parameter  :: filelist = ''
     character(len=1),   parameter  :: datapath = ''
-    logical,            parameter  :: rmv_file = .false.
 
     character(len=*), parameter :: subname = 'cseawater_ini'
 
@@ -949,7 +948,7 @@ contains
             Csw_nM(m)%filename, filelist, datapath, &
             Csw_nM(m)%fields,  &
             Csw_nM(m)%file, &
-            rmv_file, csw_cycle_yr, 0, 0, trim(csw_time_type) )
+            csw_cycle_yr, 0, 0, trim(csw_time_type) )
 
     enddo spc_loop
 
