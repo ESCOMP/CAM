@@ -996,7 +996,7 @@ CONTAINS
       call setup_history_interpolation(interp_ok, ptapes-2,                   &
            interpolate_output, interpolate_info)
       do hf = 1, ptapes - 2
-        if((.not. is_satfile(hf)) .and. (.not. is_initfile(hf))) then
+        if((.not. is_satfile(hf)) .and. (.not. is_initfile(hf)) .and. interpolate_output(hf)) then
           do fld = 1, nflds(hf)
             if (field_part_of_vector(trim(tape(hf)%hlist(fld)%field%name),      &
                  mname, zname)) then
