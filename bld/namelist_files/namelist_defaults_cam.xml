@@ -189,6 +189,11 @@
 <ncdata hgrid="ne16np4"  nlev="130" waccmx="1"     >atm/waccm/ic/FX2000_ne16pg3_spinup01.cam.i.0002-01-01_c251215.nc</ncdata>
 <ncdata hgrid="ne16np4"  nlev="58"                 >atm/cam/inic/se/FHISTC_LTso_ne16pg3_ne16pg3_mg17.i.c260220.nc</ncdata>
 <ncdata hgrid="ne16np4"  nlev="93"                 >atm/cam/inic/se/FHISTC_MTso_ne16pg3_ne16pg3_mg17.i.c260220.nc</ncdata>
+<ncdata hgrid="ne3np4"   nlev="135" waccm_phys="1" >atm/waccm/ic/FHISTC_WAt1ma_ne3pg3_spinup01.cam.i.1980-01-01_c261018.nc</ncdata>
+<ncdata hgrid="ne16np4"  nlev="135" waccm_phys="1" >atm/waccm/ic/f.e30.FHISTC_WAt1ma.ne16pg3_mg17_L135_cam6_4_cam6_4_201_beres0.15.cam.i.1980-01-01_c260909.nc</ncdata>
+<ncdata hgrid="ne30np4"  nlev="135" waccm_phys="1" >atm/waccm/ic/f.e30.FHISTC_WAt1ma.ne30pg3_mg17_L135_cam6_4_201_beres0.15.cam.i.1980-01-01_c261017.nc</ncdata>
+<ncdata hgrid="ne16np4"  nlev="189" waccmx="1"     >atm/waccm/ic/FHISTC_WXma_ne16pg3_watervapor_spinup02.cam.i.1980-01-01_c261015.nc</ncdata>
+<ncdata hgrid="ne30np4"  nlev="189" waccmx="1"     >atm/waccm/ic/FHISTC_WXma_ne30pg3_watervapor_spinup02.cam.i.1980-01-01_c261015.nc</ncdata>
 
 <ncdata hgrid="ne30np4"  nlev="26"                 >atm/cam/inic/se/ape_topo_cam4_ne30np4_L26_c171020.nc</ncdata>
 <ncdata hgrid="ne30np4"  nlev="26"  aquaplanet="1" >atm/cam/inic/se/ape_cam4_ne30np4_L26_c170417.nc</ncdata>
@@ -2098,13 +2103,6 @@
 </ubc_specifier>
 <ubc_specifier ver="waccmsc">
   'T->MSIS','Q->2.d-8vmr','CH4->2.d-10vmr'
-</ubc_specifier>
-<!-- WACCM7 -- do not include water vapor for now -->
-<ubc_specifier ver="waccm7chem">
-  'T->MSIS','CH4->2.d-10vmr','F->1.0D-15mmr','HF->1.0D-15mmr','H->MSIS','N->MSIS','O->MSIS','O2->MSIS','H2->TGCM','NO->SNOE'
-</ubc_specifier>
-<ubc_specifier ver="waccm7sc">
-  'T->MSIS','CH4->2.d-10vmr'
 </ubc_specifier>
 
 <!-- Boundary data for Tropopheric Chemistry -->
