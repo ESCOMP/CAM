@@ -28,6 +28,7 @@ public :: cam_snapshot_all_outfld
 public :: cam_snapshot_ptend_outfld
 public :: snapshot_type
 public :: cam_state_snapshot_init
+public :: cam_grid_snapshot_init
 public :: cam_cnst_snapshot_init
 public :: cam_tend_snapshot_init
 public :: cam_ptend_snapshot_init
@@ -38,6 +39,7 @@ public :: snapshot_addfld
 
 private :: snapshot_addfld_nd
 private :: state_snapshot_all_outfld
+private :: grid_snapshot_all_outfld
 private :: cnst_snapshot_all_outfld
 private :: tend_snapshot_all_outfld
 private :: cam_in_snapshot_all_outfld
@@ -72,6 +74,7 @@ type pbuf_info_type
 end type pbuf_info_type
 
 integer :: nstate_var
+integer :: ngrid_var
 integer :: ncnst_var
 integer :: ntend_var
 integer :: ncam_in_var
@@ -82,6 +85,7 @@ integer :: cam_snapshot_before_num, cam_snapshot_after_num
 
 ! Note the maximum number of variables for each type
 type (snapshot_type)    ::  state_snapshot(30)
+type (snapshot_type)    ::  grid_snapshot(2)
 type (snapshot_type)    ::  cnst_snapshot(pcnst)
 type (snapshot_type)    ::  tend_snapshot(6)
 type (snapshot_type)    ::  cam_in_snapshot(pcnst+35)   ! needs to be bigger than pcnst because cam_in%cflx is split by constituent and cam_in%dstflx by bin.
@@ -119,6 +123,9 @@ use time_manager,   only: is_first_step
 
    ! Write out all the state fields
    call state_snapshot_all_outfld(lchnk, file_num, state)
+
+   ! Write out the physics grid coordinates in radians
+   call grid_snapshot_all_outfld(lchnk, file_num)
 
    ! Write out all the constituent fields
    call cnst_snapshot_all_outfld(lchnk, file_num, state%q)
@@ -287,6 +294,28 @@ subroutine cam_state_snapshot_init(cam_snapshot_before_num_in, cam_snapshot_afte
      'air_composition_cp_or_cv_dycore',  'cp_or_cv_dycore',   'J kg-1 K-1',  'lev')
 
 end subroutine cam_state_snapshot_init
+
+subroutine cam_grid_snapshot_init(cam_snapshot_before_num, cam_snapshot_after_num)
+
+!--------------------------------------------------------
+! This subroutine does the addfld calls for the physics grid coordinates in radians.
+! The history coordinates lat and lon are written in degrees, and converting them back to
+! radians in CAM-SIMA differs from the values CAM physics used by one ulp at some columns,
+! which seeds answer differences in every latitude-dependent scheme.
+! The CAM-SIMA null dycore prefers these fields when they are present on the snapshot.
+!--------------------------------------------------------
+
+   integer,intent(in) :: cam_snapshot_before_num, cam_snapshot_after_num
+
+   ngrid_var = 0
+
+   call snapshot_addfld( ngrid_var, grid_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
+     'grid%lat_rad',    'lat_rad',          'radians',         horiz_only)
+
+   call snapshot_addfld( ngrid_var, grid_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
+     'grid%lon_rad',    'lon_rad',          'radians',         horiz_only)
+
+end subroutine cam_grid_snapshot_init
 
 subroutine cam_cnst_snapshot_init(cam_snapshot_before_num, cam_snapshot_after_num)
 
@@ -786,6 +815,41 @@ subroutine snapshot_addfld(nddt_var, ddt_snapshot, cam_snapshot_before_num, cam_
 
 
 end subroutine snapshot_addfld
+
+subroutine grid_snapshot_all_outfld(lchnk, file_num)
+
+   use phys_grid, only: get_rlat_all_p, get_rlon_all_p
+
+   integer, intent(in) :: lchnk
+   integer, intent(in) :: file_num
+
+   real(r8) :: rcoord(pcols)
+   integer  :: i
+
+   do i=1, ngrid_var
+
+      ! Turn on the writing for only the requested tape (file_num)
+      call cam_history_snapshot_activate(trim(grid_snapshot(i)%standard_name), file_num)
+
+      ! Select the coordinate which is being written
+      select case(grid_snapshot(i)%ddt_string)
+
+      case ('grid%lat_rad')
+         call get_rlat_all_p(lchnk, pcols, rcoord)
+
+      case ('grid%lon_rad')
+         call get_rlon_all_p(lchnk, pcols, rcoord)
+
+      case default
+         call endrun('ERROR in grid_snapshot_all_outfld: no case for '//trim(grid_snapshot(i)%ddt_string))
+
+      end select
+
+      call outfld(grid_snapshot(i)%standard_name, rcoord, pcols, lchnk)
+
+   end do
+
+end subroutine grid_snapshot_all_outfld
 
 subroutine state_snapshot_all_outfld(lchnk, file_num, state)
 
