@@ -13,7 +13,7 @@
 <use_gw_front>.true.</use_gw_front>
 <use_gw_convect_dp>.true.</use_gw_convect_dp>
 <tau_0_ubc>.false.</tau_0_ubc>
-<gw_qbo_hdepth_scaling>0.25D0</gw_qbo_hdepth_scaling>
+<gw_qbo_hdepth_scaling phys="cam6">0.25D0</gw_qbo_hdepth_scaling>
 
 <flbc_type>SERIAL</flbc_type>
 <flbc_file>atm/waccm/lb/LBC_17500116-25001216_CMIP6_SSP585_0p5degLat_c20200824.nc</flbc_file>
