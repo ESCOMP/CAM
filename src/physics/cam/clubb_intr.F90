@@ -473,8 +473,6 @@ module clubb_intr
     fice_idx, &         ! fice_idx index in physics buffer
     cmeliq_idx, &       ! cmeliq_idx index in physics buffer
     relvar_idx, &       ! relative cloud water variance
-    npccn_idx, &        ! liquid ccn number concentration
-    naai_idx, &         ! ice number concentration
     prer_evap_idx, &    ! rain evaporation rate
     qrl_idx, &          ! longwave cooling rate
     qsatfac_idx, &      ! subgrid cloud water saturation scaling factor
@@ -1744,8 +1742,6 @@ end subroutine clubb_init_cnst
     prer_evap_idx       = pbuf_get_index('PRER_EVAP')
     qrl_idx             = pbuf_get_index('QRL')
     cmfmc_sh_idx        = pbuf_get_index('CMFMC_SH')
-    naai_idx            = pbuf_get_index('NAAI')
-    npccn_idx           = pbuf_get_index('NPCCN')
 
     if (do_clubb_mf) then
       prec_dp_idx     = pbuf_get_index('PREC_DP')
@@ -2419,12 +2415,10 @@ end subroutine clubb_init_cnst
     real(r8), pointer, dimension(:,:) :: dp_icwmr_pbuf              ! deep convection in cloud mixing ratio        [kg/kg]
     real(r8), pointer, dimension(:,:) :: ice_supersat_frac_pbuf     ! Cloud fraction of ice clouds (pver)[fraction]
     real(r8), pointer, dimension(:,:) :: relvar_pbuf                ! relative cloud water variance                [-]
-    real(r8), pointer, dimension(:,:) :: naai_pbuf
     real(r8), pointer, dimension(:,:) :: cmeliq_pbuf
     real(r8), pointer, dimension(:,:) :: cmfmc_sh_pbuf              ! Shallow convective mass flux--m subc (pcols,pverp) [kg/m2/s/]
 
     real(r8), pointer, dimension(:,:) :: qsatfac_pbuf
-    real(r8), pointer, dimension(:,:) :: npccn_pbuf
     real(r8), pointer, dimension(:,:) :: prer_evap_pbuf
     real(r8), pointer, dimension(:,:) :: qrl_pbuf
 
@@ -2675,8 +2669,6 @@ end subroutine clubb_init_cnst
       rho_output
 
     real(r8), dimension(pcols) :: &
-      rhmini,           &
-      rhmaxi,           &
       se_dis,           &
       eleak
 
@@ -2684,7 +2676,6 @@ end subroutine clubb_init_cnst
       invrs_cpairv
 
     real(r8) :: &
-      inv_exner_tmp,            & ! Inverse exner function consistent with CLUBB  [-]
       mean_rt,                  & ! Calculated R-tot mean from pdf_params (temp)  [kg/kg]
       apply_const
 
@@ -2702,11 +2693,10 @@ end subroutine clubb_init_cnst
 
     integer :: &
       errflg, &
-      j, k, t, ixind, n,   & ! Loop variables
+      j, k, t, n,   & ! Loop variables
       k_cam, k_clubb,      & ! Loop variables
       ixcldice, ixcldliq, ixnumliq, &
       ixnumice, ixq, &
-      itim_old, &
       ncol, lchnk                  ! # of columns, and chunk identifier
 
     real(r8), dimension(state%ncol,clubb_mf_nup) :: mf_ztop_nadv,   &
@@ -2999,8 +2989,8 @@ end subroutine clubb_init_cnst
                     wp4_pbuf, wpup2_pbuf, wpvp2_pbuf, wp2up2_pbuf, wp2vp2_pbuf, cld_pbuf, & ! inout
                     concld_pbuf, ast_pbuf, alst_pbuf, aist_pbuf, qlst_pbuf, qist_pbuf, & ! inout
                     deepcu_pbuf, shalcu_pbuf, khzm_pbuf, pblh_pbuf, tke_pbuf, dp_icwmr_pbuf, & ! inout
-                    ice_supersat_frac_pbuf, relvar_pbuf, naai_pbuf, cmeliq_pbuf, & ! inout
-                    cmfmc_sh_pbuf, qsatfac_pbuf, npccn_pbuf, prer_evap_pbuf, qrl_pbuf, & ! inout
+                    ice_supersat_frac_pbuf, relvar_pbuf, cmeliq_pbuf, & ! inout
+                    cmfmc_sh_pbuf, qsatfac_pbuf, prer_evap_pbuf, qrl_pbuf, & ! inout
                     rtp2_mc_zt_pbuf, thlp2_mc_zt_pbuf, wprtp_mc_zt_pbuf, & ! inout
                     wpthlp_mc_zt_pbuf, rtpthlp_mc_zt_pbuf, ttend_clubb_pbuf, & ! inout
                     upwp_clubb_gw_pbuf, vpwp_clubb_gw_pbuf, thlp2_clubb_gw_pbuf, & ! inout
@@ -3595,40 +3585,6 @@ end subroutine clubb_init_cnst
 #endif
 
   end subroutine clubb_tend_cam
-
-  ! clamped linear-in-pressure interpolation of a midpoint
-  ! field to a target pressure level, mirroring the CLUBB-core pvertinterp
-  ! (advance_helper_module): below the lowest midpoint or above the highest
-  ! midpoint the boundary value is used.  Kept verbatim from the first
-  ! implementation for bit-for-bit reproducibility of the LTS trigger.
-  subroutine mf_pinterp(ncol, pmid, pout, fld, outv)
-    integer,  intent(in)  :: ncol
-    real(r8), intent(in)  :: pmid(:,:)   ! (ncol,pver) midpoint pressure (Pa), increasing downward
-    real(r8), intent(in)  :: pout        ! target pressure (Pa)
-    real(r8), intent(in)  :: fld(:,:)    ! (ncol,pver) field on midpoints
-    real(r8), intent(out) :: outv(ncol)
-
-    integer  :: i, k
-    real(r8) :: dpu, dpl
-
-    do i = 1, ncol
-      if (pout >= pmid(i,pver)) then
-        outv(i) = fld(i,pver)
-      else if (pout <= pmid(i,1)) then
-        outv(i) = fld(i,1)
-      else
-        do k = 1, pver-1
-          if (pout > pmid(i,k) .and. pout <= pmid(i,k+1)) then
-            dpu = pout - pmid(i,k)
-            dpl = pmid(i,k+1) - pout
-            outv(i) = (fld(i,k)*dpl + fld(i,k+1)*dpu) / (dpl + dpu)
-            exit
-          end if
-        end do
-      end if
-    end do
-
-  end subroutine mf_pinterp
 
   subroutine clubb_emissions_cam (state, cam_in, ptend)
 
