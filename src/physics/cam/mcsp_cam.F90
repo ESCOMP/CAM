@@ -15,7 +15,7 @@ module mcsp_cam
 ! nothing is registered or called.
 !---------------------------------------------------------------------------------
   use shr_kind_mod,   only: r8 => shr_kind_r8
-  use ppgrid,         only: pcols, pver, pverp
+  use ppgrid,         only: pcols, pver
   use cam_abortutils, only: endrun
   use cam_logfile,    only: iulog
   use spmd_utils,     only: masterproc
@@ -238,8 +238,8 @@ subroutine mcsp_cam_tend(state, ptend, ztodt, pbuf)
    conv_depth(:)    = 0._r8
    mcsp_dt_max(:)   = 0._r8
 
-   call mcsp_run(ncol, pver, pverp, cpair, pi, ztodt, jctop_int(:ncol),            &
-                 state%pmid(:ncol,:), state%pint(:ncol,:), state%pdel(:ncol,:),     &
+   call mcsp_run(ncol, pver, cpair, pi, ztodt, jctop_int(:ncol),                   &
+                 state%pmid(:ncol,:), state%ps(:ncol), state%pdel(:ncol,:),         &
                  state%u(:ncol,:), state%v(:ncol,:),                                &
                  ttend_dp_core(:ncol,:), qtend_dp_core(:ncol,:),                    &
                  ptend%s(:ncol,:), ptend%q(:ncol,:,1), ptend%u(:ncol,:), ptend%v(:ncol,:), &
