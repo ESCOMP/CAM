@@ -1285,18 +1285,11 @@ contains
 !------------------------------------------------------------------------------
   subroutine check_files()
 
-    use shr_sys_mod, only: shr_sys_system
-    use ioFileMod, only: getfil
-
     implicit none
 
 !-----------------------------------------------------------------------
 ! 	... local variables
 !-----------------------------------------------------------------------
-    character(len=256) :: ctmp
-    character(len=256) :: loc_fname
-    integer            :: istat
-
 
     if (next_mod_time > curr_data_times(size(curr_data_times))) then
        if ( .not. associated(next_data_times) ) then

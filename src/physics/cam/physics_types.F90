@@ -821,22 +821,20 @@ contains
 !-----------------------------------------------------------------------
 
 ! Update u,v fields
-    if (ptend%lu) &
-         call multiply_tendency(ptend%u)
+    if (ptend%lu) call multiply_tendency(ptend%u)
 
-    if (ptend%lv) &
-         call multiply_tendency(ptend%v)
+    if (ptend%lv) call multiply_tendency(ptend%v)
 
 ! Heat
-    if (ptend%ls) &
-         call multiply_tendency(ptend%s)
+    if (ptend%ls) call multiply_tendency(ptend%s)
 
 ! Update constituents
     do m = 1, pcnst
-       if (ptend%lq(m)) &
-            call multiply_tendency(ptend%q(:,:,m))
-            ptend%cflx_srf(:ncol,m) = ptend%cflx_srf(:ncol,m) * fac
-            ptend%cflx_top(:ncol,m) = ptend%cflx_top(:ncol,m) * fac
+       if (ptend%lq(m)) then
+          call multiply_tendency(ptend%q(:,:,m))
+          ptend%cflx_srf(:ncol,m) = ptend%cflx_srf(:ncol,m) * fac
+          ptend%cflx_top(:ncol,m) = ptend%cflx_top(:ncol,m) * fac
+       end if
     end do
 
 

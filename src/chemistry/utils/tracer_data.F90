@@ -2777,9 +2777,6 @@ contains
     !   This routine advances to the next file
     !------------------------------------------------------------------------------
 
-    use shr_sys_mod, only: shr_sys_system
-    use ioFileMod, only: getfil
-
     implicit none
 
     type(trfile), intent(inout) :: file
@@ -2787,9 +2784,7 @@ contains
     !-----------------------------------------------------------------------
     !   local variables
     !-----------------------------------------------------------------------
-    character(len=shr_kind_cl) :: ctmp
-    character(len=shr_kind_cl) :: loc_fname
-    integer            :: istat, astat
+    integer            :: astat
 
     !-----------------------------------------------------------------------
     !   close current file ...
