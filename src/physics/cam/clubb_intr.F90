@@ -2164,8 +2164,7 @@ end subroutine clubb_init_cnst
     end if
 
     ! Call the CAM-SIMA layer
-    call clubb_setup_init(pcols, pver, pverp, pcnst, & ! in
-                          masterproc, mpicom, mstrid, mpi_character, iulog, & ! in
+    call clubb_setup_init(pcols, pver, pverp, pcnst, masterproc, iulog, & ! in
                           sclr_dim, hydromet_dim, nzt_clubb, nzm_clubb, & ! in
                           l_implemented, l_input_fields, clubb_l_do_expldiff_rtm_thlm, & ! in
                           cnst_ndropmixed, subcol_scheme, & ! in
@@ -2961,7 +2960,7 @@ end subroutine clubb_init_cnst
                     l_implemented, grid_type, lq, deep_scheme, & ! in
                     state_loc%q, state_loc%t, state_loc%pmid, state_loc%zm, & ! in
                     state_loc%phis, state_loc%pdel, state_loc%pdeldry, state_loc%exner, & ! in
-                    state_loc%pint, state_loc%zi, state_loc%omega, state_loc%ps, & ! in
+                    state_loc%pint, state_loc%zi, state_loc%omega, & ! in
                     cam_in%wsx, cam_in%wsy, cam_in%cflx, cam_in%shf, cam_in%landfrac, cam_in%ts, tpert, & ! in
                     sclr_idx, clubb_l_ascending_grid, clubb_do_energyfix, & ! in
                     ixq, ixcldliq, ixcldice, ixrtpthlp, ixwpthlp, & ! in
@@ -2975,7 +2974,7 @@ end subroutine clubb_init_cnst
                     mf_dry_a, mf_moist_a, mf_dry_w, mf_moist_w, & ! inout
                     mf_dry_qt, mf_moist_qt, mf_dry_thl, mf_moist_thl, & ! inout
                     mf_dry_u, mf_moist_u, mf_dry_v, mf_moist_v, mf_moist_qc, & ! inout
-                    s_ae, s_aw, s_awthl, s_awqt, s_awql, s_awqi, s_awu, s_awv, & ! inout
+                    s_ae, s_aw, s_awthl, s_awqt, s_awu, s_awv, & ! inout
                     mf_thlflx, mf_qtflx, & ! inout
                     ztopm1_macmic, ddcp, ddcp_macmic, cbm1, cbm1_macmic, & ! inout
                     thlm, rtm, um, vm, wm_zt, rcm, rcm_in_layer, & ! inout
@@ -2987,10 +2986,8 @@ end subroutine clubb_init_cnst
                     pdf_zm_varnce_w_1_pbuf, pdf_zm_varnce_w_2_pbuf, pdf_zm_mixt_frac_pbuf, & ! inout
                     wp2rtp_pbuf, wp2thlp_pbuf, uprcp_pbuf, vprcp_pbuf, rc_coef_zm_pbuf, & ! inout
                     wp4_pbuf, wpup2_pbuf, wpvp2_pbuf, wp2up2_pbuf, wp2vp2_pbuf, cld_pbuf, & ! inout
-                    concld_pbuf, ast_pbuf, alst_pbuf, aist_pbuf, qlst_pbuf, qist_pbuf, & ! inout
-                    deepcu_pbuf, shalcu_pbuf, khzm_pbuf, pblh_pbuf, tke_pbuf, dp_icwmr_pbuf, & ! inout
-                    ice_supersat_frac_pbuf, relvar_pbuf, cmeliq_pbuf, & ! inout
-                    cmfmc_sh_pbuf, qsatfac_pbuf, prer_evap_pbuf, qrl_pbuf, & ! inout
+                    khzm_pbuf, pblh_pbuf, tke_pbuf, & ! inout
+                    ice_supersat_frac_pbuf, relvar_pbuf, prer_evap_pbuf, qrl_pbuf, & ! inout
                     rtp2_mc_zt_pbuf, thlp2_mc_zt_pbuf, wprtp_mc_zt_pbuf, & ! inout
                     wpthlp_mc_zt_pbuf, rtpthlp_mc_zt_pbuf, ttend_clubb_pbuf, & ! inout
                     upwp_clubb_gw_pbuf, vpwp_clubb_gw_pbuf, thlp2_clubb_gw_pbuf, & ! inout
@@ -3124,7 +3121,7 @@ end subroutine clubb_init_cnst
                     state_loc%zm, state_loc%zi, state_loc%u, state_loc%v, state_loc%exner, & ! in
                     cam_in%landfrac, cam_in%snowhland, cam_in%wsx, & ! in
                     cam_in%wsy, cam_in%shf, cam_in%cflx, ptend_all%q, & ! in
-                    rcm, cloud_frac, exner, cmfmc, & ! in
+                    rcm, cloud_frac, cmfmc, & ! in
                     single_column, scm_cambfb_mode, lq, & ! in
                     cnst_type, scm_clubb_iop_name, subcol_scheme, & ! in
                     mf_cloudfrac_output, mf_qc_output, & ! in
