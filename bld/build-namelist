@@ -3863,6 +3863,18 @@ if (!$simple_phys) {
     add_default($nl, 'zmconv_parcel_hscale');
 }
 
+# MCSP (mesoscale coherent structure parameterization); all coefficients default
+# to zero, which leaves the scheme inactive.
+if (!$simple_phys) {
+    add_default($nl, 'mcsp_heat_coeff');
+    add_default($nl, 'mcsp_moisture_coeff');
+    add_default($nl, 'mcsp_uwind_coeff');
+    add_default($nl, 'mcsp_vwind_coeff');
+    add_default($nl, 'mcsp_storm_speed_pref');
+    add_default($nl, 'mcsp_conv_depth_min');
+    add_default($nl, 'mcsp_shear_min');
+}
+
 # moist convection rainwater coefficients
 my $shallow_scheme = $nl->get_value('shallow_scheme');
 $shallow_scheme =~ s/['"]//g;            # strip quotes "'
@@ -5428,7 +5440,7 @@ sub check_snapshot_settings {
                               "'qbo_relax'", "'iondrag_calc_section'",
                               "'physics_dme_adjust'"));
         push (@validList_bc, ("'dadadj_tend'", "'convect_deep_tend'",
-			      "'rayleigh_friction_tend'",
+			      "'rayleigh_friction_tend'", "'mcsp_cam_tend'",
                               "'convect_diagnostics_calc'"));
     } else {
         # CAM physpkg
@@ -5444,7 +5456,7 @@ sub check_snapshot_settings {
                               "'qbo_relax'", "'iondrag_calc_section'",
                               "'physics_dme_adjust'"));
         push (@validList_bc, ("'dadadj_tend'", "'convect_deep_tend'",
-			      "'rayleigh_friction_tend'",
+			      "'rayleigh_friction_tend'", "'mcsp_cam_tend'",
                               "'convect_shallow_tend'"));
         if ($microphys =~ /^mg/) {
             if ($clubb_sgs  =~ /$TRUE/io) {
