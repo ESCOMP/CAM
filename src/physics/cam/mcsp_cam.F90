@@ -4,15 +4,15 @@ module mcsp_cam
 ! The portable scheme lives in atmospheric_physics (schemes/mcsp/mcsp.F90).
 !
 ! MCSP redistributes the deep convective heating and moistening vertically, and can
-! add momentum tendencies, to represent organized (mesoscale) convection. Its inputs
-! are the core deep convective tendencies, taken before precipitation evaporation and
-! momentum transport, and the deep convective cloud top. All three come through the
-! physics buffer:
+! add momentum tendencies, to represent organized (mesoscale) convection.
+! Its inputs are the core deep convective tendencies, taken before precipitation
+! evaporation and momentum transport, and the deep convective cloud top.
+! All three come through the physics buffer:
 !   TTEND_DP_CORE, QTEND_DP_CORE  registered here when MCSP is active and filled by
 !                                 the deep convection interface (zm_conv_intr)
 !   CLDTOP                        set by convect_deep_tend
-! MCSP is active only when at least one mcsp_nl coefficient is positive; otherwise
-! nothing is registered or called.
+! MCSP is active only when at least one mcsp_nl coefficient is positive,
+! otherwise nothing is registered or called.
 !---------------------------------------------------------------------------------
   use shr_kind_mod,   only: r8 => shr_kind_r8
   use ppgrid,         only: pcols, pver

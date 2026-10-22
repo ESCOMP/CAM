@@ -85,9 +85,7 @@ module zm_conv_intr
    integer  ::    nevapr_dpcu_idx  = 0
    integer  ::    dgnum_idx        = 0
 
-   ! Core ZM heating and moistening (after zm_convr_run, before precipitation
-   ! evaporation and momentum transport), exported through the physics buffer for
-   ! consumers that register these fields (currently MCSP); left unfilled otherwise.
+   ! ZM "core" (before precip evap and momentum transport) q and t tendencies
    integer  ::    ttend_dp_core_idx = -1
    integer  ::    qtend_dp_core_idx = -1
 
@@ -362,7 +360,6 @@ subroutine zm_conv_init(pref_edge)
     cld_idx         = pbuf_get_index('CLD')
     fracis_idx      = pbuf_get_index('FRACIS')
 
-    ! Present only when a consumer (MCSP) registered them
     ttend_dp_core_idx = pbuf_get_index('TTEND_DP_CORE', errcode=errflg)
     qtend_dp_core_idx = pbuf_get_index('QTEND_DP_CORE', errcode=errflg)
 
@@ -595,7 +592,7 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
       jcbot(ideep(i)) = real(maxg(i), r8)
    end do
 
-   ! Export the core ZM tendencies to consumers that registered these fields
+   ! Before convective evaporation export ZM q and t tendencies when needed:
    if (ttend_dp_core_idx > 0) then
       call pbuf_get_field(pbuf, ttend_dp_core_idx, ttend_dp_core)
       ttend_dp_core(:ncol,:pver) = ptend_loc%s(:ncol,:pver)/cpair
