@@ -1,5 +1,146 @@
 ===============================================================
 
+Tag name: cam6_4_215
+Originator(s): peverwhee, pel, jimmielin, Champollion9012
+Date: Oct 22, 2026
+One-line Summary: Another miscellaneous tag
+Github PR URL: https://github.com/ESCOMP/CAM/pull/1734
+
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+- Remove unused variables from ptend structure (https://github.com/ESCOMP/CAM/issues/823)
+- *_PDC physics-dynamics coupling diagnostics wrong on CSLAM (pgN) grids:
+  missing dp_fvm weighting (https://github.com/ESCOMP/CAM/issues/1669)
+- OS commad injection: data filenames from a file-list are passed to rm -f via
+  system() (https://github.com/ESCOMP/CAM/issues/1606)
+- Vector-complement check aborts on history tapes that are not interpolated (https://github.com/ESCOMP/CAM/issues/1670)
+- Move ndep files to CAM section of inputdata (https://github.com/ESCOMP/CAM/issues/1682)
+- Add zonal mean output capability to simple models (https://github.com/ESCOMP/CAM/issues/810)
+
+Describe any changes made to build system: N/A
+
+Describe any changes made to the namelist:
+M  bld/namelist_files/namelist_defaults_cam.xml
+- Update paths to new ndep file location
+
+M  bld/namelist_files/namelist_definition.xml
+- Remove NL settings related to file removal
+
+List any changes to the defaults for the boundary datasets: N/A
+
+Describe any substantial timing or memory changes: N/A
+
+Code reviewed by: cacraigucar
+
+List all files eliminated: N/A
+
+List all files added and what they do: N/A
+
+List all existing files that have been modified, and describe the changes:
+
+M  src/physics/cam/physics_types.F90
+M  src/physics/cam/subcol_utils.F90
+M  src/control/cam_snapshot_common.F90
+- remove unused variables from ptend structure
+
+M  src/dynamics/se/dycore/prim_advance_mod.F90
+- Add missing dp_fvm weighting to physics-dynamics coupling diagnostics for CSLAM
+
+M  src/chemistry/mozart/chemistry.F90
+M  src/chemistry/mozart/gcr_ionization.F90
+M  src/chemistry/mozart/mo_extfrc.F90
+M  src/chemistry/mozart/mo_srf_emissions.F90
+M  src/chemistry/mozart/mo_sulf.F90
+M  src/chemistry/mozart/mo_tgcm_ubc.F90
+M  src/chemistry/mozart/ocean_emis.F90
+M  src/chemistry/mozart/tracer_cnst.F90
+M  src/chemistry/mozart/tracer_srcs.F90
+M  src/chemistry/mozart/upper_bc_file.F90
+M  src/chemistry/utils/aerodep_flx.F90
+M  src/chemistry/utils/aircraft_emit.F90
+M  src/chemistry/utils/elevated_emissions_mod.F90
+M  src/chemistry/utils/prescribed_aero.F90
+M  src/chemistry/utils/prescribed_ghg.F90
+M  src/chemistry/utils/prescribed_ozone.F90
+M  src/chemistry/utils/prescribed_strataero.F90
+M  src/chemistry/utils/prescribed_volcaero.F90
+M  src/chemistry/utils/surface_emissions_mod.F90
+M  src/chemistry/utils/tracer_data.F90
+M  src/physics/waccm/waccm_forcing.F90
+M  src/dynamics/fv/metdata.F90
+- remove logic & variables that remove files via system()
+
+M  src/control/cam_history.F90
+- fix for vector-complement check for non-interpolated history tapes
+
+M  src/physics/simple/physpkg.F90
+M  cime_config/testdefs/testlist_cam.xml
+- add zonal mean output capability to simple models (+ modify test to include
+  zonal mean fields)
+
+If there were any failures reported from running test_driver.sh on any test
+platform, and checkin with these failures has been OK'd by the gatekeeper,
+then copy the lines from the td.*.status files for the failed tests to the
+appropriate machine below.  All failed tests must be justified.
+
+derecho/intel/aux_cam:
+  ERC_D_Ln9.f09_f09_mt233.FHIST_BDRD.derecho_intel.cam-outfrq9s (Overall: NLFAIL) details:
+  ERC_D_Ln9.mpasa120_mpasa120.F2000climo.derecho_intel.cam-outfrq9s_mpasa120 (Overall: NLFAIL) details:
+  ERC_D_Ln9.mpasa120_mpasa120.FHISTC_LTso.derecho_intel.cam-outfrq9s_mpasa120 (Overall: NLFAIL) details:
+  ERC_Ln9.C96_C96_mt233.F2000climo.derecho_intel.cam-outfrq9s (Overall: NLFAIL) details:
+  ERI_D_Ln18.f09_f09_mt233.FHIST.derecho_intel.cam-outfrq3s_eri (Overall: NLFAIL) details:
+  ERI_D_Ln18.f19_f19_mt233.FHIST_C5.derecho_intel.cam-outfrq3s_eri (Overall: NLFAIL) details:
+  ERI_D_Ln18.ne16pg3_ne16pg3_mt233.FHIST_C4.derecho_intel.cam-outfrq3s_eri (Overall: NLFAIL) details:
+  ERI_D_Ln18.ne30pg3_ne30pg3_mt233.FHISTC_LTso.derecho_intel.cam-outfrq3s_eri (Overall: NLFAIL) details:
+  ERR_Ld3.ne16pg3_ne16pg3_mt233.FHISTC_LTso.derecho_intel.cam-outfrq1d_bwic_newyear (Overall: NLFAIL) details:
+  SMS_D_Ld5.f09_f09_mt233.PC6.derecho_intel.cam-cam6_port_f09 (Overall: NLFAIL) details:
+  SMS_D_Ld5.f19_f19_mt233.PC4.derecho_intel.cam-cam4_port5d (Overall: NLFAIL) details:
+  SMS_D_Ln9.f09_f09_mt233.FSD.derecho_intel.cam-outfrq9s (Overall: NLFAIL) details:
+  SMS_D_Ln9.f19_f19_mt233.FHIST_C5.derecho_intel.cam-mam7 (Overall: NLFAIL) details:
+  SMS_D_Ln9.ne0ARCTICne30x4_ne0ARCTICne30x4_mt12.FHIST.derecho_intel.cam-outfrq9s (Overall: NLFAIL) details:
+  SMS_D_Ln9.ne30pg3_ne30pg3_mt233.FHISTC_MTso.derecho_intel.cam-outfrq9s (Overall: NLFAIL) details:
+  SMS_Ld1.f09_f09_mt233.FCHIST_GC.derecho_intel.cam-outfrq1d (Overall: NLFAIL) details:
+  SMS_Ln9.f09_f09_mt233.F2010climo.derecho_intel.cam-nudging (Overall: NLFAIL) details:
+  SMS_Ln9.f19_f19_mt233.F2000climo.derecho_intel.cam-silhs (Overall: NLFAIL) details:
+  - NLFAIL due to change in filename for FHIST configurations w/o full chem
+
+derecho/nvhpc/aux_cam:
+  ERS_Ln9.ne30pg3_ne30pg3_mt233.FHISTC_LTso.derecho_nvhpc.cam-outfrq9s_gpu_default (Overall: NLFAIL) details:
+  - NLFAIL due to change in filename for FHIST configurations w/o full chem
+
+izumi/nag/aux_cam:
+  ERC_D_Ln9.f10_f10_mt233.FHIST_C5.izumi_nag.cam-outfrq3s_subcol (Overall: NLFAIL) details:
+  ERC_D_Ln9.f10_f10_mt233.FHIST.izumi_nag.cam-outfrq3s_cospsathist (Overall: NLFAIL) details:
+  ERC_D_Ln9.ne3pg3_ne3pg3_mt233.FHISTC_LTso.izumi_nag.cam-cosp_rad_diags (Overall: NLFAIL) details:
+  ERC_D_Ln9.ne3pg3_ne3pg3_mt233.FHISTC_LTso.izumi_nag.cam-outfrq9s_nochem (Overall: NLFAIL) details:
+  SMS_D_Ld2.f45_f45_mg37.PC5.izumi_nag.cam-outfrq24h_port (Overall: NLFAIL) details:
+  TMC_D_Ln9.f10_f10_mt233.FHIST_C5.izumi_nag.cam-mc_ttrac (Overall: NLFAIL) details:
+  - NLFAIL due to change in filename for FHIST configurations w/o full chem
+
+  ERC_D_Ln27.ne3pg3_ne3pg3_mt233.FKESSLER.izumi_nag.cam-outfrq3s_physgrid_tem (Overall: DIFF) details:
+  - DIFF - changed test to include TEM diagnostics
+
+izumi/gnu/aux_cam:
+  ERC_D_Ln9.f10_f10_mt233.FHIST_C5.izumi_gnu.cam-rad_diag (Overall: NLFAIL) details:
+  ERC_D_Ln9.f19_f19_mt233.FHIST.izumi_gnu.cam-lonlat_fv_diags (Overall: NLFAIL) details:
+  ERC_D_Ln9.mpasa480_mpasa480_mt233.FHISTC_LTso.izumi_gnu.cam-outfrq9s_mpasa480 (Overall: NLFAIL) details:
+  ERC_D_Ln9.ne3pg3_ne3pg3_mt233.FHIST_C5.izumi_gnu.cam-carma_cosp_rad_diag_mam (Overall: NLFAIL) details:
+  ERC_D_Ln9.ne3pg3_ne3pg3_mt233.FHISTC_LTso.izumi_gnu.cam-nochem_clubbmf (Overall: NLFAIL) details:
+  ERC_D_Ln9.ne3pg3_ne3pg3_mt233.FHISTC_LTso.izumi_gnu.cam-sat_lcltod (Overall: NLFAIL) details:
+  ERS_Ln9_P24x1.mpasa480_mpasa480.F2000climo.izumi_gnu.cam-outfrq9s_mpasa480 (Overall: NLFAIL) details:
+  PLB_D_Ln9.f10_f10_mt233.FHIST_C5.izumi_gnu.cam-ttrac_loadbal0 (Overall: NLFAIL) details:
+  PLB_D_Ln9.f10_f10_mt233.FHIST_C5.izumi_gnu.cam-ttrac_loadbal1 (Overall: NLFAIL) details:
+  PLB_D_Ln9.f10_f10_mt233.FHIST_C5.izumi_gnu.cam-ttrac_loadbal3 (Overall: NLFAIL) details:
+  SMS_D_Ln3.ne3pg3_ne3pg3_mt233.PC7.izumi_gnu.cam-pc7_ne3pg3 (Overall: NLFAIL) details:
+  SUB_D_Ln9.ne3pg3_ne3pg3_mt233.FHIST.izumi_gnu.cam-outfrq9s (Overall: NLFAIL) details:
+  - NLFAIL due to change in filename for FHIST configurations w/o full chem
+
+CAM tag used for the baseline comparison tests if different than previous
+tag: N/A
+
+Summarize any changes to answers: b4b
+
+===============================================================
+
 Tag name: cam6_4_214
 Originator(s): cacraigucar, pel, adamrher, jimmielin, fvitt, peverwhee
 Date: Oct 21, 2026
