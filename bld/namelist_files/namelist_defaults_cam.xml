@@ -189,6 +189,11 @@
 <ncdata hgrid="ne16np4"  nlev="130" waccmx="1"     >atm/waccm/ic/FX2000_ne16pg3_spinup01.cam.i.0002-01-01_c251215.nc</ncdata>
 <ncdata hgrid="ne16np4"  nlev="58"                 >atm/cam/inic/se/FHISTC_LTso_ne16pg3_ne16pg3_mg17.i.c260220.nc</ncdata>
 <ncdata hgrid="ne16np4"  nlev="93"                 >atm/cam/inic/se/FHISTC_MTso_ne16pg3_ne16pg3_mg17.i.c260220.nc</ncdata>
+<ncdata hgrid="ne3np4"   nlev="135" waccm_phys="1" >atm/waccm/ic/FHISTC_WAt1ma_ne3pg3_spinup01.cam.i.1980-01-01_c261018.nc</ncdata>
+<ncdata hgrid="ne16np4"  nlev="135" waccm_phys="1" >atm/waccm/ic/f.e30.FHISTC_WAt1ma.ne16pg3_mg17_L135_cam6_4_cam6_4_201_beres0.15.cam.i.1980-01-01_c260909.nc</ncdata>
+<ncdata hgrid="ne30np4"  nlev="135" waccm_phys="1" >atm/waccm/ic/f.e30.FHISTC_WAt1ma.ne30pg3_mg17_L135_cam6_4_201_beres0.15.cam.i.1980-01-01_c261017.nc</ncdata>
+<ncdata hgrid="ne16np4"  nlev="189" waccmx="1"     >atm/waccm/ic/FHISTC_WXma_ne16pg3_watervapor_spinup02.cam.i.1980-01-01_c261015.nc</ncdata>
+<ncdata hgrid="ne30np4"  nlev="189" waccmx="1"     >atm/waccm/ic/FHISTC_WXma_ne30pg3_watervapor_spinup02.cam.i.1980-01-01_c261015.nc</ncdata>
 
 <ncdata hgrid="ne30np4"  nlev="26"                 >atm/cam/inic/se/ape_topo_cam4_ne30np4_L26_c171020.nc</ncdata>
 <ncdata hgrid="ne30np4"  nlev="26"  aquaplanet="1" >atm/cam/inic/se/ape_cam4_ne30np4_L26_c170417.nc</ncdata>
@@ -612,10 +617,11 @@
 <rrtmgp_coefs_sw_file>src/physics/rrtmgp/data/rrtmgp-gas-sw-g112.nc</rrtmgp_coefs_sw_file>
 
 <!-- Top valid pressure (Pa) top for LTE radiation scheme -->
-<p_top_for_equil_rad>                  0.D0 </p_top_for_equil_rad>
-<p_top_for_equil_rad  waccmx="1" >     1.D0 </p_top_for_equil_rad>
-<p_top_for_equil_rad  waccm_phys="1" > 1.D0 </p_top_for_equil_rad>
-<p_top_for_equil_rad  rad="rrtmgp">    5.D0 </p_top_for_equil_rad>
+<p_top_for_equil_rad>                                 0.D0 </p_top_for_equil_rad>
+<p_top_for_equil_rad  waccmx="1" >                    1.D0 </p_top_for_equil_rad>
+<p_top_for_equil_rad  waccm_phys="1" >                1.D0 </p_top_for_equil_rad>
+<p_top_for_equil_rad  waccm_phys="1" model_top="mt" > 5.D0 </p_top_for_equil_rad>
+<p_top_for_equil_rad  rad="rrtmgp">                   5.D0 </p_top_for_equil_rad>
 
 <!-- Top pressure (Pa) for non-LTE/LTE merger region -->
 <p_top_for_radmrg>                     0.D0 </p_top_for_radmrg>
@@ -2099,13 +2105,6 @@
 <ubc_specifier ver="waccmsc">
   'T->MSIS','Q->2.d-8vmr','CH4->2.d-10vmr'
 </ubc_specifier>
-<!-- WACCM7 -- do not include water vapor for now -->
-<ubc_specifier ver="waccm7chem">
-  'T->MSIS','CH4->2.d-10vmr','F->1.0D-15mmr','HF->1.0D-15mmr','H->MSIS','N->MSIS','O->MSIS','O2->MSIS','H2->TGCM','NO->SNOE'
-</ubc_specifier>
-<ubc_specifier ver="waccm7sc">
-  'T->MSIS','CH4->2.d-10vmr'
-</ubc_specifier>
 
 <!-- Boundary data for Tropopheric Chemistry -->
 <fstrat_file    >atm/cam/chem/trop_mozart/ub/ubvals_b40.20th.track1_1996-2005_c110315.nc</fstrat_file>
@@ -2119,8 +2118,8 @@
 <!-- nitrogen deposition to surface models -->
 <stream_ndep_mesh_filename>share/meshes/fv0.9x1.25_141008_polemod_ESMFmesh.nc</stream_ndep_mesh_filename>
 
-<stream_ndep_data_filename >lnd/clm2/ndepdata/fndep_clm_hist_b.e21.BWHIST.f09_g17.CMIP6-historical-WACCM.ensmean_1849-2015_monthly_0.9x1.25_c180926.nc</stream_ndep_data_filename>
-<stream_ndep_data_filename sim_year="1850">lnd/clm2/ndepdata/fndep_clm_MTt4s_3Dmonthly_1850climo360_c20260918.nc</stream_ndep_data_filename>
+<stream_ndep_data_filename >atm/cam/chem/ndep/fndep_clm_hist_b.e21.BWHIST.f09_g17.CMIP6-historical-WACCM.ensmean_1849-2015_monthly_0.9x1.25_c20261020.nc</stream_ndep_data_filename>
+<stream_ndep_data_filename sim_year="1850">atm/cam/chem/ndep/fndep_clm_MTt4s_3Dmonthly_1850climo360_c20260918.nc</stream_ndep_data_filename>
 
 <!-- Turbulent Mountain Stress -->
 <do_tms                                                     > .false. </do_tms>
@@ -2149,6 +2148,7 @@
 <diff_sponge_fac               > 0.0D0 </diff_sponge_fac>
 <diff_sponge_fac  waccm_phys="1" waccmx="0"> 0.1D0 </diff_sponge_fac>
 <diff_sponge_fac  waccm_phys="1" waccmx="0" model_top="lt"> 0.0D0 </diff_sponge_fac>
+<diff_sponge_fac  waccm_phys="1" waccmx="0" model_top="mt"> 0.0D0 </diff_sponge_fac>
 <diff_sponge_fac  waccmx="1"              > 0.1D0 </diff_sponge_fac>
 <diff_sponge_fac  model_top="ht"         > 0.1D0 </diff_sponge_fac>
 

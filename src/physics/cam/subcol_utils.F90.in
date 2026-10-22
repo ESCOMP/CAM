@@ -471,20 +471,14 @@ contains
       ! Copy the grid column data into each of the subcolumns - indcol contains the grid index for each subcolumn
       if (ptend_cp%ls) then
          ptend_cp%s(:ncol,:) = ptend%s(indcol(:ncol),:)
-         ptend_cp%hflux_srf(:ncol) = ptend%hflux_srf(indcol(:ncol))
-         ptend_cp%hflux_top(:ncol) = ptend%hflux_top(indcol(:ncol))
       end if
 
       if (ptend_cp%lu) then
          ptend_cp%u(:ncol,:) = ptend%u(indcol(:ncol),:)
-         ptend_cp%taux_srf(:ncol)  = ptend%taux_srf(indcol(:ncol))
-         ptend_cp%taux_top(:ncol)  = ptend%taux_top(indcol(:ncol))
       end if
 
       if (ptend_cp%lv) then
          ptend_cp%v(:ncol,:) = ptend%v(indcol(:ncol),:)
-         ptend_cp%tauy_srf(:ncol)  = ptend%tauy_srf(indcol(:ncol))
-         ptend_cp%tauy_top(:ncol)  = ptend%tauy_top(indcol(:ncol))
       end if
 
       if (any(ptend_cp%lq(:))) then
@@ -664,8 +658,6 @@ contains
       ! physics_ptend_init has already been called by the master interface
       if (ptend%ls) then
          ptend%s(:,:)        = 0._r8
-         ptend%hflux_srf(:)  = 0._r8
-         ptend%hflux_top(:)  = 0._r8
          indx = 1
          do i = 1, ngrdcol
             if (nsubcols(i) > 0) then
@@ -674,18 +666,12 @@ contains
                   ptend%s(i,j)=subcol_avg_inter(ptend_sc%s(indx:indx+nsubcol-1,j), &
                        lchnk, i, indx, indx+nsubcol-1, usefilter, useweight)
                end do
-               ptend%hflux_srf(i) = subcol_avg_inter(ptend_sc%hflux_srf(indx:indx+nsubcol-1), &
-                    lchnk, i, indx, indx+nsubcol-1, usefilter, useweight)
-               ptend%hflux_top(i) = subcol_avg_inter(ptend_sc%hflux_top(indx:indx+nsubcol-1), &
-                    lchnk, i, indx, indx+nsubcol-1, usefilter, useweight)
                indx = indx + nsubcol
             end if
          end do
       end if
       if (ptend%lu) then
          ptend%u(:,:)       = 0._r8
-         ptend%taux_srf(:)  = 0._r8
-         ptend%taux_top(:)  = 0._r8
          indx = 1
          do i = 1, ngrdcol
             if (nsubcols(i) > 0) then
@@ -694,18 +680,12 @@ contains
                   ptend%u(i,j)=subcol_avg_inter(ptend_sc%u(indx:indx+nsubcol-1,j), &
                        lchnk, i, indx, indx+nsubcol-1, usefilter, useweight)
                end do
-               ptend%taux_srf(i) = subcol_avg_inter(ptend_sc%taux_srf(indx:indx+nsubcol-1), &
-                    lchnk, i, indx, indx+nsubcol-1, usefilter, useweight)
-               ptend%taux_top(i) = subcol_avg_inter(ptend_sc%taux_top(indx:indx+nsubcol-1), &
-                    lchnk, i, indx, indx+nsubcol-1, usefilter, useweight)
                indx = indx + nsubcol
             end if
          end do
       end if
       if (ptend%lv) then
          ptend%v(:,:)       = 0._r8
-         ptend%tauy_srf(:)  = 0._r8
-         ptend%tauy_top(:)  = 0._r8
          indx = 1
          do i = 1, ngrdcol
             if (nsubcols(i) > 0) then
@@ -714,10 +694,6 @@ contains
                   ptend%v(i,j)=subcol_avg_inter(ptend_sc%v(indx:indx+nsubcol-1,j), &
                        lchnk, i, indx, indx+nsubcol-1, usefilter, useweight)
                end do
-               ptend%tauy_srf(i) = subcol_avg_inter(ptend_sc%tauy_srf(indx:indx+nsubcol-1), &
-                    lchnk, i, indx, indx+nsubcol-1, usefilter, useweight)
-               ptend%tauy_top(i) = subcol_avg_inter(ptend_sc%tauy_top(indx:indx+nsubcol-1), &
-                    lchnk, i, indx, indx+nsubcol-1, usefilter, useweight)
                indx = indx + nsubcol
             end if
          end do
@@ -771,63 +747,39 @@ contains
       ! physics_ptend_init has already been called by the master interface
       if (ptend%ls) then
          ptend%s(:,:)       = 0._r8
-         ptend%hflux_srf(:) = 0._r8
-         ptend%hflux_top(:) = 0._r8
          indx = 1
          do i = 1, ngrdcol
             if (docheck) then
                do l=1,nsubcols(i)-1
                  if (any(ptend_sc%s(indx,:) /= ptend_sc%s(indx+l,:))) &
                     call endrun('subcol_ptend_get_firstsubcol error: Not all subcolumn fields are identical for ptend%s')
-                 if (ptend_sc%hflux_srf(indx) /= ptend_sc%hflux_srf(indx+l)) &
-                    call endrun('subcol_ptend_get_firstsubcol error: Not all subcolumn fields are identical for ptend%hflux_srf')
-                 if (ptend_sc%hflux_top(indx) /= ptend_sc%hflux_top(indx+l)) &
-                    call endrun('subcol_ptend_get_firstsubcol error: Not all subcolumn fields are identical for ptend%hflux_top')
                end do
             end if
             ptend%s(i,:)          = ptend_sc%s(indx,:)
-            ptend%hflux_srf(i)    = ptend_sc%hflux_srf(indx)
-            ptend%hflux_top(i)    = ptend_sc%hflux_top(indx)
             indx = indx + nsubcols(i)
          end do
       end if
       if (ptend%lu) then
          ptend%u(:,:)       = 0._r8
-         ptend%taux_srf(:)  = 0._r8
-         ptend%taux_top(:)  = 0._r8
          indx = 1
          do i = 1, ngrdcol
             do l=1,nsubcols(i)-1
               if (any(ptend_sc%u(indx,:) /= ptend_sc%u(indx+l,:))) &
                    call endrun('subcol_ptend_get_firstsubcol error: Not all subcolumn fields are identical for ptend%u')
-              if (ptend_sc%taux_srf(indx) /= ptend_sc%taux_srf(indx+l)) &
-                   call endrun('subcol_ptend_get_firstsubcol error: Not all subcolumn fields are identical for ptend%taux_srf')
-              if (ptend_sc%taux_top(indx) /= ptend_sc%taux_top(indx+l)) &
-                   call endrun('subcol_ptend_get_firstsubcol error: Not all subcolumn fields are identical for ptend%taux_top')
             end do
             ptend%u(i,:)      = ptend_sc%u(indx,:)
-            ptend%taux_srf(i) = ptend_sc%taux_srf(indx)
-            ptend%taux_top(i) = ptend_sc%taux_top(indx)
             indx = indx + nsubcols(i)
          end do
       end if
       if (ptend%lv) then
          ptend%v(:,:)       = 0._r8
-         ptend%tauy_srf(:)  = 0._r8
-         ptend%tauy_top(:)  = 0._r8
          indx = 1
          do i = 1, ngrdcol
             do l=1,nsubcols(i)-1
               if (any(ptend_sc%v(indx,:) /= ptend_sc%v(indx+l,:))) &
                    call endrun('subcol_ptend_get_firstsubcol error: Not all subcolumn fields are identical for ptend%v')
-              if (ptend_sc%tauy_srf(indx) /= ptend_sc%tauy_srf(indx+l)) &
-                   call endrun('subcol_ptend_get_firstsubcol error: Not all subcolumn fields are identical for ptend%tauy_srf')
-              if (ptend_sc%tauy_top(indx) /= ptend_sc%tauy_top(indx+l)) &
-                   call endrun('subcol_ptend_get_firstsubcol error: Not all subcolumn fields are identical for ptend%tauy_top')
             end do
             ptend%v(i,:)         = ptend_sc%v(indx,:)
-            ptend%tauy_srf(i)    = ptend_sc%tauy_srf(indx)
-            ptend%tauy_top(i)    = ptend_sc%tauy_top(indx)
             indx = indx + nsubcols(i)
          end do
       end if

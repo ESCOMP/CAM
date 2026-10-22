@@ -55,7 +55,6 @@
 
         character(len=256), parameter :: filelist = ' '
         character(len=256), parameter :: datapath = ' '
-        logical,            parameter :: rmv_file = .false.
         integer,            parameter :: nubc = 1
         character(len=4),   parameter :: species(nubc) = (/'H2  '/)
         character(len=4)              :: specifier(nubc) = ' '
@@ -88,7 +87,7 @@
            if (ierr /= 0) call endrun(prefix//'allocate error : file%in_pbuf')
            file%in_pbuf(:) = .false.
            call trcdata_init( specifier, tgcm_ubc_file, filelist, datapath, fields, file, &
-                              rmv_file, tgcm_ubc_cycle_yr, tgcm_ubc_fixed_ymd, tgcm_ubc_fixed_tod, tgcm_ubc_data_type)
+                              tgcm_ubc_cycle_yr, tgcm_ubc_fixed_ymd, tgcm_ubc_fixed_tod, tgcm_ubc_data_type)
         endif
 
       end subroutine tgcm_ubc_inti

@@ -35,7 +35,6 @@
       character(len=256) :: filelist = ' '
       character(len=256) :: datapath = ' '
       character(len=32)  :: datatype = 'CYCLICAL'
-      logical            :: rmv_file = .false.
       integer            :: cycle_yr  = 0
       integer            :: fixed_ymd = 0
       integer            :: fixed_tod = 0
@@ -63,7 +62,6 @@ subroutine sulf_readnl(nlfile)
    character(len=256) :: sulf_filelist
    character(len=256) :: sulf_datapath
    character(len=32)  :: sulf_type
-   logical            :: sulf_rmfile
    integer            :: sulf_cycle_yr
    integer            :: sulf_fixed_ymd
    integer            :: sulf_fixed_tod
@@ -74,7 +72,6 @@ subroutine sulf_readnl(nlfile)
       sulf_filelist,  &
       sulf_datapath,  &
       sulf_type,      &
-      sulf_rmfile,    &
       sulf_cycle_yr,  &
       sulf_fixed_ymd, &
       sulf_fixed_tod      
@@ -86,7 +83,6 @@ subroutine sulf_readnl(nlfile)
    sulf_filelist = filelist
    sulf_datapath = datapath
    sulf_type     = datatype
-   sulf_rmfile   = rmv_file
    sulf_cycle_yr = cycle_yr
    sulf_fixed_ymd= fixed_ymd
    sulf_fixed_tod= fixed_tod
@@ -113,7 +109,6 @@ subroutine sulf_readnl(nlfile)
    call mpibcast(sulf_filelist, len(sulf_filelist), mpichar, 0, mpicom)
    call mpibcast(sulf_datapath, len(sulf_datapath), mpichar, 0, mpicom)
    call mpibcast(sulf_type,     len(sulf_type),     mpichar, 0, mpicom)
-   call mpibcast(sulf_rmfile,   1, mpilog,  0, mpicom)
    call mpibcast(sulf_cycle_yr, 1, mpiint,  0, mpicom)
    call mpibcast(sulf_fixed_ymd,1, mpiint,  0, mpicom)
    call mpibcast(sulf_fixed_tod,1, mpiint,  0, mpicom)
@@ -125,7 +120,6 @@ subroutine sulf_readnl(nlfile)
    filelist   = sulf_filelist
    datapath   = sulf_datapath
    datatype   = sulf_type
-   rmv_file   = sulf_rmfile
    cycle_yr   = sulf_cycle_yr
    fixed_ymd  = sulf_fixed_ymd
    fixed_tod  = sulf_fixed_tod
@@ -179,7 +173,7 @@ end subroutine sulf_readnl
       allocate(file%in_pbuf(size(fld_names)))
       file%in_pbuf(:) = .false. 
       call trcdata_init( (/ fld_name /), filename, filelist, datapath, fields, file, &
-           rmv_file, cycle_yr, fixed_ymd, fixed_tod, datatype)
+           cycle_yr, fixed_ymd, fixed_tod, datatype)
 
       call addfld('SULFATE', (/ 'lev' /), 'I','VMR', 'sulfate data' )
 

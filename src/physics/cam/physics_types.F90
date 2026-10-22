@@ -156,13 +156,6 @@ module physics_types
           q                  ! consituent tendencies (kg/kg/s)
 
 ! boundary fluxes
-     real(r8), dimension(:),allocatable     ::&
-          hflux_srf,     &! net heat flux at surface (W/m2)
-          hflux_top,     &! net heat flux at top of model (W/m2)
-          taux_srf,      &! net zonal stress at surface (Pa)
-          taux_top,      &! net zonal stress at top of model (Pa)
-          tauy_srf,      &! net meridional stress at surface (Pa)
-          tauy_top        ! net meridional stress at top of model (Pa)
      real(r8), dimension(:,:),allocatable   ::&
           cflx_srf,      &! constituent flux at surface (kg/m2/s)
           cflx_top        ! constituent flux top of model (kg/m2/s)
@@ -729,14 +722,6 @@ contains
           allocate(ptend_sum%u(psetcols,pver), stat=ierr)
           if ( ierr /= 0 ) call endrun('physics_ptend_sum error: allocation error for ptend_sum%u')
           ptend_sum%u=0.0_r8
-
-          allocate(ptend_sum%taux_srf(psetcols), stat=ierr)
-          if ( ierr /= 0 ) call endrun('physics_ptend_sum error: allocation error for ptend_sum%taux_srf')
-          ptend_sum%taux_srf=0.0_r8
-
-          allocate(ptend_sum%taux_top(psetcols), stat=ierr)
-          if ( ierr /= 0 ) call endrun('physics_ptend_sum error: allocation error for ptend_sum%taux_top')
-          ptend_sum%taux_top=0.0_r8
        end if
        ptend_sum%lu = .true.
 
@@ -745,10 +730,6 @@ contains
              ptend_sum%u(i,k) = ptend_sum%u(i,k) + ptend%u(i,k)
           end do
        end do
-       do i = 1, ncol
-          ptend_sum%taux_srf(i) = ptend_sum%taux_srf(i) + ptend%taux_srf(i)
-          ptend_sum%taux_top(i) = ptend_sum%taux_top(i) + ptend%taux_top(i)
-       end do
     end if
 
     if(ptend%lv) then
@@ -756,14 +737,6 @@ contains
           allocate(ptend_sum%v(psetcols,pver), stat=ierr)
           if ( ierr /= 0 ) call endrun('physics_ptend_sum error: allocation error for ptend_sum%v')
           ptend_sum%v=0.0_r8
-
-          allocate(ptend_sum%tauy_srf(psetcols), stat=ierr)
-          if ( ierr /= 0 ) call endrun('physics_ptend_sum error: allocation error for ptend_sum%tauy_srf')
-          ptend_sum%tauy_srf=0.0_r8
-
-          allocate(ptend_sum%tauy_top(psetcols), stat=ierr)
-          if ( ierr /= 0 ) call endrun('physics_ptend_sum error: allocation error for ptend_sum%tauy_top')
-          ptend_sum%tauy_top=0.0_r8
        end if
        ptend_sum%lv = .true.
 
@@ -771,10 +744,6 @@ contains
           do i = 1, ncol
              ptend_sum%v(i,k) = ptend_sum%v(i,k) + ptend%v(i,k)
           end do
-       end do
-       do i = 1, ncol
-          ptend_sum%tauy_srf(i) = ptend_sum%tauy_srf(i) + ptend%tauy_srf(i)
-          ptend_sum%tauy_top(i) = ptend_sum%tauy_top(i) + ptend%tauy_top(i)
        end do
     end if
 
@@ -784,14 +753,6 @@ contains
           allocate(ptend_sum%s(psetcols,pver), stat=ierr)
           if ( ierr /= 0 ) call endrun('physics_ptend_sum error: allocation error for ptend_sum%s')
           ptend_sum%s=0.0_r8
-
-          allocate(ptend_sum%hflux_srf(psetcols), stat=ierr)
-          if ( ierr /= 0 ) call endrun('physics_ptend_sum error: allocation error for ptend_sum%hflux_srf')
-          ptend_sum%hflux_srf=0.0_r8
-
-          allocate(ptend_sum%hflux_top(psetcols), stat=ierr)
-          if ( ierr /= 0 ) call endrun('physics_ptend_sum error: allocation error for ptend_sum%hflux_top')
-          ptend_sum%hflux_top=0.0_r8
        end if
        ptend_sum%ls = .true.
 
@@ -799,10 +760,6 @@ contains
           do i = 1, ncol
              ptend_sum%s(i,k) = ptend_sum%s(i,k) + ptend%s(i,k)
           end do
-       end do
-       do i = 1, ncol
-          ptend_sum%hflux_srf(i) = ptend_sum%hflux_srf(i) + ptend%hflux_srf(i)
-          ptend_sum%hflux_top(i) = ptend_sum%hflux_top(i) + ptend%hflux_top(i)
        end do
     end if
 
@@ -864,41 +821,33 @@ contains
 !-----------------------------------------------------------------------
 
 ! Update u,v fields
-    if (ptend%lu) &
-         call multiply_tendency(ptend%u, &
-         ptend%taux_srf, ptend%taux_top)
+    if (ptend%lu) call multiply_tendency(ptend%u)
 
-    if (ptend%lv) &
-         call multiply_tendency(ptend%v, &
-         ptend%tauy_srf, ptend%tauy_top)
+    if (ptend%lv) call multiply_tendency(ptend%v)
 
 ! Heat
-    if (ptend%ls) &
-         call multiply_tendency(ptend%s, &
-         ptend%hflux_srf, ptend%hflux_top)
+    if (ptend%ls) call multiply_tendency(ptend%s)
 
 ! Update constituents
     do m = 1, pcnst
-       if (ptend%lq(m)) &
-            call multiply_tendency(ptend%q(:,:,m), &
-            ptend%cflx_srf(:,m), ptend%cflx_top(:,m))
+       if (ptend%lq(m)) then
+          call multiply_tendency(ptend%q(:,:,m))
+          ptend%cflx_srf(:ncol,m) = ptend%cflx_srf(:ncol,m) * fac
+          ptend%cflx_top(:ncol,m) = ptend%cflx_top(:ncol,m) * fac
+       end if
     end do
 
 
   contains
 
-    subroutine multiply_tendency(tend_arr, flx_srf, flx_top)
+    subroutine multiply_tendency(tend_arr)
       real(r8), intent(inout) :: tend_arr(:,:) ! Tendency array (pcols, plev)
-      real(r8), intent(inout) :: flx_srf(:)    ! Surface flux (or stress)
-      real(r8), intent(inout) :: flx_top(:)    ! Top-of-model flux (or stress)
 
       integer :: k
 
       do k = ptend%top_level, ptend%bot_level
          tend_arr(:ncol,k) = tend_arr(:ncol,k) * fac
       end do
-      flx_srf(:ncol) = flx_srf(:ncol) * fac
-      flx_top(:ncol) = flx_top(:ncol) * fac
 
     end subroutine multiply_tendency
 
@@ -931,20 +880,14 @@ subroutine physics_ptend_copy(ptend, ptend_cp)
 
    if (ptend_cp%ls) then
       ptend_cp%s = ptend%s
-      ptend_cp%hflux_srf = ptend%hflux_srf
-      ptend_cp%hflux_top = ptend%hflux_top
    end if
 
    if (ptend_cp%lu) then
       ptend_cp%u = ptend%u
-      ptend_cp%taux_srf  = ptend%taux_srf
-      ptend_cp%taux_top  = ptend%taux_top
    end if
 
    if (ptend_cp%lv) then
       ptend_cp%v = ptend%v
-      ptend_cp%tauy_srf  = ptend%tauy_srf
-      ptend_cp%tauy_top  = ptend%tauy_top
    end if
 
    if (any(ptend_cp%lq(:))) then
@@ -968,18 +911,12 @@ end subroutine physics_ptend_copy
 
     if(ptend%ls) then
        ptend%s = 0._r8
-       ptend%hflux_srf = 0._r8
-       ptend%hflux_top = 0._r8
     endif
     if(ptend%lu) then
        ptend%u = 0._r8
-       ptend%taux_srf = 0._r8
-       ptend%taux_top = 0._r8
     endif
     if(ptend%lv) then
        ptend%v = 0._r8
-       ptend%tauy_srf = 0._r8
-       ptend%tauy_top = 0._r8
     endif
     if(any (ptend%lq(:))) then
        ptend%q = 0._r8
@@ -1946,34 +1883,16 @@ subroutine physics_ptend_alloc(ptend,psetcols)
   if (ptend%ls) then
      allocate(ptend%s(psetcols,pver), stat=ierr)
      if ( ierr /= 0 ) call endrun('physics_ptend_alloc error: allocation error for ptend%s')
-
-     allocate(ptend%hflux_srf(psetcols), stat=ierr)
-     if ( ierr /= 0 ) call endrun('physics_ptend_alloc error: allocation error for ptend%hflux_srf')
-
-     allocate(ptend%hflux_top(psetcols), stat=ierr)
-     if ( ierr /= 0 ) call endrun('physics_ptend_alloc error: allocation error for ptend%hflux_top')
   end if
 
   if (ptend%lu) then
      allocate(ptend%u(psetcols,pver), stat=ierr)
      if ( ierr /= 0 ) call endrun('physics_ptend_alloc error: allocation error for ptend%u')
-
-     allocate(ptend%taux_srf(psetcols), stat=ierr)
-     if ( ierr /= 0 ) call endrun('physics_ptend_alloc error: allocation error for ptend%taux_srf')
-
-     allocate(ptend%taux_top(psetcols), stat=ierr)
-     if ( ierr /= 0 ) call endrun('physics_ptend_alloc error: allocation error for ptend%taux_top')
   end if
 
   if (ptend%lv) then
      allocate(ptend%v(psetcols,pver), stat=ierr)
      if ( ierr /= 0 ) call endrun('physics_ptend_alloc error: allocation error for ptend%v')
-
-     allocate(ptend%tauy_srf(psetcols), stat=ierr)
-     if ( ierr /= 0 ) call endrun('physics_ptend_alloc error: allocation error for ptend%tauy_srf')
-
-     allocate(ptend%tauy_top(psetcols), stat=ierr)
-     if ( ierr /= 0 ) call endrun('physics_ptend_alloc error: allocation error for ptend%tauy_top')
   end if
 
   if (any(ptend%lq)) then
@@ -2003,29 +1922,11 @@ subroutine physics_ptend_dealloc(ptend)
   if (allocated(ptend%s)) deallocate(ptend%s, stat=ierr)
   if ( ierr /= 0 ) call endrun('physics_ptend_dealloc error: deallocation error for ptend%s')
 
-  if (allocated(ptend%hflux_srf))   deallocate(ptend%hflux_srf, stat=ierr)
-  if ( ierr /= 0 ) call endrun('physics_ptend_dealloc error: deallocation error for ptend%hflux_srf')
-
-  if (allocated(ptend%hflux_top))  deallocate(ptend%hflux_top, stat=ierr)
-  if ( ierr /= 0 ) call endrun('physics_ptend_dealloc error: deallocation error for ptend%hflux_top')
-
   if (allocated(ptend%u))   deallocate(ptend%u, stat=ierr)
   if ( ierr /= 0 ) call endrun('physics_ptend_dealloc error: deallocation error for ptend%u')
 
-  if (allocated(ptend%taux_srf)) deallocate(ptend%taux_srf, stat=ierr)
-  if ( ierr /= 0 ) call endrun('physics_ptend_dealloc error: deallocation error for ptend%taux_srf')
-
-  if (allocated(ptend%taux_top))   deallocate(ptend%taux_top, stat=ierr)
-  if ( ierr /= 0 ) call endrun('physics_ptend_dealloc error: deallocation error for ptend%taux_top')
-
   if (allocated(ptend%v)) deallocate(ptend%v, stat=ierr)
   if ( ierr /= 0 ) call endrun('physics_ptend_dealloc error: deallocation error for ptend%v')
-
-  if (allocated(ptend%tauy_srf))   deallocate(ptend%tauy_srf, stat=ierr)
-  if ( ierr /= 0 ) call endrun('physics_ptend_dealloc error: deallocation error for ptend%tauy_srf')
-
-  if (allocated(ptend%tauy_top))   deallocate(ptend%tauy_top, stat=ierr)
-  if ( ierr /= 0 ) call endrun('physics_ptend_dealloc error: deallocation error for ptend%tauy_top')
 
   if (allocated(ptend%q))  deallocate(ptend%q, stat=ierr)
   if ( ierr /= 0 ) call endrun('physics_ptend_dealloc error: deallocation error for ptend%q')

@@ -1134,12 +1134,6 @@ Name of file that contains names of the offline meteorology data files.
 Default: none
 </entry>
 
-<entry id="met_remove_file" type="logical"  category="dyn_fv_off"
-       group="metdata_nl" valid_values="" >
-TRUE =&gt; the offline meteorology file will be removed from local disk when no longer needed.
-Default: FALSE
-</entry>
-
 <entry id="met_rlx_top" type="real"  category="dyn_fv_off"
        group="metdata_nl" valid_values="" >
 (km) top of relaxation region of winds for offline waccm
@@ -7463,12 +7457,6 @@ by {{ hilight }}prescribed_aero_datapath{{ closehilight }}.
 Default: set by build-namelist.
 </entry>
 
-<entry id="prescribed_aero_rmfile" type="logical" category="cam_chem"
-       group="prescribed_aero_nl" valid_values="" >
-Remove the file containing prescribed aerosol concentrations from local disk when no longer needed.
-Default: FALSE
-</entry>
-
 <entry id="prescribed_aero_specifier" type="char*32(50)" category="cam_chem"
        group="prescribed_aero_nl" valid_values="" >
 A list of variable names of the concentration fields in the prescribed aerosol datasets
@@ -7533,12 +7521,6 @@ by {{ hilight }}aerodep_flx_datapath{{ closehilight }}.
 Default: set by build-namelist.
 </entry>
 
-<entry id="aerodep_flx_rmfile" type="logical" category="cam_chem"
-       group="aerodep_flx_nl" valid_values="" >
-Remove the file containing prescribed aerosol deposition fluxes from local disk when no longer needed.
-Default: FALSE
-</entry>
-
 <entry id="aerodep_flx_specifier" type="char*32(22)" category="cam_chem"
        group="aerodep_flx_nl" valid_values="" >
 Names of variables containing aerosol data in the prescribed aerosol datasets.
@@ -7595,12 +7577,6 @@ Filename of file that contains a sequence of filenames for prescribed
 GHGs.  The filenames in this file are relative to the directory specified
 by {{ hilight }}prescribed_ghg_datapath{{ closehilight }}.
 Default: set by build-namelist.
-</entry>
-
-<entry id="prescribed_ghg_rmfile" type="logical" category="cam_chem"
-       group="prescribed_ghg_nl" valid_values="" >
-Remove the file containing prescribed green house gas concentrations from local disk when no longer needed.
-Default: FALSE
 </entry>
 
 <entry id="prescribed_ghg_specifier" type="char*16(100)" category="cam_chem"
@@ -7667,12 +7643,6 @@ Name of variable containing ozone data in the prescribed ozone datasets.
 Default: 'ozone'
 </entry>
 
-<entry id="prescribed_ozone_rmfile" type="logical" category="cam_chem"
-       group="prescribed_ozone_nl" valid_values="" >
-Remove the file containing prescribed ozone concentrations from local disk when no longer needed.
-Default: FALSE
-</entry>
-
 <entry id="prescribed_ozone_type" type="char*32" category="cam_chem"
        group="prescribed_ozone_nl" valid_values="CYCLICAL,SERIAL,INTERP_MISSING_MONTHS,FIXED" >
 Type of time interpolation for data in prescribed_ozone files.
@@ -7729,12 +7699,6 @@ Default: set by build-namelist.
        group="prescribed_volcaero_nl" valid_values="" >
 Name of variable containing volcaero data in the prescribed volcaero datasets.
 Default: 'MMRVOLC'
-</entry>
-
-<entry id="prescribed_volcaero_rmfile" type="logical" category="cam_chem"
-       group="prescribed_volcaero_nl" valid_values="" >
-Remove the file containing prescribed volcanic aerosol concentrations from local disk when no longer needed.
-Default: FALSE
 </entry>
 
 <entry id="prescribed_volcaero_type" type="char*32" category="cam_chem"
@@ -7794,12 +7758,6 @@ Default: set by build-namelist.
        group="prescribed_strataero_nl" valid_values="" >
 Name of variable containing prescribed stratospheric aerosol specifiers
 Default: set by the CAM program
-</entry>
-
-<entry id="prescribed_strataero_rmfile" type="logical" category="cam_chem"
-       group="prescribed_strataero_nl" valid_values="" >
-Remove the file containing prescribed volcanic aerosol concentrations from local disk when no longer needed.
-Default: FALSE
 </entry>
 
 <entry id="prescribed_strataero_type" type="char*32" category="cam_chem"
@@ -7977,12 +7935,6 @@ Name of variable containing sulfate data in the prescribed sulfate datasets.
 Default: 'SULFATE'
 </entry>
 
-<entry id="sulf_rmfile" type="logical" category="cam_chem"
-       group="sulf_nl" valid_values="" >
-Remove the file containing prescribed sulfate concentrations from local disk when no longer needed.
-Default: FALSE
-</entry>
-
 <entry id="sulf_type" type="char*32" category="cam_chem"
        group="sulf_nl" valid_values="CYCLICAL,SERIAL,INTERP_MISSING_MONTHS,FIXED" >
 Type of time interpolation for data in prescribed sulfate files.
@@ -8147,12 +8099,6 @@ by {{ hilight }}tracer_cnst_datapath{{ closehilight }}.
 Default: set by build-namelist.
 </entry>
 
-<entry id="tracer_cnst_rmfile" type="logical" category="cam_chem"
-       group="chem_inparm" valid_values="" >
-Remove the file containing prescribed chemical constituents from local disk when no longer needed.
-Default: FALSE
-</entry>
-
 <entry id="tracer_cnst_specifier" type="char*256(100)" category="cam_chem"
        group="chem_inparm" valid_values="" >
 List of prescribed chemical constituents.
@@ -8208,12 +8154,6 @@ Filename of file that contains a sequence of datasets for the prescribed chemica
 The filenames in this file are relative to the directory specified
 by {{ hilight }}tracer_srcs_datapath{{ closehilight }}.
 Default: set by build-namelist.
-</entry>
-
-<entry id="tracer_srcs_rmfile" type="logical" category="cam_chem"
-       group="chem_inparm" valid_values="" >
-Remove the file containing prescribed chemical sources from local disk when no longer needed.
-Default: FALSE
 </entry>
 
 <entry id="tracer_srcs_specifier" type="char*256(100)" category="cam_chem"
@@ -8527,12 +8467,6 @@ A file that contains a sequence of filenames for prescribed waccm forcing data.
 The filenames in this file are relative to the directory specified
 by {{ hilight }}waccm_forcing_datapath{{ closehilight }}.
 Default: set by build-namelist.
-</entry>
-
-<entry id="waccm_forcing_rmfile" type="logical" category="waccm_sc"
-       group="waccm_forcing_nl" valid_values="" >
-Remove the file containing prescribed waccm forcing data from local disk when no longer needed.
-Default: FALSE
 </entry>
 
 <entry id="waccm_forcing_specifier" type="char*16(100)" category="waccm_sc"
