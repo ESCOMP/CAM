@@ -81,6 +81,7 @@ contains
     use kessler_cam,        only: kessler_register
     use tj2016_cam,         only: thatcher_jablonowski_register
     use frierson_cam,       only: frierson_register
+    use ctem_diags_mod,     only: ctem_diags_reg
 
     !---------------------------Local variables-----------------------------
     !
@@ -139,6 +140,9 @@ contains
     call cnst_chk_dim()
 
     ! ***NOTE*** No registering constituents after the call to cnst_chk_dim.
+
+    ! TEM diagnostics
+    call ctem_diags_reg()
 
     ! This needs to be last as it requires all pbuf fields to be added
     if (cam_snapshot_before_num > 0 .or. cam_snapshot_after_num > 0) then
@@ -202,10 +206,12 @@ contains
     use wv_saturation,      only: wv_sat_init
     use phys_debug_util,    only: phys_debug_init
     use qneg_module,        only: qneg_init
+    use phys_grid_ctem,     only: phys_grid_ctem_init
     use nudging,            only: Nudge_Model, nudging_init
     use cam_snapshot,       only: cam_snapshot_init
     use cam_budget,         only: cam_budget_init
     use constituents,       only: cnst_get_ind
+    use ctem_diags_mod,     only: ctem_diags_init
 
 
     use ccpp_constituent_prop_mod, only: ccpp_const_props_init
@@ -286,11 +292,16 @@ contains
     ! Initialize qneg3 and qneg4
     call qneg_init()
 
+    ! Initialize phys TEM diagnostics
+    call phys_grid_ctem_init()
+
     ! Initialize the snapshot capability
     call cam_snapshot_init(cam_in, cam_out, pbuf2d, begchunk)
 
     ! Initialize energy budgets
     call cam_budget_init()
+
+    call ctem_diags_init()
 
   end subroutine phys_init
 
@@ -306,6 +317,7 @@ contains
     use time_manager,    only: get_nstep
     use cam_diagnostics, only: diag_allocate, diag_physvar_ic
     use check_energy,    only: check_energy_gmean
+    use ctem_diags_mod,  only: ctem_diags_calc
 
     use physics_buffer,  only: physics_buffer_desc, pbuf_get_chunk, pbuf_allocate
     !
@@ -340,6 +352,9 @@ contains
 
     call pbuf_allocate(pbuf2d, 'physpkg')
     call diag_allocate()
+
+    ! TEM diagnostics
+    call ctem_diags_calc(phys_state)
 
     !-----------------------------------------------------------------------
     ! Advance time information
@@ -457,6 +472,9 @@ contains
 
   subroutine phys_final( phys_state, phys_tend, pbuf2d)
     use physics_buffer, only : physics_buffer_desc, pbuf_deallocate
+    use phys_grid_ctem, only : phys_grid_ctem_final
+    use ctem_diags_mod, only: ctem_diags_final
+    use nudging,        only: Nudge_Model, nudging_final
     !-----------------------------------------------------------------------
     !
     ! Purpose:
@@ -474,6 +492,12 @@ contains
     end if
     deallocate(phys_state)
     deallocate(phys_tend)
+
+    call phys_grid_ctem_final()
+
+    if(Nudge_Model) call nudging_final()
+
+    call ctem_diags_final()
 
   end subroutine phys_final
 
@@ -1008,6 +1032,7 @@ contains
     use physics_types,       only: physics_state
     use physics_buffer,      only: physics_buffer_desc
     use nudging,             only: Nudge_Model, nudging_timestep_init
+    use phys_grid_ctem,      only: phys_grid_ctem_diags
 
     implicit none
 
@@ -1022,6 +1047,8 @@ contains
     ! Update Nudging values, if needed
     !----------------------------------
     if(Nudge_Model) call nudging_timestep_init(phys_state)
+
+    call phys_grid_ctem_diags(phys_state)
 
   end subroutine phys_timestep_init
 

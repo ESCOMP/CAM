@@ -370,7 +370,6 @@ end function chem_is
     character(len=shr_kind_cl) :: tracer_cnst_datapath          ! absolute path of prescribed data files
     character(len=24)  :: tracer_cnst_type              ! 'INTERP_MISSING_MONTHS' | 'CYCLICAL' | 'SERIAL' (default)
     character(len=shr_kind_cl) :: tracer_cnst_specifier(MAXTRCRS) ! string array where each
-    logical            :: tracer_cnst_rmfile            ! remove data file from local disk (default .false.)
     integer            :: tracer_cnst_cycle_yr
     integer            :: tracer_cnst_fixed_ymd
     integer            :: tracer_cnst_fixed_tod
@@ -381,7 +380,6 @@ end function chem_is
     character(len=shr_kind_cl) :: tracer_srcs_datapath          ! absolute path of prescribed data files
     character(len=24)  :: tracer_srcs_type              ! 'INTERP_MISSING_MONTHS' | 'CYCLICAL' | 'SERIAL' (default)
     character(len=shr_kind_cl) :: tracer_srcs_specifier(MAXTRCRS) ! string array where each
-    logical            :: tracer_srcs_rmfile            ! remove data file from local disk (default .false.)
     integer            :: tracer_srcs_cycle_yr
     integer            :: tracer_srcs_fixed_ymd
     integer            :: tracer_srcs_fixed_tod
@@ -409,8 +407,8 @@ end function chem_is
          tracer_cnst_type, tracer_cnst_specifier, &
          tracer_srcs_file, tracer_srcs_filelist, tracer_srcs_datapath, &
          tracer_srcs_type, tracer_srcs_specifier, &
-         tracer_cnst_rmfile, tracer_cnst_cycle_yr, tracer_cnst_fixed_ymd, tracer_cnst_fixed_tod, &
-         tracer_srcs_rmfile, tracer_srcs_cycle_yr, tracer_srcs_fixed_ymd, tracer_srcs_fixed_tod
+         tracer_cnst_cycle_yr, tracer_cnst_fixed_ymd, tracer_cnst_fixed_tod, &
+         tracer_srcs_cycle_yr, tracer_srcs_fixed_ymd, tracer_srcs_fixed_tod
 
     ! tropopause level control
     namelist /chem_inparm/ chem_use_chemtrop
@@ -423,7 +421,6 @@ end function chem_is
          tracer_cnst_datapath_out  = tracer_cnst_datapath,  &
          tracer_cnst_type_out      = tracer_cnst_type,      &
          tracer_cnst_specifier_out = tracer_cnst_specifier, &
-         tracer_cnst_rmfile_out    = tracer_cnst_rmfile,    &
          tracer_cnst_cycle_yr_out  = tracer_cnst_cycle_yr,  &
          tracer_cnst_fixed_ymd_out = tracer_cnst_fixed_ymd, &
          tracer_cnst_fixed_tod_out = tracer_cnst_fixed_tod  )
@@ -433,7 +430,6 @@ end function chem_is
          tracer_srcs_datapath_out  = tracer_srcs_datapath,  &
          tracer_srcs_type_out      = tracer_srcs_type,      &
          tracer_srcs_specifier_out = tracer_srcs_specifier, &
-         tracer_srcs_rmfile_out    = tracer_srcs_rmfile,    &
          tracer_srcs_cycle_yr_out  = tracer_srcs_cycle_yr,  &
          tracer_srcs_fixed_ymd_out = tracer_srcs_fixed_ymd, &
          tracer_srcs_fixed_tod_out = tracer_srcs_fixed_tod  )
@@ -516,7 +512,6 @@ end function chem_is
     call mpibcast (tracer_cnst_filelist,  len(tracer_cnst_filelist),              mpichar, 0, mpicom)
     call mpibcast (tracer_cnst_datapath,  len(tracer_cnst_datapath),              mpichar, 0, mpicom)
     call mpibcast (tracer_cnst_type,      len(tracer_cnst_type),                  mpichar, 0, mpicom)
-    call mpibcast (tracer_cnst_rmfile,    1,                                      mpilog, 0,  mpicom)
     call mpibcast (tracer_cnst_cycle_yr,  1,                                      mpiint, 0,  mpicom)
     call mpibcast (tracer_cnst_fixed_ymd, 1,                                      mpiint, 0,  mpicom)
     call mpibcast (tracer_cnst_fixed_tod, 1,                                      mpiint, 0,  mpicom)
@@ -526,7 +521,6 @@ end function chem_is
     call mpibcast (tracer_srcs_filelist,  len(tracer_srcs_filelist),              mpichar, 0, mpicom)
     call mpibcast (tracer_srcs_datapath,  len(tracer_srcs_datapath),              mpichar, 0, mpicom)
     call mpibcast (tracer_srcs_type,      len(tracer_srcs_type),                  mpichar, 0, mpicom)
-    call mpibcast (tracer_srcs_rmfile,    1,                                      mpilog,  0, mpicom)
     call mpibcast (tracer_srcs_cycle_yr,  1,                                      mpiint,  0, mpicom)
     call mpibcast (tracer_srcs_fixed_ymd, 1,                                      mpiint,  0, mpicom)
     call mpibcast (tracer_srcs_fixed_tod, 1,                                      mpiint,  0, mpicom)
@@ -543,7 +537,6 @@ end function chem_is
         tracer_cnst_datapath_in  = tracer_cnst_datapath,  &
         tracer_cnst_type_in      = tracer_cnst_type,      &
         tracer_cnst_specifier_in = tracer_cnst_specifier, &
-        tracer_cnst_rmfile_in    = tracer_cnst_rmfile,    &
         tracer_cnst_cycle_yr_in  = tracer_cnst_cycle_yr,  &
         tracer_cnst_fixed_ymd_in = tracer_cnst_fixed_ymd, &
         tracer_cnst_fixed_tod_in = tracer_cnst_fixed_tod )
@@ -553,7 +546,6 @@ end function chem_is
         tracer_srcs_datapath_in  = tracer_srcs_datapath,  &
         tracer_srcs_type_in      = tracer_srcs_type,      &
         tracer_srcs_specifier_in = tracer_srcs_specifier, &
-        tracer_srcs_rmfile_in    = tracer_srcs_rmfile,    &
         tracer_srcs_cycle_yr_in  = tracer_srcs_cycle_yr,  &
         tracer_srcs_fixed_ymd_in = tracer_srcs_fixed_ymd, &
         tracer_srcs_fixed_tod_in = tracer_srcs_fixed_tod )

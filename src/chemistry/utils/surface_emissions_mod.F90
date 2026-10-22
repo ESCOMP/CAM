@@ -231,7 +231,6 @@ contains
     character(len=32) :: emis_type = ' '
     character(len=1), parameter :: filelist = ''
     character(len=1), parameter :: datapath = ''
-    logical         , parameter :: rmv_file = .false.
     real(r8) :: xnan
 
     xnan = nan
@@ -330,7 +329,7 @@ contains
                           emissions(m)%filename, filelist, datapath, &
                           emissions(m)%fields,  &
                           emissions(m)%file, &
-                          rmv_file, emissions_cycle_yr, &
+                          emissions_cycle_yr, &
                           emissions_fixed_ymd, emissions_fixed_tod, trim(emis_type) )
 
        emissions(m)%units = emissions(m)%fields(1)%units

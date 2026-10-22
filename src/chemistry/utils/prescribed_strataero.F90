@@ -63,7 +63,6 @@ module prescribed_strataero
   character(len=256) :: filelist = ''
   character(len=256) :: datapath = ''
   character(len=32)  :: data_type = 'SERIAL'
-  logical            :: rmv_file = .false.
   integer            :: cycle_yr  = 0
   integer            :: fixed_ymd = 0
   integer            :: fixed_tod = 0
@@ -103,7 +102,6 @@ subroutine prescribed_strataero_readnl(nlfile)
    character(len=256) :: prescribed_strataero_filelist
    character(len=256) :: prescribed_strataero_datapath
    character(len=32)  :: prescribed_strataero_type
-   logical            :: prescribed_strataero_rmfile
    integer            :: prescribed_strataero_cycle_yr
    integer            :: prescribed_strataero_fixed_ymd
    integer            :: prescribed_strataero_fixed_tod
@@ -114,7 +112,6 @@ subroutine prescribed_strataero_readnl(nlfile)
       prescribed_strataero_filelist,  &
       prescribed_strataero_datapath,  &
       prescribed_strataero_type,      &
-      prescribed_strataero_rmfile,    &
       prescribed_strataero_cycle_yr,  &
       prescribed_strataero_fixed_ymd, &
       prescribed_strataero_fixed_tod, &
@@ -127,7 +124,6 @@ subroutine prescribed_strataero_readnl(nlfile)
    prescribed_strataero_filelist = filelist
    prescribed_strataero_datapath = datapath
    prescribed_strataero_type     = data_type
-   prescribed_strataero_rmfile   = rmv_file
    prescribed_strataero_cycle_yr = cycle_yr
    prescribed_strataero_fixed_ymd= fixed_ymd
    prescribed_strataero_fixed_tod= fixed_tod
@@ -154,7 +150,6 @@ subroutine prescribed_strataero_readnl(nlfile)
    call mpibcast(prescribed_strataero_filelist, len(prescribed_strataero_filelist),    mpichar, 0, mpicom)
    call mpibcast(prescribed_strataero_datapath, len(prescribed_strataero_datapath),    mpichar, 0, mpicom)
    call mpibcast(prescribed_strataero_type,     len(prescribed_strataero_type),        mpichar, 0, mpicom)
-   call mpibcast(prescribed_strataero_rmfile,   1, mpilog,  0, mpicom)
    call mpibcast(prescribed_strataero_cycle_yr, 1, mpiint,  0, mpicom)
    call mpibcast(prescribed_strataero_fixed_ymd,1, mpiint,  0, mpicom)
    call mpibcast(prescribed_strataero_fixed_tod,1, mpiint,  0, mpicom)
@@ -167,7 +162,6 @@ subroutine prescribed_strataero_readnl(nlfile)
    filelist   = prescribed_strataero_filelist
    datapath   = prescribed_strataero_datapath
    data_type  = prescribed_strataero_type
-   rmv_file   = prescribed_strataero_rmfile
    cycle_yr   = prescribed_strataero_cycle_yr
    fixed_ymd  = prescribed_strataero_fixed_ymd
    fixed_tod  = prescribed_strataero_fixed_tod
@@ -301,7 +295,7 @@ end subroutine prescribed_strataero_readnl
     file%geop_alt = .true.
 
     call trcdata_init( specifier, filename, filelist, datapath, fields, file, &
-                       rmv_file, cycle_yr, fixed_ymd, fixed_tod, data_type)
+                       cycle_yr, fixed_ymd, fixed_tod, data_type)
 
     if (three_mode.or.five_mode) then
        call addfld(dens_name1, (/ 'lev' /), 'I','molecules/cm3', 'prescribed volcanic aerosol number density in Mode 1' )

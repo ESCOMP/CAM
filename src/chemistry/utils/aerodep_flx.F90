@@ -34,7 +34,6 @@ module aerodep_flx
   character(len=256) :: filelist = ' '
   character(len=256) :: datapath = ' '
   character(len=32)  :: datatype = 'SERIAL'
-  logical            :: rmv_file = .false.
   integer            :: cycle_yr = 0
   integer            :: fixed_ymd = 0
   integer            :: fixed_tod = 0
@@ -133,7 +132,7 @@ contains
     allocate(file%in_pbuf(size(specifier)))
     file%in_pbuf(:) = .false.
     call trcdata_init( specifier, filename, filelist, datapath, fields, file, &
-                       rmv_file, cycle_yr, fixed_ymd, fixed_tod, datatype)
+                       cycle_yr, fixed_ymd, fixed_tod, datatype)
 
     number_flds = 0
     if (associated(fields)) number_flds = size( fields )
@@ -242,7 +241,6 @@ subroutine aerodep_flx_readnl(nlfile)
    character(len=256) :: aerodep_flx_filelist
    character(len=256) :: aerodep_flx_datapath
    character(len=32)  :: aerodep_flx_type
-   logical            :: aerodep_flx_rmfile
    integer            :: aerodep_flx_cycle_yr
    integer            :: aerodep_flx_fixed_ymd
    integer            :: aerodep_flx_fixed_tod
@@ -253,7 +251,6 @@ subroutine aerodep_flx_readnl(nlfile)
       aerodep_flx_filelist,  &
       aerodep_flx_datapath,  &
       aerodep_flx_type,      &
-      aerodep_flx_rmfile,    &
       aerodep_flx_cycle_yr,  &
       aerodep_flx_fixed_ymd, &
       aerodep_flx_fixed_tod      
@@ -265,7 +262,6 @@ subroutine aerodep_flx_readnl(nlfile)
    aerodep_flx_filelist = filelist
    aerodep_flx_datapath = datapath
    aerodep_flx_type     = datatype
-   aerodep_flx_rmfile   = rmv_file
    aerodep_flx_cycle_yr = cycle_yr
    aerodep_flx_fixed_ymd= fixed_ymd
    aerodep_flx_fixed_tod= fixed_tod
@@ -292,7 +288,6 @@ subroutine aerodep_flx_readnl(nlfile)
    call mpibcast(aerodep_flx_filelist, len(aerodep_flx_filelist), mpichar, 0, mpicom)
    call mpibcast(aerodep_flx_datapath, len(aerodep_flx_datapath), mpichar, 0, mpicom)
    call mpibcast(aerodep_flx_type,     len(aerodep_flx_type),     mpichar, 0, mpicom)
-   call mpibcast(aerodep_flx_rmfile,   1, mpilog,  0, mpicom)
    call mpibcast(aerodep_flx_cycle_yr, 1, mpiint,  0, mpicom)
    call mpibcast(aerodep_flx_fixed_ymd,1, mpiint,  0, mpicom)
    call mpibcast(aerodep_flx_fixed_tod,1, mpiint,  0, mpicom)
@@ -304,7 +299,6 @@ subroutine aerodep_flx_readnl(nlfile)
    filelist   = aerodep_flx_filelist
    datapath   = aerodep_flx_datapath
    datatype   = aerodep_flx_type
-   rmv_file   = aerodep_flx_rmfile
    cycle_yr   = aerodep_flx_cycle_yr
    fixed_ymd  = aerodep_flx_fixed_ymd
    fixed_tod  = aerodep_flx_fixed_tod
