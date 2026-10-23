@@ -3095,7 +3095,13 @@ end subroutine clubb_init_cnst
                     meltpt_temp, latice, rga, & ! in
                     dlf, state_loc%t, state_loc%pdel, state_loc%pdeldry, & ! in
                     ptend_loc%q, ptend_loc%s, det_s, det_ice, & ! inout
-                    dlf_liq_out, dlf_ice_out ) ! out
+                    dlf_liq_out, dlf_ice_out, & ! out
+                    errmsg, errflg ) ! out
+
+    if (errflg /= 0) then
+     write(str,*) 'From clubb_tend_cam: at chunk ',lchnk, ' : '
+     call endrun(str // errmsg)
+    end if
 
     do k = 1, pver
       do i = 1, ncol
