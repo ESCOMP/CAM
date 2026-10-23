@@ -1675,7 +1675,10 @@ end subroutine clubb_init_cnst
          nvarmax_rad_zt, &
          nvarmax_rad_zm, &
          nvarmax_sfc, &
-         var_length
+         var_length, &
+         w_tol_sqd, &
+         rt_tol, &
+         thl_tol
 
 #endif
 
