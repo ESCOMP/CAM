@@ -3091,7 +3091,13 @@ end subroutine clubb_init_cnst
                     meltpt_temp, latice, rga, & ! in
                     dlf, state_loc%t, state_loc%pdel, state_loc%pdeldry, & ! in
                     ptend_loc%q, ptend_loc%s, det_s, det_ice, & ! inout
-                    dlf_liq_out, dlf_ice_out ) ! out
+                    dlf_liq_out, dlf_ice_out, & ! out
+                    errmsg, errflg ) ! out
+
+    if (errflg /= 0) then
+     write(str,*) 'From clubb_tend_cam: at chunk ',lchnk, ' : '
+     call endrun(str // errmsg)
+    end if
 
     do k = 1, pver
       do i = 1, ncol
@@ -3115,9 +3121,8 @@ end subroutine clubb_init_cnst
                     rhminis_const, rhmaxis_const, rhmini_const, rhmaxi_const, & ! in
                     rhminl_const, rhminl_adj_land_const, rhminh_const, & ! in
                     dp1, dp2, zvir, rair, cpair, gravit, karman, & ! in
-                    calday, tropp_days, & ! in
-                    state_loc%lat, state_loc%phis, state_loc%t, state_loc%q, & ! in
-                    state_loc%pint, state_loc%pmid, state_loc%pdel, state_loc%pdeldry, & ! in
+                    state_loc%t, state_loc%q, & ! in
+                    state_loc%pmid, state_loc%pdel, state_loc%pdeldry, & ! in
                     state_loc%zm, state_loc%zi, state_loc%u, state_loc%v, state_loc%exner, & ! in
                     cam_in%landfrac, cam_in%snowhland, cam_in%wsx, & ! in
                     cam_in%wsy, cam_in%shf, cam_in%cflx, ptend_all%q, & ! in
