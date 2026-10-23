@@ -2308,7 +2308,7 @@ end subroutine clubb_init_cnst
     use cam_logfile,    only: iulog
 !BAS still using tropopause but prob need to switch over to SIMA side
     use tropopause,     only: tropopause_findChemTrop
-    use time_manager,   only: get_nstep, is_first_restart_step, get_curr_calday, get_calday
+    use time_manager,   only: get_nstep, is_first_restart_step
     use perf_mod,       only: t_startf, t_stopf
 
 
@@ -2710,15 +2710,6 @@ end subroutine clubb_init_cnst
 
     character(len=40) :: str
 
-!BAS for new tropopause calculation but not used yet
-    real(r8) :: calday
-
-    integer, parameter :: dates(12) = (/ 116, 214, 316, 415,  516,  615, &
-         716, 816, 915, 1016, 1115, 1216 /)
-
-    real(r8) :: tropp_days(12)
-!end BAS
-
 #endif
 
     logical :: first_step, first_restart_step
@@ -2732,14 +2723,6 @@ end subroutine clubb_init_cnst
   end do
 
 #ifdef CLUBB_SGS
-
-!BAS for new tropopause calc but not used yet
-  calday = get_curr_calday()
-
-  do n = 1,12
-    tropp_days(n) = get_calday( dates(n), 0 )
-  end do
-!end BAS
 
 #ifdef _OPENACC
     ! These options have not been GPUized
@@ -3125,9 +3108,8 @@ end subroutine clubb_init_cnst
                     rhminis_const, rhmaxis_const, rhmini_const, rhmaxi_const, & ! in
                     rhminl_const, rhminl_adj_land_const, rhminh_const, & ! in
                     dp1, dp2, zvir, rair, cpair, gravit, karman, & ! in
-                    calday, tropp_days, & ! in
-                    state_loc%lat, state_loc%phis, state_loc%t, state_loc%q, & ! in
-                    state_loc%pint, state_loc%pmid, state_loc%pdel, state_loc%pdeldry, & ! in
+                    state_loc%t, state_loc%q, & ! in
+                    state_loc%pmid, state_loc%pdel, state_loc%pdeldry, & ! in
                     state_loc%zm, state_loc%zi, state_loc%u, state_loc%v, state_loc%exner, & ! in
                     cam_in%landfrac, cam_in%snowhland, cam_in%wsx, & ! in
                     cam_in%wsy, cam_in%shf, cam_in%cflx, ptend_all%q, & ! in
