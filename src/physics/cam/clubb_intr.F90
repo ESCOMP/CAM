@@ -3177,8 +3177,8 @@ end subroutine clubb_init_cnst
         upwp_output(i,k)            =   upwp_pbuf(i,k_clubb)
         vpwp_output(i,k)            =   vpwp_pbuf(i,k_clubb)
         rtp2_output(i,k)            =   rtp2_pbuf(i,k_clubb)
-        wprcp_output(i,k)           =       wprcp(i,k_clubb) * latvap
-        wpthvp_output(i,k)          = wpthvp_pbuf(i,k_clubb) * cpair
+        wprcp_output(i,k)           =       wprcp(i,k_clubb)
+        wpthvp_output(i,k)          = wpthvp_pbuf(i,k_clubb)
         thlp2_output(i,k)           =  thlp2_pbuf(i,k_clubb)
 
         wpthlp_output(i,k)  = ( wpthlp_pbuf(i,k_clubb) - (apply_const *  wpthlp_const) ) !  liquid water potential temperature flux
