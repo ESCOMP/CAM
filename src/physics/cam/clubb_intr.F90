@@ -2707,7 +2707,6 @@ end subroutine clubb_init_cnst
 
     character(len=40) :: str
 
-#endif
 !BAS for new tropopause calculation but not used yet
     real(r8) :: calday
 
@@ -2717,10 +2716,19 @@ end subroutine clubb_init_cnst
     real(r8) :: tropp_days(12)
 !end BAS
 
+#endif
+
     logical :: first_step, first_restart_step
     integer :: nstep
 
   call t_startf('clubb_tend_cam')
+
+  do i = 1, pcols
+    det_s(i)   = 0.0_r8
+    det_ice(i) = 0.0_r8
+  end do
+
+#ifdef CLUBB_SGS
 
 !BAS for new tropopause calc but not used yet
   calday = get_curr_calday()
@@ -2729,13 +2737,6 @@ end subroutine clubb_init_cnst
     tropp_days(n) = get_calday( dates(n), 0 )
   end do
 !end BAS
-
-  do i = 1, pcols
-    det_s(i)   = 0.0_r8
-    det_ice(i) = 0.0_r8
-  end do
-
-#ifdef CLUBB_SGS
 
 #ifdef _OPENACC
     ! These options have not been GPUized
