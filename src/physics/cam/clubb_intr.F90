@@ -2498,6 +2498,12 @@ end subroutine clubb_init_cnst
 
     real(r8), pointer                    :: tpert(:)
 
+    ! Zero-size targets for the CLUBB-MF pbuf pointers when do_clubb_mf is false.
+    ! Those pointers are passed to clubb1_run, which only uses them when
+    ! do_clubb_mf is true, but an actual argument must not be an undefined pointer.
+    real(r8), target :: mf_off_1d(0), mf_off_2d(0,0), mf_off_3d(0,0,0)
+    integer,  target :: mf_off_int_1d(0)
+
     character(len=*), parameter :: subr='clubb_tend_cam'
 
     type(physics_state) :: state_loc                ! Local copy of state variable
@@ -2815,11 +2821,12 @@ end subroutine clubb_init_cnst
     call pbuf_get_field(pbuf, icwmrdp_idx,        dp_icwmr_pbuf)
     call pbuf_get_field(pbuf, cmfmc_sh_idx,       cmfmc_sh_pbuf)
 
+    ! tpert is always registered (clubb_register_cam), so fetch it unconditionally
+    call pbuf_get_field(pbuf, tpert_idx, tpert)
+
     if (do_clubb_mf) then
        call pbuf_get_field(pbuf, prec_dp_idx, prec_dp_pbuf )
        call pbuf_get_field(pbuf, snow_dp_idx, snow_dp_pbuf )
-
-       call pbuf_get_field(pbuf, tpert_idx, tpert)
 
        call pbuf_get_field(pbuf, ztopmn_idx, ztopmn)
        call pbuf_get_field(pbuf, ztopma_idx, ztopma)
@@ -2845,6 +2852,28 @@ end subroutine clubb_init_cnst
        call pbuf_get_field(pbuf, sawwup_macmic_idx, s_awwup_macmic)
        call pbuf_get_field(pbuf, sawup_macmic_idx,  s_awup_macmic)
 
+    else
+       prec_dp_pbuf    => mf_off_1d
+       snow_dp_pbuf    => mf_off_1d
+       ztopmn          => mf_off_3d
+       ztopma          => mf_off_2d
+       ztopm1_macmic   => mf_off_2d
+       ddcp            => mf_off_2d
+       ddcp_macmic     => mf_off_2d
+       ddcpmn          => mf_off_3d
+       cbm1            => mf_off_1d
+       cbm1_macmic     => mf_off_1d
+       s_mfup_macmic   => mf_off_2d
+       s_entup_macmic  => mf_off_2d
+       s_detup_macmic  => mf_off_2d
+       s_mfdn_macmic   => mf_off_2d
+       s_entdn_macmic  => mf_off_2d
+       s_detdn_macmic  => mf_off_2d
+       mf_sqtac_macmic => mf_off_2d
+       mf_sqtev_macmic => mf_off_2d
+       mf_kctop_macmic => mf_off_1d
+       s_awwup_macmic  => mf_off_2d
+       s_awup_macmic   => mf_off_2d
     end if
 
     ! SILHS covariance contributions
@@ -2883,6 +2912,20 @@ end subroutine clubb_init_cnst
       ! but zm_conv_tend_2-style consumers read the field, so keep it zeroed
       call pbuf_get_field(pbuf, zm_dsubcld_idx,  dsubcld)
       call pbuf_get_field(pbuf, mf_wup_idx,      wup_gath)
+    else
+      rprddp   => mf_off_2d
+      evapcdp  => mf_off_2d
+      mu       => mf_off_2d
+      eu       => mf_off_2d
+      du       => mf_off_2d
+      md       => mf_off_2d
+      ed       => mf_off_2d
+      dpg      => mf_off_2d
+      jt       => mf_off_int_1d
+      maxg     => mf_off_int_1d
+      ideep    => mf_off_int_1d
+      dsubcld  => mf_off_1d
+      wup_gath => mf_off_2d
     end if
 
     !  Initialize physics tendency arrays
