@@ -2132,7 +2132,7 @@ end subroutine clubb_init_cnst
     clubb_vars_sfc    = ''
 
     !  Read variables to compute from the namelist
-    if (masterproc) then
+    if (masterproc .and. stats_metadata%l_stats) then
        iunit= getunit()
        open(unit=iunit,file="atm_in",status='old')
        call find_group_name(iunit, 'clubb_stats_nl', status=read_status)
