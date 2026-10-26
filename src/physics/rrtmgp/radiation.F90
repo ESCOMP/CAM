@@ -173,6 +173,8 @@ integer :: cldfgrau_idx = 0
 integer :: dei_idx
 integer :: mu_idx
 integer :: lambda_idx
+integer :: rel_idx
+integer :: rei_idx
 integer :: iciwp_idx
 integer :: iclwp_idx
 integer :: des_idx
@@ -914,6 +916,8 @@ subroutine radiation_tend( &
    real(r8), pointer :: dei(:,:)
    real(r8), pointer :: mu(:,:)
    real(r8), pointer :: lambda(:,:)
+   real(r8), pointer :: rel(:,:)
+   real(r8), pointer :: rei(:,:)
    real(r8), pointer :: iciwp(:,:)
    real(r8), pointer :: iclwp(:,:)
    real(r8), pointer :: des(:,:)
@@ -1162,6 +1166,8 @@ subroutine radiation_tend( &
       dei_idx = pbuf_get_index('DEI')
       mu_idx  = pbuf_get_index('MU')
       lambda_idx = pbuf_get_index('LAMBDAC')
+      rel_idx = pbuf_get_index('REL')
+      rei_idx = pbuf_get_index('REI')
       des_idx    = pbuf_get_index('DES')
       icswp_idx  = pbuf_get_index('ICSWP')
       ! Below fields are optional
@@ -1171,6 +1177,8 @@ subroutine radiation_tend( &
       degrau_idx    = pbuf_get_index('DEGRAU',errcode=err)   ! Available when using MG3
       call pbuf_get_field(pbuf, lambda_idx,  lambda)
       call pbuf_get_field(pbuf, mu_idx,      mu)
+      call pbuf_get_field(pbuf, rel_idx,     rel)
+      call pbuf_get_field(pbuf, rei_idx,     rei)
       call pbuf_get_field(pbuf, iclwp_idx,   iclwp)
       call pbuf_get_field(pbuf, iciwp_idx, iciwp)
       call pbuf_get_field(pbuf, dei_idx,   dei)
@@ -1222,7 +1230,8 @@ subroutine radiation_tend( &
 
          ! Set cloud optical properties in cloud_sw object.
          call rrtmgp_sw_cloud_optics_run(dosw, ncol, pver, ktopcam, ktoprad, nswgpts, nday, idxday,         &
-             fillvalue, nswbands, iulog, mu(:ncol,:), lambda(:ncol,:), nnite, idxnite, cld, cldfsnow_in,    &
+             fillvalue, nswbands, iulog, mu(:ncol,:), lambda(:ncol,:), rel(:ncol,:), rei(:ncol,:),          &
+             nnite, idxnite, cld, cldfsnow_in,                                                              &
              cldfgrau_in, cldfprime(:ncol,:), degrau_in, dei(:ncol,:), des(:ncol,:), iclwp(:ncol,:),        &
              iciwp(:ncol,:), icswp(:ncol,:), icgrauwp_in, tiny, idx_sw_diag, do_graupel, do_snow,     &
              kdist_sw, cld_tau(:,:ncol,:), grau_tau(:,:ncol,:), snow_tau(:,:ncol,:), c_cld_tau(:,:ncol,:),  &
@@ -1335,7 +1344,7 @@ subroutine radiation_tend( &
 
          ! Set cloud optical properties in cloud_lw object.
          call rrtmgp_lw_cloud_optics_run(dolw, ncol, nlay, cld(:ncol,:), cldfsnow_in,     &
-             cldfgrau_in, cldfprime(:ncol,:), kdist_lw, lambda(:ncol,:), mu(:ncol,:),    &
+             cldfgrau_in, cldfprime(:ncol,:), kdist_lw, lambda(:ncol,:), mu(:ncol,:), rei(:ncol,:), &
              iclwp(:ncol,:), iciwp(:ncol,:), tiny, dei(:ncol,:), icswp(:ncol,:), des(:ncol,:),     &
              icgrauwp_in, degrau_in, nlwbands, do_snow, do_graupel, pver, ktopcam,     &
              cloud_lw, cld_lw_abs, snow_lw_abs, grau_lw_abs, c_cld_lw_abs, errmsg, errflg)
