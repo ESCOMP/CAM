@@ -575,7 +575,7 @@
     </options>
   </test>
 
-  <test compset="QPC6" grid="C48_C48_mg17" name="ERC_D_Ln9" testmods="cam/outfrq9s">
+  <test compset="QPC6" grid="C48_C48_mt233" name="ERC_D_Ln9" testmods="cam/outfrq9s">
     <machines>
       <machine name="derecho" compiler="intel" category="prealpha"/>
       <machine name="derecho" compiler="intel" category="fv3_cam"/>
@@ -586,7 +586,7 @@
       <option name="wallclock">00:10:00</option>
     </options>
   </test>
-  <test compset="QPC5" grid="C48_C48_mg17" name="ERP_D_Ln9" testmods="cam/outfrq9s">
+  <test compset="QPC5" grid="C48_C48_mt233" name="ERP_D_Ln9" testmods="cam/outfrq9s">
     <machines>
       <machine name="derecho" compiler="intel" category="fv3_cam"/>
     </machines>
@@ -594,7 +594,7 @@
       <option name="wallclock">00:10:00</option>
     </options>
   </test>
-  <test compset="QPC4" grid="C48_C48_mg17" name="ERP_D_Ln9" testmods="cam/outfrq9s">
+  <test compset="QPC4" grid="C48_C48_mt233" name="ERP_D_Ln9" testmods="cam/outfrq9s">
     <machines>
       <machine name="derecho" compiler="intel" category="fv3_cam"/>
     </machines>
@@ -1291,12 +1291,12 @@
     </options>
   </test>
 
-  <test compset="FKESSLER" grid="ne3pg3_ne3pg3_mt233" name="ERC_D_Ln27" testmods="cam/outfrq9s">
+  <test compset="FKESSLER" grid="ne3pg3_ne3pg3_mt233" name="ERC_D_Ln27" testmods="cam/outfrq3s_physgrid_tem">
     <machines>
       <machine name="izumi" compiler="nag" category="aux_cam"/>
     </machines>
     <options>
-      <option name="comment" >Moist Kessler forcing, baroclinic wave IC, terminator chemistry</option>
+      <option name="comment" >Moist Kessler forcing, baroclinic wave IC, terminator chemistry, TEM diags</option>
       <option name="wallclock">00:10:00</option>
     </options>
   </test>
@@ -1941,7 +1941,7 @@
   </test>
 
 <!--              CAM Tests at non-scientific resolutions     -->
-  <test compset="F2000climo" grid="C48_C48_mg17" name="ERP_Ln9" testmods="cam/cosp">
+  <test compset="F2000climo" grid="C48_C48_mt233" name="ERP_Ln9" testmods="cam/cosp">
     <machines>
       <machine name="derecho" compiler="intel" category="fv3_cam"/>
     </machines>
@@ -1949,7 +1949,7 @@
       <option name="wallclock">00:10:00</option>
     </options>
   </test>
-  <test compset="F2000climo" grid="C48_C48_mg17" name="ERS_Ln9" testmods="cam/outfrq9s">
+  <test compset="F2000climo" grid="C48_C48_mt233" name="ERS_Ln9" testmods="cam/outfrq9s">
     <machines>
       <machine name="derecho" compiler="intel" category="fv3_cam"/>
     </machines>
@@ -1958,7 +1958,7 @@
     </options>
   </test>
 
-  <test compset="F2000climo" grid="C48_C48_mg17" name="SMS_Ln9" testmods="cam/silhs">
+  <test compset="F2000climo" grid="C48_C48_mt233" name="SMS_Ln9" testmods="cam/silhs">
     <machines>
       <machine name="derecho" compiler="intel" category="fv3_cam"/>
     </machines>
@@ -1968,17 +1968,17 @@
   </test>
 <!--              CAM Simple Models                       -->
 
-  <test compset="FHS94" grid="C48_C48_mg17" name="ERP_D_Ln9" testmods="cam/outfrq9s">
+  <test compset="FHS94" grid="C48_C48_mt233" name="ERP_D_Ln9" testmods="cam/outfrq9s">
     <machines>
       <machine name="derecho" compiler="intel" category="fv3_cam"/>
     </machines>
   </test>
-  <test compset="FHS94" grid="C96_C96_mg17" name="ERP_D_Ln9" testmods="cam/outfrq9s">
+  <test compset="FHS94" grid="C96_C96_mt233" name="ERP_D_Ln9" testmods="cam/outfrq9s">
     <machines>
       <machine name="derecho" compiler="intel" category="fv3_cam"/>
     </machines>
   </test>
-  <test compset="FKESSLER" grid="C48_C48_mg17" name="ERP_D_Ln9" testmods="cam/outfrq9s">
+  <test compset="FKESSLER" grid="C48_C48_mt233" name="ERP_D_Ln9" testmods="cam/outfrq9s">
     <machines>
       <machine name="derecho" compiler="pgi" category="fv3_cam"/>
     </machines>

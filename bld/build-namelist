@@ -2965,17 +2965,9 @@ if ($maxzen>0.0) {
 # upper boundary specifier
 my $ubc_ver;
 if (($chem =~ /waccm_ma/ or $chem =~ /waccm_tsmlt/ or $chem =~ /waccm_t4ma/) and !$waccmx) {
-    if ($phys =~ /cam7/) {
-	$ubc_ver = 'waccm7chem';
-    } else {
-	$ubc_ver = 'waccmchem';
-    }
+    $ubc_ver = 'waccmchem';
 } elsif ($chem =~ /waccm_sc/ or ($model_top eq "ht" and $chem =~ /ghg_mam/)) {
-    if ($phys =~ /cam7/) {
-	$ubc_ver = 'waccm7sc';
-    } else {
-	$ubc_ver = 'waccmsc';
-    }
+    $ubc_ver = 'waccmsc';
 }
 if (defined $ubc_ver) {
     add_default($nl, 'ubc_specifier', 'ver'=>$ubc_ver);
@@ -3574,7 +3566,6 @@ if ($clubb_sgs  =~ /$TRUE/io) {
    }
 
    add_default($nl, 'clubb_l_ascending_grid');
-   add_default($nl, 'clubb_do_icesuper');
    add_default($nl, 'clubb_do_energyfix');
    add_default($nl, 'clubb_cloudtop_cooling');
    add_default($nl, 'clubb_rainevap_turb');
@@ -3664,7 +3655,6 @@ if ($clubb_sgs  =~ /$TRUE/io) {
    add_default($nl, 'clubb_detliq_rad');
    add_default($nl, 'clubb_detphase_lowtemp');
    add_default($nl, 'clubb_do_energyfix');
-   add_default($nl, 'clubb_do_liqsupersat');
    add_default($nl, 'clubb_grid_adapt_in_time_method');
    add_default($nl, 'clubb_fill_holes_type');
    add_default($nl, 'clubb_grid_remap_method');

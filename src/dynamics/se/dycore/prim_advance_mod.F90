@@ -387,7 +387,7 @@ contains
                   end if
                 end if
                 fvm(ie)%c(i,j,k,q) = fvm(ie)%c(i,j,k,q)+ v1
-                ftmp_fvm(i,j,k,q,ie) = tmp-v1 !Only used for diagnostics!
+                ftmp_fvm(i,j,k,q,ie) = (tmp-v1)*fvm(ie)%dp_fvm(i,j,k) !Only used for diagnostics!
               end do
             end do
           end do
