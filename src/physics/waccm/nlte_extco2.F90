@@ -108,7 +108,7 @@ contains
        temp_col(:pver) = temp(icol,:pver)
        hPa(:pver)    = pres(icol,:pver) * 1.e-2_r8 ! Pa --> hPa
 
-       ! create extra level at 1e3 mbar to avoid exapolation errors
+       ! create extra level at 1e3 mbar to avoid extrapolation errors
        hPa(pverp) = 1.e3_r8
        co2vmr(pverp) = co2vmr(pver)
        ovmr(pverp) = ovmr(pver)
