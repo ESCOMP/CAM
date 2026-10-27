@@ -5964,6 +5964,15 @@ Default: 50.
 
 <!-- Physics Debugging -->
 
+<entry id="cam_shmem_force_private" type="logical"  category="performance"
+       group="cam_shmem_nl" valid_values="" >
+If .true., do not use MPI-3 node-shared memory for large read-only tables
+(cam_shmem_mod); every MPI rank holds a private copy instead.  Answers must be
+identical either way (the SHM system test checks this).  cam_shmem_mod also
+falls back to private memory automatically if its shared-window probe fails.
+Default: .false.
+</entry>
+
 <entry id="phys_debug_lat" type="real"  category="phys_debug"
        group="phys_debug_nl" valid_values="">
 Use this variable to specify the latitude (in degrees) of a column to

@@ -133,12 +133,6 @@ subroutine cam_init(                                             &
 
    call init_pio_subsystem()
 
-   ! Build the cam_shmem per-node/leader communicators now, at this early all-ranks
-   ! collective point, so the first MPI_Comm_split_type(SHARED) is not paid cold mid-
-   ! physprop (rad_cnst_init).  Needed for the theta-l dycore, which (unlike
-   ! theta-l_kokkos/COMPOSE) does no early SHARED comm-split to warm it.
-   call cam_shmem_init()
-
    ! Initializations using data passed from coupler.
    call cam_ctrl_init(               &
       caseid_in=caseid,              &
@@ -160,6 +154,14 @@ subroutine cam_init(                                             &
    ! Read CAM namelists.
    filein = "atm_in" // trim(inst_suffix)
    call read_namelist(filein, single_column, scmlat, scmlon)
+
+   ! Build the cam_shmem per-node/leader communicators now, at this early all-ranks
+   ! collective point, so the first MPI_Comm_split_type(SHARED) is not paid cold mid-
+   ! physprop (rad_cnst_init).  Needed for the theta-l dycore, which (unlike
+   ! theta-l_kokkos/COMPOSE) does no early SHARED comm-split to warm it.  Called
+   ! after read_namelist so cam_shmem_force_private (cam_shmem_nl) is known; this
+   ! also runs the shared-window probe and reports it in the atm log.
+   call cam_shmem_init()
 
    ! Open initial or restart file, and topo file if specified.
    call cam_initfiles_open()

@@ -24,14 +24,17 @@ module cam_shmem_mod
 
    use shr_kind_mod,   only: r4 => shr_kind_r4, r8 => shr_kind_r8
    use cam_abortutils, only: endrun
+   use cam_logfile,    only: iulog
+   use spmd_utils,     only: masterproc
 
 #ifdef SPMD
    use spmd_utils,     only: mpicom
    use mpi,            only: MPI_ADDRESS_KIND, MPI_COMM_NULL, MPI_COMM_TYPE_SHARED,   &
                              MPI_INFO_NULL, MPI_SUCCESS, MPI_UNDEFINED, MPI_WIN_NULL, &
                              mpi_comm_rank, mpi_comm_size, mpi_comm_split,            &
-                             mpi_comm_split_type, mpi_win_fence, mpi_win_free
-   use, intrinsic :: iso_c_binding, only: c_ptr, c_f_pointer
+                             mpi_comm_split_type, mpi_win_fence, mpi_win_free,        &
+                             MPI_INTEGER, MPI_MIN
+   use, intrinsic :: iso_c_binding, only: c_ptr, c_f_pointer, c_associated
 #endif
 
    implicit none
@@ -49,6 +52,7 @@ module cam_shmem_mod
    public :: cam_shmem_leader_comm   ! communicator containing only node leaders
    public :: cam_shmem_npes_per_node ! number of ranks sharing this node
    public :: cam_shmem_init          ! force one-time node-comm setup at an early collective point
+   public :: cam_shmem_readnl        ! read the cam_shmem_nl namelist
 
    ! Generic finalizer: free whatever node-shared table the pointer aliases.  Safe
    ! to call blindly on an unallocated table (win == -1 / null pointer -> no-op).
@@ -107,6 +111,11 @@ module cam_shmem_mod
    logical, save :: is_leader   = .true.
 #endif
 
+   ! Namelist switch (cam_shmem_nl): .true. disables node-shared memory, so every
+   ! rank holds private copies.  Answers must not change; the SHM system test
+   ! compares a run with this set against a default run.
+   logical, save :: cam_shmem_force_private = .false.
+
 contains
 
 !===============================================================================
@@ -115,7 +124,8 @@ contains
    subroutine init_comms()
       ! Lazily build the node-local and node-leader communicators.  Collective
       ! over mpicom; safe to call from every shared-memory allocation request.
-      integer :: ierr, color
+      integer :: ierr, color, wrank, nsize0
+      logical :: shared_ok
 
       if (initialized) return
 
@@ -124,6 +134,41 @@ contains
       call mpi_comm_rank(node_comm, node_rank, ierr)
       call mpi_comm_size(node_comm, node_size, ierr)
       is_leader = (node_rank == 0)
+      nsize0 = node_size
+
+      ! Verify that MPI-3 shared windows really work before relying on them: some
+      ! MPI setups (e.g. MVAPICH2 under CESM on izumi) build node_comm correctly but
+      ! return windows that are not shared-memory backed, so peers get no address
+      ! from MPI_Win_shared_query.  If any rank fails the probe, or the namelist
+      ! switch asks for it, every rank becomes its own "node": node_size 1, every
+      ! rank a leader, leader_comm = all ranks.  Callers then hold private copies
+      ! and their leader broadcasts reach every rank, so answers are unchanged.
+      shared_ok = probe_shared_windows()
+      if (cam_shmem_force_private .or. .not. shared_ok) then
+         call mpi_comm_free(node_comm, ierr)
+         call mpi_comm_rank(mpicom, wrank, ierr)
+         call mpi_comm_split(mpicom, wrank, 0, node_comm, ierr)
+         node_rank = 0
+         node_size = 1
+         is_leader = .true.
+      end if
+      if (masterproc) then
+         if (shared_ok) then
+            write(iulog,'(a,i0,a)') 'cam_shmem_mod: MPI-3 shared-memory probe PASSED (', nsize0, &
+                 ' ranks on the first node)'
+         else
+            write(iulog,'(a)') 'cam_shmem_mod: MPI-3 shared-memory probe FAILED (peers got no ' // &
+                 'address from MPI_Win_shared_query)'
+         end if
+         if (cam_shmem_force_private) then
+            write(iulog,'(a)') 'cam_shmem_mod: cam_shmem_force_private = .true.: using per-rank ' // &
+                 'private memory'
+         else if (shared_ok) then
+            write(iulog,'(a)') 'cam_shmem_mod: node-shared tables enabled'
+         else
+            write(iulog,'(a)') 'cam_shmem_mod: falling back to per-rank private memory'
+         end if
+      end if
 
       ! Communicator of node leaders only (used to distribute data between nodes).
       ! masterproc (global rank 0) is a node leader and is rank 0 here.
@@ -136,6 +181,33 @@ contains
 
       initialized = .true.
    end subroutine init_comms
+
+!===============================================================================
+
+   logical function probe_shared_windows()
+      ! Collective over mpicom: .true. on every rank iff, on every node, a small
+      ! window allocated by the node leader is visible to all its peers.
+      integer(kind=MPI_ADDRESS_KIND) :: wsize, qsize
+      type(c_ptr) :: base
+      integer :: win, ierr, qdisp, lok, gok
+
+      wsize = 0_MPI_ADDRESS_KIND
+      if (is_leader) wsize = 64_MPI_ADDRESS_KIND
+      lok = 1
+      call mpi_win_allocate_shared(wsize, 8, MPI_INFO_NULL, node_comm, base, win, ierr)
+      if (ierr /= MPI_SUCCESS) then
+         lok = 0
+      else
+         if (.not. is_leader) then
+            call mpi_win_shared_query(win, 0, qsize, qdisp, base, ierr)
+            if (ierr /= MPI_SUCCESS .or. qsize < 64_MPI_ADDRESS_KIND) lok = 0
+         end if
+         if (.not. c_associated(base)) lok = 0
+         call mpi_win_free(win, ierr)
+      end if
+      call mpi_allreduce(lok, gok, 1, MPI_INTEGER, MPI_MIN, mpicom, ierr)
+      probe_shared_windows = (gok == 1)
+   end function probe_shared_windows
 
 !===============================================================================
 
@@ -171,6 +243,35 @@ contains
       end if
    end subroutine shmem_alloc_bytes
 #endif
+
+!===============================================================================
+
+   subroutine cam_shmem_readnl(nlfile)
+      ! Read namelist group cam_shmem_nl (cam_shmem_force_private).  Must be called
+      ! before cam_shmem_init / the first cam_shmem_alloc_* call.
+      use namelist_utils, only: find_group_name
+#ifdef SPMD
+      use spmd_utils,     only: masterprocid, mpi_logical
+#endif
+      character(len=*), intent(in) :: nlfile
+      integer :: unitn, ierr
+      character(len=*), parameter :: subname = 'cam_shmem_readnl'
+      namelist /cam_shmem_nl/ cam_shmem_force_private
+
+      if (masterproc) then
+         open(newunit=unitn, file=trim(nlfile), status='old')
+         call find_group_name(unitn, 'cam_shmem_nl', status=ierr)
+         if (ierr == 0) then
+            read(unitn, cam_shmem_nl, iostat=ierr)
+            if (ierr /= 0) call endrun(subname//': ERROR reading namelist cam_shmem_nl')
+         end if
+         close(unitn)
+      end if
+#ifdef SPMD
+      call mpi_bcast(cam_shmem_force_private, 1, mpi_logical, masterprocid, mpicom, ierr)
+#endif
+      if (masterproc) write(iulog,*) subname//': cam_shmem_force_private = ', cam_shmem_force_private
+   end subroutine cam_shmem_readnl
 
 !===============================================================================
 
