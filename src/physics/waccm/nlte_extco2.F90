@@ -7,7 +7,7 @@
 !--------------------------------------------------------------------------------
 module nlte_extco2
 
-  use ppgrid,       only: pcols, pver
+  use ppgrid,       only: pcols, pver, pverp
   use shr_kind_mod, only: r8 => shr_kind_r8
   use cam_logfile,  only: iulog
   use spmd_utils,   only: masterproc
@@ -76,12 +76,13 @@ contains
     real(r8), intent(out) :: co2cooling(:,:)   ! K sec-1
 
     ! Local vars
-    real(r8) :: co2vmr(pver)
-    real(r8) :: ovmr(pver)
-    real(r8) :: n2vmr(pver)
-    real(r8) :: o2vmr(pver)
-    real(r8) :: heatrate(pver) ! K/day
-    real(r8) :: hPa(pver)
+    real(r8) :: co2vmr(pverp)
+    real(r8) :: ovmr(pverp)
+    real(r8) :: n2vmr(pverp)
+    real(r8) :: o2vmr(pverp)
+    real(r8) :: heatrate(pverp) ! K/day
+    real(r8) :: hPa(pverp)
+    real(r8) :: temp_col(pverp)
 
     real(r8) :: surf_temp ! K
     integer :: icol
@@ -100,28 +101,38 @@ contains
     do icol=1,ncol
 
        ! Convert to VMR from mmr
-       co2vmr(:) = mbarv(icol,:,lchnk) * co2mmr(icol,:) * co2_mw_inv
-       ovmr(:)   = mbarv(icol,:,lchnk) * ommr(icol,:) * o1_mw_inv
-       n2vmr(:)  = mbarv(icol,:,lchnk) * n2mmr(icol,:) * n2_mw_inv
-       o2vmr(:)  = mbarv(icol,:,lchnk) * o2mmr(icol,:) * o2_mw_inv
-       hPa(:)    = pres(icol,:) * 1.e-2_r8 ! Pa --> hPa
+       co2vmr(:pver) = mbarv(icol,:pver,lchnk) * co2mmr(icol,:pver) * co2_mw_inv
+       ovmr(:pver)   = mbarv(icol,:pver,lchnk) * ommr(icol,:pver) * o1_mw_inv
+       n2vmr(:pver)  = mbarv(icol,:pver,lchnk) * n2mmr(icol,:pver) * n2_mw_inv
+       o2vmr(:pver)  = mbarv(icol,:pver,lchnk) * o2mmr(icol,:pver) * o2_mw_inv
+       temp_col(:pver) = temp(icol,:pver)
+       hPa(:pver)    = pres(icol,:pver) * 1.e-2_r8 ! Pa --> hPa
+
+       ! create extra level at 1e3 mbar to avoid extrapolation errors
+       hPa(pverp) = 1.e3_r8
+       co2vmr(pverp) = co2vmr(pver)
+       ovmr(pverp) = ovmr(pver)
+       n2vmr(pverp) = n2vmr(pver)
+       o2vmr(pverp) = o2vmr(pver)
+       temp_col(pverp) = temp(icol,pver)
+
        surf_temp = temp(icol,pver)
 
-       tempout(icol,:) = temp(icol,:)
-       presout(icol,:) = hPa(:)
-       co2_out(icol,:) = co2vmr(:)
-       o_out(icol,:)   = ovmr(:)
-       o2_out(icol,:)  = o2vmr(:)
-       n2_out(icol,:)  = n2vmr(:)
+       tempout(icol,:) = temp(icol,1:pver)
+       presout(icol,:) = hPa(1:pver)
+       co2_out(icol,:) = co2vmr(1:pver)
+       o_out(icol,:)   = ovmr(1:pver)
+       o2_out(icol,:)  = o2vmr(1:pver)
+       n2_out(icol,:)  = n2vmr(1:pver)
 
        heatrate(:) = 0._r8
 
 #ifdef EXT_CO2_COOL
        ! Units: Temperature in K, pressure in hPa, vmrs in mol/mol, heating rate in K/day
-       call co2_nlte_cool(temp(icol,:), hPa, co2vmr, ovmr, o2vmr, n2vmr, pver, &
+       call co2_nlte_cool(temp_col, hPa, co2vmr, ovmr, o2vmr, n2vmr, pverp, &
                           surf_temp, heatrate) !   (K day-1)
 #endif
-       co2cooling(icol,:) = heatrate(:) * day_per_sec ! K day-1 --> K sec-1
+       co2cooling(icol,1:pver) = heatrate(1:pver) * day_per_sec ! K day-1 --> K sec-1
 
     end do
 
