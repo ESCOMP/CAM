@@ -3482,6 +3482,56 @@ Convective adjustment timescale in units of (s)
 Default: 3600.0 s
 </entry>
 
+<!-- MCSP (mesoscale coherent structure parameterization) -->
+
+<entry id="mcsp_heat_coeff" type="real" category="conv"
+       group="mcsp_nl" valid_values="" >
+Coefficient scaling the MCSP (mesoscale coherent structure parameterization)
+temperature tendency, which redistributes the deep convective heating vertically.
+MCSP is active only when at least one of mcsp_heat_coeff, mcsp_moisture_coeff,
+mcsp_uwind_coeff or mcsp_vwind_coeff is positive; it requires deep_scheme = ZM.
+Default: 0.0 (off)
+</entry>
+
+<entry id="mcsp_moisture_coeff" type="real" category="conv"
+       group="mcsp_nl" valid_values="" >
+Coefficient scaling the MCSP water vapor tendency, which redistributes the deep
+convective moistening vertically.
+Default: 0.0 (off)
+</entry>
+
+<entry id="mcsp_uwind_coeff" type="real" category="conv"
+       group="mcsp_nl" valid_values="" >
+Coefficient (m/s2) scaling the MCSP zonal wind tendency.
+Default: 0.0 (off)
+</entry>
+
+<entry id="mcsp_vwind_coeff" type="real" category="conv"
+       group="mcsp_nl" valid_values="" >
+Coefficient (m/s2) scaling the MCSP meridional wind tendency.
+Default: 0.0 (off)
+</entry>
+
+<entry id="mcsp_storm_speed_pref" type="real" category="conv"
+       group="mcsp_nl" valid_values="" >
+Reference pressure level (Pa) of the storm-level zonal wind used in the MCSP
+low-level shear calculation.
+Default: 60000.0
+</entry>
+
+<entry id="mcsp_conv_depth_min" type="real" category="conv"
+       group="mcsp_nl" valid_values="" >
+Minimum pressure depth (Pa) of deep convection for MCSP to be active in a column.
+Default: 50000.0
+</entry>
+
+<entry id="mcsp_shear_min" type="real" category="conv"
+       group="mcsp_nl" valid_values="" >
+Minimum magnitude (m/s) of the zonal wind shear between the mcsp_storm_speed_pref
+level and the lowest model layer for MCSP to be active in a column.
+Default: 3.0
+</entry>
+
 <!-- Cloud sedimentation -->
 
 <entry id="cldsed_ice_stokes_fac" type="real" category="cldsed"
@@ -6169,7 +6219,7 @@ Default:
 </entry>
 
 <entry id="cam_take_snapshot_before" type="char*32"  category="diagnostics"
-       group="phys_ctl_nl" valid_values="pumas_tend,chem_emissions,aoa_tracers_timestep_tend,co2_cycle_set_ptend,chem_timestep_tend,orographic_form_drag_stress,vertical_diffusion_section,aero_model_drydep,gw_tend,qbo_relax,iondrag_calc_section,physics_dme_adjust,physics_dme_adjust,dadadj_tend,convect_deep_tend,convect_shallow_tend,convect_diagnostics_calc,macrop_driver_tend,clubb_tend_cam,,microp_aero,microp_driver_tend_subcol,aero_model_wetdep,radiation_tend,held_suarez_tend,kessler_tend,thatcher_jablonowski_precip_tend,rk_stratiform_tend,rayleigh_friction_tend,user_set" >
+       group="phys_ctl_nl" valid_values="pumas_tend,chem_emissions,aoa_tracers_timestep_tend,co2_cycle_set_ptend,chem_timestep_tend,orographic_form_drag_stress,vertical_diffusion_section,aero_model_drydep,gw_tend,qbo_relax,iondrag_calc_section,physics_dme_adjust,physics_dme_adjust,dadadj_tend,convect_deep_tend,convect_shallow_tend,convect_diagnostics_calc,macrop_driver_tend,clubb_tend_cam,,microp_aero,microp_driver_tend_subcol,aero_model_wetdep,radiation_tend,held_suarez_tend,kessler_tend,thatcher_jablonowski_precip_tend,rk_stratiform_tend,rayleigh_friction_tend,mcsp_cam_tend,user_set" >
 Name of parameterization to take snapshot before running
 user_set is used when a user inserts a call to cam_snapshot_all_outfld
   using cam_snapshot_before_num as the first argument.
@@ -6177,7 +6227,7 @@ Default: Unused
 </entry>
 
 <entry id="cam_take_snapshot_after" type="char*32"  category="diagnostics"
-       group="phys_ctl_nl" valid_values="pumas_tend,chem_emissions,aoa_tracers_timestep_tend,co2_cycle_set_ptend,chem_timestep_tend,orographic_form_drag_stress,vertical_diffusion_section,aero_model_drydep,gw_tend,qbo_relax,iondrag_calc_section,physics_dme_adjust,physics_dme_adjust,dadadj_tend,convect_deep_tend,convect_shallow_tend,convect_diagnostics_calc,macrop_driver_tend,clubb_tend_cam,,microp_aero,microp_driver_tend_subcol,aero_model_wetdep,radiation_tend,held_suarez_tend,kessler_tend,thatcher_jablonowski_precip_tend,rk_stratiform_tend,rayleigh_friction_tend,user_set" >
+       group="phys_ctl_nl" valid_values="pumas_tend,chem_emissions,aoa_tracers_timestep_tend,co2_cycle_set_ptend,chem_timestep_tend,orographic_form_drag_stress,vertical_diffusion_section,aero_model_drydep,gw_tend,qbo_relax,iondrag_calc_section,physics_dme_adjust,physics_dme_adjust,dadadj_tend,convect_deep_tend,convect_shallow_tend,convect_diagnostics_calc,macrop_driver_tend,clubb_tend_cam,,microp_aero,microp_driver_tend_subcol,aero_model_wetdep,radiation_tend,held_suarez_tend,kessler_tend,thatcher_jablonowski_precip_tend,rk_stratiform_tend,rayleigh_friction_tend,mcsp_cam_tend,user_set" >
 Name of parameterization to take snapshot after running
 user_set is used when a user inserts a call to cam_snapshot_all_outfld
   using cam_snapshot_after_num as the first argument.

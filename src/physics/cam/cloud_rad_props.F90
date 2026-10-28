@@ -134,7 +134,10 @@ subroutine cloud_rad_props_init(tiny_out)
    call cnst_get_ind('CLDICE', ixcldice)
    call cnst_get_ind('CLDLIQ', ixcldliq)
 
-   call rrtmgp_cloud_optics_setup_init(liqopticsfile, iceopticsfile, errmsg, err)
+   ! CAM only supports the gammadist liquid and Mitchell ice optics with RRTMGP;
+   ! the slingo/ebertcurry options exist for CAM4 physics in CAM-SIMA.
+   call rrtmgp_cloud_optics_setup_init(liqopticsfile, iceopticsfile, 'gammadist', 'mitchell', &
+                                       errmsg, err)
    if (err /= 0) then
       call endrun(sub//': '//errmsg)
    end if
