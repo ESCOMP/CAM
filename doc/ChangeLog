@@ -1,5 +1,66 @@
 ===============================================================
 
+Tag name: cam6_4_128
+Originator(s): pel, cacraigucar
+Date: Nov 2, 2026
+One-line Summary: Fix missing cpair factor in Mesophere/Lower Thermosphere shortwave heating (radheat)
+Github PR URL: https://github.com/ESCOMP/CAM/pull/1741
+
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+- Closes #1740 (radheat Mesosphere /Lower Thermosphere shortwave heating missing cpair factor)
+
+  In radheat_tend (src/physics/cam/radheat.F90) the M/LT shortwave
+  heating qrs_mlt is computed from a K/day profile divided by 86400 (K/s), but
+  it is merged via merge_qrx with the RRTMGP qrs, which is in J/kg/s. Wherever
+  the merge weight is < 1 the Mesophere/Lower Thermosphere SW heating was therefore ~cpair (~1004x) too
+  small. This only affects model_top="mt" configurations (top ~6 levels,
+  p <~ 20 Pa), which ran cold (full Fomichev LW cooling with almost no SW
+  heating). The LW partner (qrlfomichev) is already in J/kg/s and is unaffected.
+  Low-top configurations have merge weight = 1 everywhere and are unaffected.
+
+  Fix: multiply qrs_mlt by the composition-dependent cpairv before merging.
+  The QRS_TOT diagnostic is corrected as a consequence.
+
+  The AI coding assistant Claude Code (Anthropic) was used in preparing this PR.
+
+Describe any changes made to build system: N/A
+
+Describe any changes made to the namelist: N/A
+
+List any changes to the defaults for the boundary datasets: N/A
+
+Describe any substantial timing or memory changes: N/A
+
+Code reviewed by:
+
+List all files eliminated: N/A
+
+List all files added and what they do: N/A
+
+List all existing files that have been modified, and describe the changes:
+M       src/physics/cam/radheat.F90
+  - convert idealized Mesophere/Lower Thermosphere  SW heating (qrs_mlt) from K/s to J/kg/s using cpairv
+    before merging with RRTMGP qrs.
+
+If there were any failures reported from running test_driver.sh on any test
+platform, and checkin with these failures has been OK'd by the gatekeeper,
+then copy the lines from the td.*.status files for the failed tests to the
+appropriate machine below.  All failed tests must be justified.
+
+derecho/intel/aux_cam:
+  ERP_D_Ln9.ne30pg3_ne30pg3_mt233.F1850C_MTso.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+  SMS_D_Ln9.ne30pg3_ne30pg3_mt233.FHISTC_MTso.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+    - answer changes expected for model_top="mt" configurations (Mesophere/Lower Thermosphere  SW heating fix)
+
+derecho/nvhpc/aux_cam: all BFB
+
+izumi/nag/aux_cam: all BFB
+
+izumi/gnu/aux_cam: all BFB
+
+
+===============================================================
+
 Tag name: cam6_4_217
 Originator(s): chihchen24, jimmielin
 Date: Oct 28, 2026

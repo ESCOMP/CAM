@@ -304,7 +304,7 @@ end subroutine radheat_readnl
 
    qrs_mlt_prof = qrs_mlt_profile_a( zref_mid_7km )
    do k = 1,pver
-      qrs_mlt(:ncol,k) = qrsmlt_scaling * qrs_mlt_prof(k) * max( coszrs(:ncol) , 0._r8 ) / 86400._r8
+      qrs_mlt(:ncol,k) = cpairv(:ncol,k,lchnk) * qrsmlt_scaling * qrs_mlt_prof(k) * max( coszrs(:ncol) , 0._r8 ) / 86400._r8
    end do
 
    icall = 0
