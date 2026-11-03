@@ -2154,7 +2154,7 @@
 <diff_sponge_fac  waccm_phys="1" waccmx="0"               > 0.1D0 </diff_sponge_fac>
 <diff_sponge_fac  waccm_phys="1" waccmx="0" model_top="lt"> 0.0D0 </diff_sponge_fac>
 <diff_sponge_fac  waccmx="1"                              > 0.1D0 </diff_sponge_fac>
-<diff_sponge_fac  model_top="mt"                          > 0.1D0 </diff_sponge_fac>
+<diff_sponge_fac  dyn="mpas" model_top="mt"               > 0.1D0 </diff_sponge_fac>
 <diff_sponge_fac  model_top="ht"                          > 0.1D0 </diff_sponge_fac>
 
 <!-- Use convective water in radiation calculation -->
