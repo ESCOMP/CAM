@@ -20,6 +20,10 @@ use pio,            only: file_desc_t, var_desc_t, pio_get_var, pio_inq_varid, &
 
 use cam_logfile,    only: iulog
 use cam_abortutils, only: endrun
+use cam_shmem_mod,  only: cam_shmem_alloc_r8_2d, cam_shmem_alloc_r8_4d, &
+                          cam_shmem_alloc_r8_5d, cam_shmem_free,        &
+                          cam_shmem_fence, cam_shmem_is_leader,         &
+                          cam_shmem_npes_per_node
 
 implicit none
 private
@@ -31,6 +35,7 @@ public :: &
    physprop_accum_unique_files,  &! Make a list of the unique set of files that contain properties
                                   ! This is an initialization step that must be done before calling physprop_init
    physprop_init,                &! Initialization -- read the input datasets
+   physprop_final,               &! Finalization -- free per-node shared-memory tables
    physprop_get_id,              &! Return ID used to access the property data from the input files
    physprop_get                   ! Return data for specified ID
 
@@ -120,12 +125,24 @@ type :: physprop_type
    real(r8) :: rhcrystal  ! crystalization relative humidity for mode
    real(r8) :: rhdeliques ! deliquescence relative humidity for mode
 
+   ! MPI-3 shared-memory window handles for the large tables above that are held
+   ! one-copy-per-node (see cam_shmem_mod).  -1 means "not shared" (table either
+   ! unused for this entry's optics method, or kept as an ordinary allocate).
+   integer :: win_extpsw = -1, win_abspsw = -1, win_asmpsw = -1, win_absplw = -1   ! modal
+   integer :: win_sw_hygro_ext = -1, win_sw_hygro_ssa = -1                         ! hygro(scopic)
+   integer :: win_sw_hygro_asm = -1, win_lw_hygro_abs = -1
+   integer :: win_sw_hygro_ext_wtp = -1, win_sw_hygro_ssa_wtp = -1                 ! hygroscopic_wtp
+   integer :: win_sw_hygro_asm_wtp = -1, win_lw_hygro_abs_wtp = -1
+   integer :: win_cs_ext = -1, win_cs_ssa = -1, win_cs_asm = -1, win_cs_abs = -1   ! coreshell
+   integer :: win_r_sw_ext = -1, win_r_sw_scat = -1                                ! volcanic_radius
+   integer :: win_r_sw_ascat = -1, win_r_lw_abs = -1
+
 endtype physprop_type
 
 ! This module stores data in an array of physprop_type structures.  The way this data
 ! is accessed outside the module is via a physprop ID, which is an index into the array.
 integer :: numphysprops = 0 ! an incremental total across ALL clim and diag constituents
-type (physprop_type), pointer :: physprop(:)
+type (physprop_type), pointer :: physprop(:) => null()
 
 ! Temporary storage location for filenames in namelist, and construction of dynamic index
 ! to properties.  The unique filenames specified in the namelist are the identifiers of
@@ -223,6 +240,7 @@ subroutine physprop_init()
                                      ! nulls which aren't dealt with by trim()
 
    integer :: ierr ! error codes from mpi
+   integer :: npernode ! ranks sharing a node (for shared-memory report)
 
    !------------------------------------------------------------------------------------
 
@@ -291,7 +309,60 @@ subroutine physprop_init()
       call pio_closefile(nc_id)
 
    end do
+
+   ! report shared-memory savings (collective: every rank calls the helper so the
+   ! lazy node-communicator setup is not entered on masterproc alone)
+   npernode = cam_shmem_npes_per_node()
+   if (masterproc) then
+      write(iulog,*) 'phys_prop: large aerosol-optics tables held in per-node shared memory; ', &
+         npernode-1, ' redundant copies/node avoided'
+   end if
+
 end subroutine physprop_init
+
+!================================================================================================
+
+subroutine physprop_final
+
+   ! Release the per-node shared-memory optics tables (collective over the node
+   ! communicator via MPI_Win_free) and the physprop array spine.  Called on every
+   ! rank from phys_final, after radiation's last use of the tables.  Each
+   ! cam_shmem_free is a no-op for entries whose optics method did not share that
+   ! table (win == -1 on every rank), so the free sequence stays collective-safe.
+
+   integer :: i
+
+   if (.not. associated(physprop)) return
+
+   do i = 1, numphysprops
+      call cam_shmem_free(physprop(i)%extpsw,                 physprop(i)%win_extpsw)
+      call cam_shmem_free(physprop(i)%abspsw,                 physprop(i)%win_abspsw)
+      call cam_shmem_free(physprop(i)%asmpsw,                 physprop(i)%win_asmpsw)
+      call cam_shmem_free(physprop(i)%absplw,                 physprop(i)%win_absplw)
+      call cam_shmem_free(physprop(i)%sw_hygro_ext,           physprop(i)%win_sw_hygro_ext)
+      call cam_shmem_free(physprop(i)%sw_hygro_ssa,           physprop(i)%win_sw_hygro_ssa)
+      call cam_shmem_free(physprop(i)%sw_hygro_asm,           physprop(i)%win_sw_hygro_asm)
+      call cam_shmem_free(physprop(i)%lw_hygro_abs,           physprop(i)%win_lw_hygro_abs)
+      call cam_shmem_free(physprop(i)%sw_hygro_ext_wtp,       physprop(i)%win_sw_hygro_ext_wtp)
+      call cam_shmem_free(physprop(i)%sw_hygro_ssa_wtp,       physprop(i)%win_sw_hygro_ssa_wtp)
+      call cam_shmem_free(physprop(i)%sw_hygro_asm_wtp,       physprop(i)%win_sw_hygro_asm_wtp)
+      call cam_shmem_free(physprop(i)%lw_hygro_abs_wtp,       physprop(i)%win_lw_hygro_abs_wtp)
+      call cam_shmem_free(physprop(i)%sw_hygro_coreshell_ext, physprop(i)%win_cs_ext)
+      call cam_shmem_free(physprop(i)%sw_hygro_coreshell_ssa, physprop(i)%win_cs_ssa)
+      call cam_shmem_free(physprop(i)%sw_hygro_coreshell_asm, physprop(i)%win_cs_asm)
+      call cam_shmem_free(physprop(i)%lw_hygro_coreshell_abs, physprop(i)%win_cs_abs)
+      call cam_shmem_free(physprop(i)%r_sw_ext,               physprop(i)%win_r_sw_ext)
+      call cam_shmem_free(physprop(i)%r_sw_scat,              physprop(i)%win_r_sw_scat)
+      call cam_shmem_free(physprop(i)%r_sw_ascat,             physprop(i)%win_r_sw_ascat)
+      call cam_shmem_free(physprop(i)%r_lw_abs,               physprop(i)%win_r_lw_abs)
+   end do
+
+   deallocate(physprop)
+   nullify(physprop)
+   if (allocated(uniquefilenames)) deallocate(uniquefilenames)
+   numphysprops = 0
+
+end subroutine physprop_final
 
 !================================================================================================
 
@@ -588,10 +659,14 @@ subroutine hygro_optics_init(phys_prop, nc_id)
    real(r8) :: rh ! real rh value on cam rh mesh (indexvalue)
    !------------------------------------------------------------------------------------
 
-   allocate(phys_prop%sw_hygro_ext(nrh,nswbands))
-   allocate(phys_prop%sw_hygro_ssa(nrh,nswbands))
-   allocate(phys_prop%sw_hygro_asm(nrh,nswbands))
+   ! sw hygroscopic-growth tables held one copy per node in shared memory
+   call cam_shmem_alloc_r8_2d(phys_prop%sw_hygro_ext, phys_prop%win_sw_hygro_ext, nrh, nswbands)
+   call cam_shmem_alloc_r8_2d(phys_prop%sw_hygro_ssa, phys_prop%win_sw_hygro_ssa, nrh, nswbands)
+   call cam_shmem_alloc_r8_2d(phys_prop%sw_hygro_asm, phys_prop%win_sw_hygro_asm, nrh, nswbands)
    allocate(phys_prop%lw_abs(nlwbands))
+   call cam_shmem_fence(phys_prop%win_sw_hygro_ext)
+   call cam_shmem_fence(phys_prop%win_sw_hygro_ssa)
+   call cam_shmem_fence(phys_prop%win_sw_hygro_asm)
 
    ierr = pio_inq_dimid(nc_id, 'rh_idx', rh_idx_id)
 
@@ -637,21 +712,28 @@ subroutine hygro_optics_init(phys_prop, nc_id)
 
    ierr = pio_get_var(nc_id, lw_ext_id, phys_prop%lw_abs)
 
-   ! interpolate onto cam's rh mesh
-   do kbnd = 1,nswbands
-      do krh = 1, nrh
-         rh = 1.0_r8 / nrh * (krh - 1)
-         phys_prop%sw_hygro_ext(krh,kbnd) = &
-            exp_interpol( frh, fsw_ext(:,kbnd) / fsw_ext(1,kbnd), rh ) &
-            * fsw_ext(1, kbnd)
-         phys_prop%sw_hygro_ssa(krh,kbnd) = &
-            lin_interpol( frh, fsw_ssa(:,kbnd) / fsw_ssa(1,kbnd), rh ) &
-            * fsw_ssa(1, kbnd)
-         phys_prop%sw_hygro_asm(krh,kbnd) = &
-            lin_interpol( frh, fsw_asm(:,kbnd) / fsw_asm(1,kbnd), rh ) &
-            * fsw_asm(1, kbnd)
+   ! interpolate onto cam's rh mesh (leader fills the node-shared copy)
+   if (cam_shmem_is_leader()) then
+      do kbnd = 1,nswbands
+         do krh = 1, nrh
+            rh = 1.0_r8 / nrh * (krh - 1)
+            phys_prop%sw_hygro_ext(krh,kbnd) = &
+               exp_interpol( frh, fsw_ext(:,kbnd) / fsw_ext(1,kbnd), rh ) &
+               * fsw_ext(1, kbnd)
+            phys_prop%sw_hygro_ssa(krh,kbnd) = &
+               lin_interpol( frh, fsw_ssa(:,kbnd) / fsw_ssa(1,kbnd), rh ) &
+               * fsw_ssa(1, kbnd)
+            phys_prop%sw_hygro_asm(krh,kbnd) = &
+               lin_interpol( frh, fsw_asm(:,kbnd) / fsw_asm(1,kbnd), rh ) &
+               * fsw_asm(1, kbnd)
+         enddo
       enddo
-   enddo
+   end if
+
+   ! publish the filled tables to every rank on the node
+   call cam_shmem_fence(phys_prop%win_sw_hygro_ext)
+   call cam_shmem_fence(phys_prop%win_sw_hygro_ssa)
+   call cam_shmem_fence(phys_prop%win_sw_hygro_asm)
 
    deallocate (fsw_ext, fsw_asm, fsw_ssa, frh)
 
@@ -765,16 +847,22 @@ subroutine volcanic_radius_optics_init(phys_prop, nc_id)
    integer :: sw_ext_id, sw_scat_id, sw_ascat_id, lw_abs_id
    integer :: swbands, nbnd, n_mu_samples
    integer :: ierr ! error flag
+   real(r8), allocatable :: tmp2(:,:) ! temp PIO read buffer (shared tables)
    !------------------------------------------------------------------------------------
 
    ierr = pio_inq_dimid(nc_id, 'mu_samples', mu_did)
    ierr = pio_inq_dimlen(nc_id, mu_did, n_mu_samples)
 
-   allocate (phys_prop%r_sw_ext(nswbands,n_mu_samples))
-   allocate (phys_prop%r_sw_scat(nswbands,n_mu_samples))
-   allocate (phys_prop%r_sw_ascat(nswbands,n_mu_samples))
-   allocate (phys_prop%r_lw_abs(nlwbands,n_mu_samples))
+   ! radius-dependent tables held one copy per node in shared memory
+   call cam_shmem_alloc_r8_2d(phys_prop%r_sw_ext,   phys_prop%win_r_sw_ext,   nswbands, n_mu_samples)
+   call cam_shmem_alloc_r8_2d(phys_prop%r_sw_scat,  phys_prop%win_r_sw_scat,  nswbands, n_mu_samples)
+   call cam_shmem_alloc_r8_2d(phys_prop%r_sw_ascat, phys_prop%win_r_sw_ascat, nswbands, n_mu_samples)
+   call cam_shmem_alloc_r8_2d(phys_prop%r_lw_abs,   phys_prop%win_r_lw_abs,   nlwbands, n_mu_samples)
    allocate (phys_prop%mu(n_mu_samples))
+   call cam_shmem_fence(phys_prop%win_r_sw_ext)
+   call cam_shmem_fence(phys_prop%win_r_sw_scat)
+   call cam_shmem_fence(phys_prop%win_r_sw_ascat)
+   call cam_shmem_fence(phys_prop%win_r_lw_abs)
 
    ierr = pio_inq_dimid(nc_id, 'lw_band', lw_band_id)
 
@@ -797,11 +885,26 @@ subroutine volcanic_radius_optics_init(phys_prop, nc_id)
    ierr = pio_inq_varid(nc_id, 'babs_lw', lw_abs_id)
    ierr = pio_inq_varid(nc_id, 'mu_samples', mu_id)
 
-   ierr = pio_get_var(nc_id, sw_ext_id, phys_prop%r_sw_ext)
-   ierr = pio_get_var(nc_id, sw_scat_id, phys_prop%r_sw_scat)
-   ierr = pio_get_var(nc_id, sw_ascat_id, phys_prop%r_sw_ascat)
-   ierr = pio_get_var(nc_id, lw_abs_id, phys_prop%r_lw_abs)
+   ! all ranks read (PIO is collective); leader copies into the shared windows
+   allocate(tmp2(nswbands,n_mu_samples))
+   ierr = pio_get_var(nc_id, sw_ext_id, tmp2)
+   if (cam_shmem_is_leader()) phys_prop%r_sw_ext = tmp2
+   ierr = pio_get_var(nc_id, sw_scat_id, tmp2)
+   if (cam_shmem_is_leader()) phys_prop%r_sw_scat = tmp2
+   ierr = pio_get_var(nc_id, sw_ascat_id, tmp2)
+   if (cam_shmem_is_leader()) phys_prop%r_sw_ascat = tmp2
+   deallocate(tmp2)
+   allocate(tmp2(nlwbands,n_mu_samples))
+   ierr = pio_get_var(nc_id, lw_abs_id, tmp2)
+   if (cam_shmem_is_leader()) phys_prop%r_lw_abs = tmp2
+   deallocate(tmp2)
    ierr = pio_get_var(nc_id, mu_id, phys_prop%mu)
+
+   ! publish the filled tables to every rank on the node
+   call cam_shmem_fence(phys_prop%win_r_sw_ext)
+   call cam_shmem_fence(phys_prop%win_r_sw_scat)
+   call cam_shmem_fence(phys_prop%win_r_sw_ascat)
+   call cam_shmem_fence(phys_prop%win_r_lw_abs)
 
    ! read bulk aero props
    call bulk_props_init(phys_prop, nc_id)
@@ -888,10 +991,15 @@ subroutine hygroscopic_optics_init(phys_prop, nc_id)
    character(len=*), parameter :: sub = 'hygroscopic_optics_init'
    !------------------------------------------------------------------------------------
 
-   allocate(phys_prop%sw_hygro_ext(nrh,nswbands))
-   allocate(phys_prop%sw_hygro_ssa(nrh,nswbands))
-   allocate(phys_prop%sw_hygro_asm(nrh,nswbands))
-   allocate(phys_prop%lw_hygro_abs(nrh,nlwbands))
+   ! hygroscopic-growth tables held one copy per node in shared memory
+   call cam_shmem_alloc_r8_2d(phys_prop%sw_hygro_ext, phys_prop%win_sw_hygro_ext, nrh, nswbands)
+   call cam_shmem_alloc_r8_2d(phys_prop%sw_hygro_ssa, phys_prop%win_sw_hygro_ssa, nrh, nswbands)
+   call cam_shmem_alloc_r8_2d(phys_prop%sw_hygro_asm, phys_prop%win_sw_hygro_asm, nrh, nswbands)
+   call cam_shmem_alloc_r8_2d(phys_prop%lw_hygro_abs, phys_prop%win_lw_hygro_abs, nrh, nlwbands)
+   call cam_shmem_fence(phys_prop%win_sw_hygro_ext)
+   call cam_shmem_fence(phys_prop%win_sw_hygro_ssa)
+   call cam_shmem_fence(phys_prop%win_sw_hygro_asm)
+   call cam_shmem_fence(phys_prop%win_lw_hygro_abs)
 
    ierr = pio_inq_dimid(nc_id, 'rh_idx', rh_idx_id)
    ierr = pio_inq_dimlen(nc_id, rh_idx_id, nfilerh)
@@ -925,29 +1033,37 @@ subroutine hygroscopic_optics_init(phys_prop, nc_id)
    ierr = pio_get_var(nc_id, sw_asm_id, fsw_asm)
    ierr = pio_get_var(nc_id, lw_ext_id, flw_abs)
 
-   ! interpolate onto cam's rh mesh
-   do kbnd = 1,nswbands
-      do krh = 1, nrh
-         rh = 1.0_r8 / nrh * (krh - 1)
-         phys_prop%sw_hygro_ext(krh,kbnd) = &
-            exp_interpol( frh, fsw_ext(:,kbnd) / fsw_ext(1,kbnd), rh ) &
-            * fsw_ext(1, kbnd)
-         phys_prop%sw_hygro_ssa(krh,kbnd) = &
-            lin_interpol( frh, fsw_ssa(:,kbnd) / fsw_ssa(1,kbnd), rh ) &
-            * fsw_ssa(1, kbnd)
-         phys_prop%sw_hygro_asm(krh,kbnd) = &
-            lin_interpol( frh, fsw_asm(:,kbnd) / fsw_asm(1,kbnd), rh ) &
-            * fsw_asm(1, kbnd)
+   ! interpolate onto cam's rh mesh (leader fills the node-shared copy)
+   if (cam_shmem_is_leader()) then
+      do kbnd = 1,nswbands
+         do krh = 1, nrh
+            rh = 1.0_r8 / nrh * (krh - 1)
+            phys_prop%sw_hygro_ext(krh,kbnd) = &
+               exp_interpol( frh, fsw_ext(:,kbnd) / fsw_ext(1,kbnd), rh ) &
+               * fsw_ext(1, kbnd)
+            phys_prop%sw_hygro_ssa(krh,kbnd) = &
+               lin_interpol( frh, fsw_ssa(:,kbnd) / fsw_ssa(1,kbnd), rh ) &
+               * fsw_ssa(1, kbnd)
+            phys_prop%sw_hygro_asm(krh,kbnd) = &
+               lin_interpol( frh, fsw_asm(:,kbnd) / fsw_asm(1,kbnd), rh ) &
+               * fsw_asm(1, kbnd)
+         enddo
       enddo
-   enddo
-   do kbnd = 1,nlwbands
-      do krh = 1, nrh
-         rh = 1.0_r8 / nrh * (krh - 1)
-         phys_prop%lw_hygro_abs(krh,kbnd) = &
-            exp_interpol( frh, flw_abs(:,kbnd) / flw_abs(1,kbnd), rh ) &
-            * flw_abs(1, kbnd)
+      do kbnd = 1,nlwbands
+         do krh = 1, nrh
+            rh = 1.0_r8 / nrh * (krh - 1)
+            phys_prop%lw_hygro_abs(krh,kbnd) = &
+               exp_interpol( frh, flw_abs(:,kbnd) / flw_abs(1,kbnd), rh ) &
+               * flw_abs(1, kbnd)
+         enddo
       enddo
-   enddo
+   end if
+
+   ! publish the filled tables to every rank on the node
+   call cam_shmem_fence(phys_prop%win_sw_hygro_ext)
+   call cam_shmem_fence(phys_prop%win_sw_hygro_ssa)
+   call cam_shmem_fence(phys_prop%win_sw_hygro_asm)
+   call cam_shmem_fence(phys_prop%win_lw_hygro_abs)
 
    deallocate (fsw_ext, fsw_asm, fsw_ssa, flw_abs, frh)
 
@@ -1141,32 +1257,38 @@ subroutine modal_optics_init(props, ncid)
    ierr = pio_inq_dimid(ncid, 'refindex_im', did)
    ierr = pio_inq_dimlen(ncid, did, props%prefi)
 
-   ! Allocate arrays
+   ! Allocate arrays.  The four large specific-optics tables are held one copy
+   ! per node in shared memory; the small refractive-index tables stay per-rank.
+   call cam_shmem_alloc_r8_4d(props%extpsw, props%win_extpsw, props%ncoef,props%prefr,props%prefi,nswbands)
+   call cam_shmem_alloc_r8_4d(props%abspsw, props%win_abspsw, props%ncoef,props%prefr,props%prefi,nswbands)
+   call cam_shmem_alloc_r8_4d(props%asmpsw, props%win_asmpsw, props%ncoef,props%prefr,props%prefi,nswbands)
+   call cam_shmem_alloc_r8_4d(props%absplw, props%win_absplw, props%ncoef,props%prefr,props%prefi,nlwbands)
    allocate( &
-      props%extpsw(props%ncoef,props%prefr,props%prefi,nswbands), &
-      props%abspsw(props%ncoef,props%prefr,props%prefi,nswbands), &
-      props%asmpsw(props%ncoef,props%prefr,props%prefi,nswbands), &
-      props%absplw(props%ncoef,props%prefr,props%prefi,nlwbands), &
       props%refrtabsw(props%prefr,nswbands), &
       props%refitabsw(props%prefi,nswbands), &
       props%refrtablw(props%prefr,nlwbands), &
       props%refitablw(props%prefi,nlwbands)  )
 
+   ! open the window epoch; the node leader fills the shared tables below
+   call cam_shmem_fence(props%win_extpsw)
+   call cam_shmem_fence(props%win_abspsw)
+   call cam_shmem_fence(props%win_asmpsw)
+   call cam_shmem_fence(props%win_absplw)
 
    ! allocate temp to remove the mode dimension from the sw variables
    allocate(rval(props%ncoef,props%prefr,props%prefi,1,nswbands))
 
    ierr = pio_inq_varid(ncid, 'extpsw', vid)
    ierr = pio_get_var(ncid, vid, rval)
-   props%extpsw = rval(:,:,:,1,:)
+   if (cam_shmem_is_leader()) props%extpsw = rval(:,:,:,1,:)
 
    ierr = pio_inq_varid(ncid, 'abspsw', vid)
    ierr = pio_get_var(ncid, vid, rval)
-   props%abspsw = rval(:,:,:,1,:)
+   if (cam_shmem_is_leader()) props%abspsw = rval(:,:,:,1,:)
 
    ierr = pio_inq_varid(ncid, 'asmpsw', vid)
    ierr = pio_get_var(ncid, vid, rval)
-   props%asmpsw = rval(:,:,:,1,:)
+   if (cam_shmem_is_leader()) props%asmpsw = rval(:,:,:,1,:)
 
    deallocate(rval)
 
@@ -1175,9 +1297,15 @@ subroutine modal_optics_init(props, ncid)
 
    ierr = pio_inq_varid(ncid, 'absplw', vid)
    ierr = pio_get_var(ncid, vid, rval)
-   props%absplw = rval(:,:,:,1,:)
+   if (cam_shmem_is_leader()) props%absplw = rval(:,:,:,1,:)
 
    deallocate(rval)
+
+   ! publish the filled tables to every rank on the node
+   call cam_shmem_fence(props%win_extpsw)
+   call cam_shmem_fence(props%win_abspsw)
+   call cam_shmem_fence(props%win_asmpsw)
+   call cam_shmem_fence(props%win_absplw)
 
    ierr = pio_inq_varid(ncid, 'refindex_real_sw', vid)
    ierr = pio_get_var(ncid, vid, props%refrtabsw)
@@ -1550,6 +1678,7 @@ subroutine hygroscopic_coreshell_optics_init(phys_prop, nc_id)
    integer  :: nrh ! number of rh values in file
    integer  :: nfrac  ! number of core/shell ratio values in file
    integer  :: nbcdust,nkap
+   real(r8), allocatable :: tmp5(:,:,:,:,:) ! temp PIO read buffer (shared tables)
 
    real(r8) :: rh ! real rh value on cam rh mesh (indexvalue)
    character(len=*), parameter :: sub = 'hygroscopic_coreshell_optics_init'
@@ -1582,18 +1711,23 @@ subroutine hygroscopic_coreshell_optics_init(phys_prop, nc_id)
    ierr = pio_inq_dimid(nc_id, 'rh_idx', rh_id)
    ierr = pio_inq_dimlen(nc_id, rh_id, phys_prop%nrelh)
 
-   allocate(phys_prop%sw_hygro_coreshell_ext(phys_prop%nrelh,nswbands, &
-                                             phys_prop%nfrac,phys_prop%nbcdust,phys_prop%nkap))
-   allocate(phys_prop%sw_hygro_coreshell_ssa(phys_prop%nrelh,nswbands, &
-                                             phys_prop%nfrac,phys_prop%nbcdust,phys_prop%nkap))
-   allocate(phys_prop%sw_hygro_coreshell_asm(phys_prop%nrelh,nswbands, &
-                                             phys_prop%nfrac,phys_prop%nbcdust,phys_prop%nkap))
-   allocate(phys_prop%lw_hygro_coreshell_abs(phys_prop%nrelh,nlwbands, &
-                                             phys_prop%nfrac,phys_prop%nbcdust,phys_prop%nkap))
+   ! large coreshell tables held one copy per node in shared memory
+   call cam_shmem_alloc_r8_5d(phys_prop%sw_hygro_coreshell_ext, phys_prop%win_cs_ext, &
+        phys_prop%nrelh,nswbands,phys_prop%nfrac,phys_prop%nbcdust,phys_prop%nkap)
+   call cam_shmem_alloc_r8_5d(phys_prop%sw_hygro_coreshell_ssa, phys_prop%win_cs_ssa, &
+        phys_prop%nrelh,nswbands,phys_prop%nfrac,phys_prop%nbcdust,phys_prop%nkap)
+   call cam_shmem_alloc_r8_5d(phys_prop%sw_hygro_coreshell_asm, phys_prop%win_cs_asm, &
+        phys_prop%nrelh,nswbands,phys_prop%nfrac,phys_prop%nbcdust,phys_prop%nkap)
+   call cam_shmem_alloc_r8_5d(phys_prop%lw_hygro_coreshell_abs, phys_prop%win_cs_abs, &
+        phys_prop%nrelh,nlwbands,phys_prop%nfrac,phys_prop%nbcdust,phys_prop%nkap)
    allocate(phys_prop%corefrac(phys_prop%nfrac))
    allocate(phys_prop%bcdust(phys_prop%nbcdust))
    allocate(phys_prop%kap(phys_prop%nkap))
    allocate(phys_prop%relh(phys_prop%nrelh))
+   call cam_shmem_fence(phys_prop%win_cs_ext)
+   call cam_shmem_fence(phys_prop%win_cs_ssa)
+   call cam_shmem_fence(phys_prop%win_cs_asm)
+   call cam_shmem_fence(phys_prop%win_cs_abs)
 
    ierr = pio_inq_varid(nc_id, 'rh', rh_id)
    ierr = pio_inq_varid(nc_id, 'coreshellratio', coreshell_id)  ! modified by Pengfei for coreshell
@@ -1605,14 +1739,29 @@ subroutine hygroscopic_coreshell_optics_init(phys_prop, nc_id)
    ierr = pio_inq_varid(nc_id, 'asm_sw_coreshell', sw_asm_id)
    ierr = pio_inq_varid(nc_id, 'abs_lw_coreshell', lw_abs_id)
 
-   ierr = pio_get_var(nc_id, sw_ext_id, phys_prop%sw_hygro_coreshell_ext)
-   ierr = pio_get_var(nc_id, sw_ssa_id, phys_prop%sw_hygro_coreshell_ssa)
-   ierr = pio_get_var(nc_id, sw_asm_id, phys_prop%sw_hygro_coreshell_asm)
-   ierr = pio_get_var(nc_id, lw_abs_id, phys_prop%lw_hygro_coreshell_abs)
+   ! all ranks read (PIO is collective); leader copies into the shared windows
+   allocate(tmp5(phys_prop%nrelh,nswbands,phys_prop%nfrac,phys_prop%nbcdust,phys_prop%nkap))
+   ierr = pio_get_var(nc_id, sw_ext_id, tmp5)
+   if (cam_shmem_is_leader()) phys_prop%sw_hygro_coreshell_ext = tmp5
+   ierr = pio_get_var(nc_id, sw_ssa_id, tmp5)
+   if (cam_shmem_is_leader()) phys_prop%sw_hygro_coreshell_ssa = tmp5
+   ierr = pio_get_var(nc_id, sw_asm_id, tmp5)
+   if (cam_shmem_is_leader()) phys_prop%sw_hygro_coreshell_asm = tmp5
+   deallocate(tmp5)
+   allocate(tmp5(phys_prop%nrelh,nlwbands,phys_prop%nfrac,phys_prop%nbcdust,phys_prop%nkap))
+   ierr = pio_get_var(nc_id, lw_abs_id, tmp5)
+   if (cam_shmem_is_leader()) phys_prop%lw_hygro_coreshell_abs = tmp5
+   deallocate(tmp5)
    ierr = pio_get_var(nc_id, kap_id, phys_prop%kap)
    ierr = pio_get_var(nc_id, rh_id, phys_prop%relh)
    ierr = pio_get_var(nc_id, dstbc_id, phys_prop%bcdust)
    ierr = pio_get_var(nc_id, coreshell_id, phys_prop%corefrac)
+
+   ! publish the filled tables to every rank on the node
+   call cam_shmem_fence(phys_prop%win_cs_ext)
+   call cam_shmem_fence(phys_prop%win_cs_ssa)
+   call cam_shmem_fence(phys_prop%win_cs_asm)
+   call cam_shmem_fence(phys_prop%win_cs_abs)
 
    ! read refractive index data if available
    call refindex_aer_init(phys_prop, nc_id)
@@ -1634,6 +1783,7 @@ subroutine hygroscopic_wtp_optics_init(phys_prop, nc_id)
    integer :: lw_band_id, sw_band_id, did
    integer :: sw_ext_wtp_id, sw_ssa_wtp_id, sw_asm_wtp_id, lw_ext_wtp_id, wtp_id
    integer :: nbnd, swbands
+   real(r8), allocatable :: tmp2(:,:) ! temp PIO read buffer (shared tables)
 
    real(r8) :: rh ! real rh value on cam rh mesh (indexvalue)
    character(len=*), parameter :: sub = 'hygroscopic_wtp_optics_init'
@@ -1645,11 +1795,16 @@ subroutine hygroscopic_wtp_optics_init(phys_prop, nc_id)
    ierr = pio_inq_dimlen(nc_id, did, phys_prop%nwtp)
 
 
-   allocate(phys_prop%sw_hygro_ext_wtp(phys_prop%nwtp,nswbands))
-   allocate(phys_prop%sw_hygro_ssa_wtp(phys_prop%nwtp,nswbands))
-   allocate(phys_prop%sw_hygro_asm_wtp(phys_prop%nwtp,nswbands))
-   allocate(phys_prop%lw_hygro_abs_wtp(phys_prop%nwtp,nlwbands))
+   ! large weight-percent tables held one copy per node in shared memory
+   call cam_shmem_alloc_r8_2d(phys_prop%sw_hygro_ext_wtp, phys_prop%win_sw_hygro_ext_wtp, phys_prop%nwtp, nswbands)
+   call cam_shmem_alloc_r8_2d(phys_prop%sw_hygro_ssa_wtp, phys_prop%win_sw_hygro_ssa_wtp, phys_prop%nwtp, nswbands)
+   call cam_shmem_alloc_r8_2d(phys_prop%sw_hygro_asm_wtp, phys_prop%win_sw_hygro_asm_wtp, phys_prop%nwtp, nswbands)
+   call cam_shmem_alloc_r8_2d(phys_prop%lw_hygro_abs_wtp, phys_prop%win_lw_hygro_abs_wtp, phys_prop%nwtp, nlwbands)
    allocate(phys_prop%wgtpct(phys_prop%nwtp))
+   call cam_shmem_fence(phys_prop%win_sw_hygro_ext_wtp)
+   call cam_shmem_fence(phys_prop%win_sw_hygro_ssa_wtp)
+   call cam_shmem_fence(phys_prop%win_sw_hygro_asm_wtp)
+   call cam_shmem_fence(phys_prop%win_lw_hygro_abs_wtp)
 
    ierr = pio_inq_dimid(nc_id, 'lw_band', lw_band_id)
    ierr = pio_inq_dimlen(nc_id, lw_band_id, nbnd)
@@ -1667,11 +1822,26 @@ subroutine hygroscopic_wtp_optics_init(phys_prop, nc_id)
    ierr = pio_inq_varid(nc_id, 'abs_lw_wtp', lw_ext_wtp_id)
    ierr = pio_inq_varid(nc_id, 'wgtpct', wtp_id)
 
-   ierr = pio_get_var(nc_id, sw_ext_wtp_id, phys_prop%sw_hygro_ext_wtp)
-   ierr = pio_get_var(nc_id, sw_ssa_wtp_id, phys_prop%sw_hygro_ssa_wtp)
-   ierr = pio_get_var(nc_id, sw_asm_wtp_id, phys_prop%sw_hygro_asm_wtp)
-   ierr = pio_get_var(nc_id, lw_ext_wtp_id, phys_prop%lw_hygro_abs_wtp)
+   ! all ranks read (PIO is collective); leader copies into the shared windows
+   allocate(tmp2(phys_prop%nwtp,nswbands))
+   ierr = pio_get_var(nc_id, sw_ext_wtp_id, tmp2)
+   if (cam_shmem_is_leader()) phys_prop%sw_hygro_ext_wtp = tmp2
+   ierr = pio_get_var(nc_id, sw_ssa_wtp_id, tmp2)
+   if (cam_shmem_is_leader()) phys_prop%sw_hygro_ssa_wtp = tmp2
+   ierr = pio_get_var(nc_id, sw_asm_wtp_id, tmp2)
+   if (cam_shmem_is_leader()) phys_prop%sw_hygro_asm_wtp = tmp2
+   deallocate(tmp2)
+   allocate(tmp2(phys_prop%nwtp,nlwbands))
+   ierr = pio_get_var(nc_id, lw_ext_wtp_id, tmp2)
+   if (cam_shmem_is_leader()) phys_prop%lw_hygro_abs_wtp = tmp2
+   deallocate(tmp2)
    ierr = pio_get_var(nc_id, wtp_id, phys_prop%wgtpct)
+
+   ! publish the filled tables to every rank on the node
+   call cam_shmem_fence(phys_prop%win_sw_hygro_ext_wtp)
+   call cam_shmem_fence(phys_prop%win_sw_hygro_ssa_wtp)
+   call cam_shmem_fence(phys_prop%win_sw_hygro_asm_wtp)
+   call cam_shmem_fence(phys_prop%win_lw_hygro_abs_wtp)
 
    ! read refractive index data if available
    call refindex_aer_init(phys_prop, nc_id)
