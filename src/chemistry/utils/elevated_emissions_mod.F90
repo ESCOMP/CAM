@@ -250,7 +250,6 @@ contains
     character(len=32) :: emis_type = ' '
     character(len=1), parameter :: filelist = ''
     character(len=1), parameter :: datapath = ''
-    logical         , parameter :: rmv_file = .false.
     real(r8) :: xnan
 
     xnan = nan
@@ -349,7 +348,7 @@ contains
                           elev_emis(m)%filename, filelist, datapath, &
                           elev_emis(m)%fields,  &
                           elev_emis(m)%file, &
-                          rmv_file, elev_emis_cycle_yr, &
+                          elev_emis_cycle_yr, &
                           elev_emis_fixed_ymd, elev_emis_fixed_tod, trim(emis_type) )
 
        elev_emis(m)%units = elev_emis(m)%fields(1)%units

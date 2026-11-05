@@ -32,10 +32,10 @@ module edynamo
   real(r8), allocatable, dimension(:,:) :: &
     zigm11,    & ! sigma11*cos(theta0)
     zigmc,     & ! sigmac
-    zigm1,     & ! for Hall conductance diagnostic (folded)
-    azigm1,    & ! for Hall conductance diagnostic (not folded)
-    zigm2,     & ! sigma2
-    azigm2,    & ! for Ped conductance diagnostic (not folded)
+    zigm1,     & ! for Pedersen conductance diagnostic (folded)
+    azigm1,    & ! for Pedersen conductance diagnostic (not folded)
+    zigm2,     & ! for Hall conductance diagnostic
+    azigm2,    & ! for Hall conductance diagnostic (not folded)
     zigm22,    & ! sigma22/cos(theta0)
     rim1,rim2, & ! see description in comment below
     rhs,       & ! right-hand side of PDE
@@ -963,8 +963,8 @@ contains
           call outfld('EDYN_RIM1',rim1(mlon0:omlon1,j),omlon1-mlon0+1,j)
           call outfld('EDYN_RIM2',rim2(mlon0:omlon1,j),omlon1-mlon0+1,j)
        endif
-       call outfld('PED_CONDUCTANCE', zigm2(mlon0:omlon1,j),omlon1-mlon0+1,j)
-       call outfld('HALL_CONDUCTANCE',zigm1(mlon0:omlon1,j),omlon1-mlon0+1,j)
+       call outfld('PED_CONDUCTANCE', zigm1(mlon0:omlon1,j),omlon1-mlon0+1,j)
+       call outfld('HALL_CONDUCTANCE',zigm2(mlon0:omlon1,j),omlon1-mlon0+1,j)
     enddo
 
     if (debug.and.masterproc) then

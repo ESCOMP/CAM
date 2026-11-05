@@ -872,7 +872,7 @@ subroutine dyn_init(dyn_in, dyn_out)
          !
          nu_scale_top(1) = 4.4_r8
          nu_scale_top(2) = 1.3_r8
-         nu_scale_top(3) = 3.9_r8
+         nu_scale_top(3) = 0.39_r8
          ksponge_end = 3
       else if (ptop>1e-1_r8) then
          !

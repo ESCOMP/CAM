@@ -60,8 +60,6 @@ module aircraft_emit
   character(len=256) :: air_datapath=''
   character(len=24)  :: air_type = 'CYCLICAL_LIST' ! 'CYCLICAL_LIST'
 
-  logical            :: rmv_file = .false.
-
   integer :: number_flds
 
   integer :: aircraft_cnt = 0
@@ -247,7 +245,7 @@ contains
        allocate (forcings_air(m)%file%in_pbuf(size(forcings_air(m)%sectors)))
        forcings_air(m)%file%in_pbuf(:) = .true.
        call trcdata_init( forcings_air(m)%sectors, forcings_air(m)%filename, forcings_air(m)%filelist, air_datapath, &
-                          forcings_air(m)%fields, forcings_air(m)%file, rmv_file, 0, 0, 0, air_type)
+                          forcings_air(m)%fields, forcings_air(m)%file, 0, 0, 0, air_type)
         
 
        number_flds = 0

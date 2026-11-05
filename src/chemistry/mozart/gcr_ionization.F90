@@ -26,7 +26,6 @@ module gcr_ionization
   character(len=256) :: filelist = ''
   character(len=256) :: datapath = ''
   character(len=32)  :: datatype = 'SERIAL'
-  logical            :: rmv_file = .false.
   integer            :: cycle_yr  = 0
   integer            :: fixed_ymd = 0
   integer            :: fixed_tod = 0
@@ -127,7 +126,7 @@ contains
     allocate(file%in_pbuf(size(specifier)))
     file%in_pbuf(:) = .false.
     call trcdata_init( specifier, filename, filelist, datapath, fields, file, &
-                       rmv_file, cycle_yr, fixed_ymd, fixed_tod, datatype )
+                       cycle_yr, fixed_ymd, fixed_tod, datatype )
 
   end subroutine gcr_ionization_init
 

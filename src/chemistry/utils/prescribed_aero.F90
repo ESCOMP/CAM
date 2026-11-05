@@ -55,7 +55,6 @@ module prescribed_aero
   character(len=256) :: filelist = ' '
   character(len=256) :: datapath = ' '
   character(len=32)  :: datatype = 'SERIAL'
-  logical            :: rmv_file = .false.
   integer            :: cycle_yr = 0
   integer            :: fixed_ymd = 0
   integer            :: fixed_tod = 0
@@ -137,7 +136,7 @@ contains
       file%in_pbuf(:) = .true.
     endif
     call trcdata_init( specifier, filename, filelist, datapath, fields, file, &
-                       rmv_file, cycle_yr, fixed_ymd, fixed_tod, datatype)
+                       cycle_yr, fixed_ymd, fixed_tod, datatype)
         
     number_flds = 0
     if (associated(fields)) number_flds = size( fields )
@@ -192,7 +191,6 @@ subroutine prescribed_aero_readnl(nlfile)
    character(len=256) :: prescribed_aero_filelist
    character(len=256) :: prescribed_aero_datapath
    character(len=32)  :: prescribed_aero_type
-   logical            :: prescribed_aero_rmfile
    integer            :: prescribed_aero_cycle_yr
    integer            :: prescribed_aero_fixed_ymd
    integer            :: prescribed_aero_fixed_tod
@@ -204,7 +202,6 @@ subroutine prescribed_aero_readnl(nlfile)
       prescribed_aero_filelist,  &
       prescribed_aero_datapath,  &
       prescribed_aero_type,      &
-      prescribed_aero_rmfile,    &
       prescribed_aero_cycle_yr,  &
       prescribed_aero_fixed_ymd, &
       prescribed_aero_fixed_tod      
@@ -216,7 +213,6 @@ subroutine prescribed_aero_readnl(nlfile)
    prescribed_aero_filelist = filelist
    prescribed_aero_datapath = datapath
    prescribed_aero_type     = datatype
-   prescribed_aero_rmfile   = rmv_file
    prescribed_aero_cycle_yr = cycle_yr
    prescribed_aero_fixed_ymd= fixed_ymd
    prescribed_aero_fixed_tod= fixed_tod
@@ -243,7 +239,6 @@ subroutine prescribed_aero_readnl(nlfile)
    call mpibcast(prescribed_aero_filelist, len(prescribed_aero_filelist), mpichar, 0, mpicom)
    call mpibcast(prescribed_aero_datapath, len(prescribed_aero_datapath), mpichar, 0, mpicom)
    call mpibcast(prescribed_aero_type,     len(prescribed_aero_type),     mpichar, 0, mpicom)
-   call mpibcast(prescribed_aero_rmfile,   1, mpilog,  0, mpicom)
    call mpibcast(prescribed_aero_cycle_yr, 1, mpiint,  0, mpicom)
    call mpibcast(prescribed_aero_fixed_ymd,1, mpiint,  0, mpicom)
    call mpibcast(prescribed_aero_fixed_tod,1, mpiint,  0, mpicom)
@@ -255,7 +250,6 @@ subroutine prescribed_aero_readnl(nlfile)
    filelist   = prescribed_aero_filelist
    datapath   = prescribed_aero_datapath
    datatype   = prescribed_aero_type
-   rmv_file   = prescribed_aero_rmfile
    cycle_yr   = prescribed_aero_cycle_yr
    fixed_ymd  = prescribed_aero_fixed_ymd
    fixed_tod  = prescribed_aero_fixed_tod

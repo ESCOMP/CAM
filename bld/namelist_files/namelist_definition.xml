@@ -1134,12 +1134,6 @@ Name of file that contains names of the offline meteorology data files.
 Default: none
 </entry>
 
-<entry id="met_remove_file" type="logical"  category="dyn_fv_off"
-       group="metdata_nl" valid_values="" >
-TRUE =&gt; the offline meteorology file will be removed from local disk when no longer needed.
-Default: FALSE
-</entry>
-
 <entry id="met_rlx_top" type="real"  category="dyn_fv_off"
        group="metdata_nl" valid_values="" >
 (km) top of relaxation region of winds for offline waccm
@@ -3488,6 +3482,56 @@ Convective adjustment timescale in units of (s)
 Default: 3600.0 s
 </entry>
 
+<!-- MCSP (mesoscale coherent structure parameterization) -->
+
+<entry id="mcsp_heat_coeff" type="real" category="conv"
+       group="mcsp_nl" valid_values="" >
+Coefficient scaling the MCSP (mesoscale coherent structure parameterization)
+temperature tendency, which redistributes the deep convective heating vertically.
+MCSP is active only when at least one of mcsp_heat_coeff, mcsp_moisture_coeff,
+mcsp_uwind_coeff or mcsp_vwind_coeff is positive; it requires deep_scheme = ZM.
+Default: 0.0 (off)
+</entry>
+
+<entry id="mcsp_moisture_coeff" type="real" category="conv"
+       group="mcsp_nl" valid_values="" >
+Coefficient scaling the MCSP water vapor tendency, which redistributes the deep
+convective moistening vertically.
+Default: 0.0 (off)
+</entry>
+
+<entry id="mcsp_uwind_coeff" type="real" category="conv"
+       group="mcsp_nl" valid_values="" >
+Coefficient (m/s2) scaling the MCSP zonal wind tendency.
+Default: 0.0 (off)
+</entry>
+
+<entry id="mcsp_vwind_coeff" type="real" category="conv"
+       group="mcsp_nl" valid_values="" >
+Coefficient (m/s2) scaling the MCSP meridional wind tendency.
+Default: 0.0 (off)
+</entry>
+
+<entry id="mcsp_storm_speed_pref" type="real" category="conv"
+       group="mcsp_nl" valid_values="" >
+Reference pressure level (Pa) of the storm-level zonal wind used in the MCSP
+low-level shear calculation.
+Default: 60000.0
+</entry>
+
+<entry id="mcsp_conv_depth_min" type="real" category="conv"
+       group="mcsp_nl" valid_values="" >
+Minimum pressure depth (Pa) of deep convection for MCSP to be active in a column.
+Default: 50000.0
+</entry>
+
+<entry id="mcsp_shear_min" type="real" category="conv"
+       group="mcsp_nl" valid_values="" >
+Minimum magnitude (m/s) of the zonal wind shear between the mcsp_storm_speed_pref
+level and the lowest model layer for MCSP to be active in a column.
+Default: 3.0
+</entry>
+
 <!-- Cloud sedimentation -->
 
 <entry id="cldsed_ice_stokes_fac" type="real" category="cldsed"
@@ -3969,12 +4013,6 @@ CLUBB timestep, set by build-namelist, do not adjust.
 Rain evaporation efficiency factor.
 </entry>
 
-<entry id="clubb_do_icesuper" type="logical"  category="pblrad"
-       group="clubbpbl_diff_nl" valid_values="" >
-Flag to perform a saturation adjustment for ice which will add ice mass if the
-air is supersaturated with respect to ice.
-</entry>
-
 <!-- CLUBB params namelist -->
 
 <entry id="clubb_beta" type="real" category="pblrad"
@@ -4204,11 +4242,6 @@ in the CLUBB parameterization in units of (K).
        group="clubb_params_nl" valid_values="" >
 Apply adjustments to dry static energy so that CLUBB conserves
 energy.
-</entry>
-
-<entry id="clubb_do_liqsupersat" type="logical"  category="conv"
-       group="clubb_params_nl" valid_values="" >
-Apply liquid supersaturation adjustment code
 </entry>
 
 <entry id="clubb_gamma_coef" type="real" category="pblrad"
@@ -6186,7 +6219,7 @@ Default:
 </entry>
 
 <entry id="cam_take_snapshot_before" type="char*32"  category="diagnostics"
-       group="phys_ctl_nl" valid_values="pumas_tend,chem_emissions,aoa_tracers_timestep_tend,co2_cycle_set_ptend,chem_timestep_tend,orographic_form_drag_stress,vertical_diffusion_section,aero_model_drydep,gw_tend,qbo_relax,iondrag_calc_section,physics_dme_adjust,physics_dme_adjust,dadadj_tend,convect_deep_tend,convect_shallow_tend,convect_diagnostics_calc,macrop_driver_tend,clubb_tend_cam,,microp_aero,microp_driver_tend_subcol,aero_model_wetdep,radiation_tend,held_suarez_tend,kessler_tend,thatcher_jablonowski_precip_tend,rk_stratiform_tend,rayleigh_friction_tend,user_set" >
+       group="phys_ctl_nl" valid_values="pumas_tend,chem_emissions,aoa_tracers_timestep_tend,co2_cycle_set_ptend,chem_timestep_tend,orographic_form_drag_stress,vertical_diffusion_section,aero_model_drydep,gw_tend,qbo_relax,iondrag_calc_section,physics_dme_adjust,physics_dme_adjust,dadadj_tend,convect_deep_tend,convect_shallow_tend,convect_diagnostics_calc,macrop_driver_tend,clubb_tend_cam,,microp_aero,microp_driver_tend_subcol,aero_model_wetdep,radiation_tend,held_suarez_tend,kessler_tend,thatcher_jablonowski_precip_tend,rk_stratiform_tend,rayleigh_friction_tend,mcsp_cam_tend,user_set" >
 Name of parameterization to take snapshot before running
 user_set is used when a user inserts a call to cam_snapshot_all_outfld
   using cam_snapshot_before_num as the first argument.
@@ -6194,7 +6227,7 @@ Default: Unused
 </entry>
 
 <entry id="cam_take_snapshot_after" type="char*32"  category="diagnostics"
-       group="phys_ctl_nl" valid_values="pumas_tend,chem_emissions,aoa_tracers_timestep_tend,co2_cycle_set_ptend,chem_timestep_tend,orographic_form_drag_stress,vertical_diffusion_section,aero_model_drydep,gw_tend,qbo_relax,iondrag_calc_section,physics_dme_adjust,physics_dme_adjust,dadadj_tend,convect_deep_tend,convect_shallow_tend,convect_diagnostics_calc,macrop_driver_tend,clubb_tend_cam,,microp_aero,microp_driver_tend_subcol,aero_model_wetdep,radiation_tend,held_suarez_tend,kessler_tend,thatcher_jablonowski_precip_tend,rk_stratiform_tend,rayleigh_friction_tend,user_set" >
+       group="phys_ctl_nl" valid_values="pumas_tend,chem_emissions,aoa_tracers_timestep_tend,co2_cycle_set_ptend,chem_timestep_tend,orographic_form_drag_stress,vertical_diffusion_section,aero_model_drydep,gw_tend,qbo_relax,iondrag_calc_section,physics_dme_adjust,physics_dme_adjust,dadadj_tend,convect_deep_tend,convect_shallow_tend,convect_diagnostics_calc,macrop_driver_tend,clubb_tend_cam,,microp_aero,microp_driver_tend_subcol,aero_model_wetdep,radiation_tend,held_suarez_tend,kessler_tend,thatcher_jablonowski_precip_tend,rk_stratiform_tend,rayleigh_friction_tend,mcsp_cam_tend,user_set" >
 Name of parameterization to take snapshot after running
 user_set is used when a user inserts a call to cam_snapshot_all_outfld
   using cam_snapshot_after_num as the first argument.
@@ -7474,12 +7507,6 @@ by {{ hilight }}prescribed_aero_datapath{{ closehilight }}.
 Default: set by build-namelist.
 </entry>
 
-<entry id="prescribed_aero_rmfile" type="logical" category="cam_chem"
-       group="prescribed_aero_nl" valid_values="" >
-Remove the file containing prescribed aerosol concentrations from local disk when no longer needed.
-Default: FALSE
-</entry>
-
 <entry id="prescribed_aero_specifier" type="char*32(50)" category="cam_chem"
        group="prescribed_aero_nl" valid_values="" >
 A list of variable names of the concentration fields in the prescribed aerosol datasets
@@ -7544,12 +7571,6 @@ by {{ hilight }}aerodep_flx_datapath{{ closehilight }}.
 Default: set by build-namelist.
 </entry>
 
-<entry id="aerodep_flx_rmfile" type="logical" category="cam_chem"
-       group="aerodep_flx_nl" valid_values="" >
-Remove the file containing prescribed aerosol deposition fluxes from local disk when no longer needed.
-Default: FALSE
-</entry>
-
 <entry id="aerodep_flx_specifier" type="char*32(22)" category="cam_chem"
        group="aerodep_flx_nl" valid_values="" >
 Names of variables containing aerosol data in the prescribed aerosol datasets.
@@ -7606,12 +7627,6 @@ Filename of file that contains a sequence of filenames for prescribed
 GHGs.  The filenames in this file are relative to the directory specified
 by {{ hilight }}prescribed_ghg_datapath{{ closehilight }}.
 Default: set by build-namelist.
-</entry>
-
-<entry id="prescribed_ghg_rmfile" type="logical" category="cam_chem"
-       group="prescribed_ghg_nl" valid_values="" >
-Remove the file containing prescribed green house gas concentrations from local disk when no longer needed.
-Default: FALSE
 </entry>
 
 <entry id="prescribed_ghg_specifier" type="char*16(100)" category="cam_chem"
@@ -7678,12 +7693,6 @@ Name of variable containing ozone data in the prescribed ozone datasets.
 Default: 'ozone'
 </entry>
 
-<entry id="prescribed_ozone_rmfile" type="logical" category="cam_chem"
-       group="prescribed_ozone_nl" valid_values="" >
-Remove the file containing prescribed ozone concentrations from local disk when no longer needed.
-Default: FALSE
-</entry>
-
 <entry id="prescribed_ozone_type" type="char*32" category="cam_chem"
        group="prescribed_ozone_nl" valid_values="CYCLICAL,SERIAL,INTERP_MISSING_MONTHS,FIXED" >
 Type of time interpolation for data in prescribed_ozone files.
@@ -7740,12 +7749,6 @@ Default: set by build-namelist.
        group="prescribed_volcaero_nl" valid_values="" >
 Name of variable containing volcaero data in the prescribed volcaero datasets.
 Default: 'MMRVOLC'
-</entry>
-
-<entry id="prescribed_volcaero_rmfile" type="logical" category="cam_chem"
-       group="prescribed_volcaero_nl" valid_values="" >
-Remove the file containing prescribed volcanic aerosol concentrations from local disk when no longer needed.
-Default: FALSE
 </entry>
 
 <entry id="prescribed_volcaero_type" type="char*32" category="cam_chem"
@@ -7805,12 +7808,6 @@ Default: set by build-namelist.
        group="prescribed_strataero_nl" valid_values="" >
 Name of variable containing prescribed stratospheric aerosol specifiers
 Default: set by the CAM program
-</entry>
-
-<entry id="prescribed_strataero_rmfile" type="logical" category="cam_chem"
-       group="prescribed_strataero_nl" valid_values="" >
-Remove the file containing prescribed volcanic aerosol concentrations from local disk when no longer needed.
-Default: FALSE
 </entry>
 
 <entry id="prescribed_strataero_type" type="char*32" category="cam_chem"
@@ -7988,12 +7985,6 @@ Name of variable containing sulfate data in the prescribed sulfate datasets.
 Default: 'SULFATE'
 </entry>
 
-<entry id="sulf_rmfile" type="logical" category="cam_chem"
-       group="sulf_nl" valid_values="" >
-Remove the file containing prescribed sulfate concentrations from local disk when no longer needed.
-Default: FALSE
-</entry>
-
 <entry id="sulf_type" type="char*32" category="cam_chem"
        group="sulf_nl" valid_values="CYCLICAL,SERIAL,INTERP_MISSING_MONTHS,FIXED" >
 Type of time interpolation for data in prescribed sulfate files.
@@ -8158,12 +8149,6 @@ by {{ hilight }}tracer_cnst_datapath{{ closehilight }}.
 Default: set by build-namelist.
 </entry>
 
-<entry id="tracer_cnst_rmfile" type="logical" category="cam_chem"
-       group="chem_inparm" valid_values="" >
-Remove the file containing prescribed chemical constituents from local disk when no longer needed.
-Default: FALSE
-</entry>
-
 <entry id="tracer_cnst_specifier" type="char*256(100)" category="cam_chem"
        group="chem_inparm" valid_values="" >
 List of prescribed chemical constituents.
@@ -8219,12 +8204,6 @@ Filename of file that contains a sequence of datasets for the prescribed chemica
 The filenames in this file are relative to the directory specified
 by {{ hilight }}tracer_srcs_datapath{{ closehilight }}.
 Default: set by build-namelist.
-</entry>
-
-<entry id="tracer_srcs_rmfile" type="logical" category="cam_chem"
-       group="chem_inparm" valid_values="" >
-Remove the file containing prescribed chemical sources from local disk when no longer needed.
-Default: FALSE
 </entry>
 
 <entry id="tracer_srcs_specifier" type="char*256(100)" category="cam_chem"
@@ -8538,12 +8517,6 @@ A file that contains a sequence of filenames for prescribed waccm forcing data.
 The filenames in this file are relative to the directory specified
 by {{ hilight }}waccm_forcing_datapath{{ closehilight }}.
 Default: set by build-namelist.
-</entry>
-
-<entry id="waccm_forcing_rmfile" type="logical" category="waccm_sc"
-       group="waccm_forcing_nl" valid_values="" >
-Remove the file containing prescribed waccm forcing data from local disk when no longer needed.
-Default: FALSE
 </entry>
 
 <entry id="waccm_forcing_specifier" type="char*16(100)" category="waccm_sc"

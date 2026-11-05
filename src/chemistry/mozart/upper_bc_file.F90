@@ -119,7 +119,7 @@ contains
     if (ierr /= 0) call endrun(prefix//'allocate error : file%in_pbuf')
     file%in_pbuf(:) = .false.
 
-    call trcdata_init( flds_list, ubc_file_path, ' ', ' ', fields, file, .false., &
+    call trcdata_init( flds_list, ubc_file_path, ' ', ' ', fields, file, &
          ubc_file_cycle_yr, ubc_file_fixed_ymd, ubc_file_fixed_tod, ubc_file_input_type)
 
     if (do_molec_diff) then
