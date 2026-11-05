@@ -112,8 +112,8 @@ module cam_shmem_mod
 #endif
 
    ! Namelist switch (cam_shmem_nl): .true. disables node-shared memory, so every
-   ! rank holds private copies.  Answers must not change; the SHM system test
-   ! compares a run with this set against a default run.
+   ! rank holds private copies.  Answers must not change.  A fail-safe only;
+   ! not written to atm_in unless set in user_nl_cam.
    logical, save :: cam_shmem_force_private = .false.
 
 contains
