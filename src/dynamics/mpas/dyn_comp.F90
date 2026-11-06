@@ -28,7 +28,7 @@ use ncdio_atm,          only: infld
 use pio,                only: file_desc_t
 use cam_pio_utils,      only: clean_iodesc_list
 
-use time_manager,       only: get_start_date, get_stop_date, get_run_duration, &
+use time_manager,       only: get_curr_date, get_stop_date, &
                               timemgr_get_calendar_cf, get_step_size
 
 use cam_logfile,        only: iulog
@@ -273,7 +273,7 @@ subroutine dyn_readnl(NLFileName)
 
    ! Local variables
    integer, dimension(2) :: logUnits   ! stdout and stderr for MPAS logging
-   integer :: yr, mon, day, tod, ndate, nday, nsec
+   integer :: yr, mon, day, tod, ndate
    character(len=*), parameter :: subname = 'dyn_comp:dyn_readnl'
    !----------------------------------------------------------------------------
 
@@ -285,8 +285,10 @@ subroutine dyn_readnl(NLFileName)
    ! read namelist
    call cam_mpas_namelist_read(NLFileName, domain_ptr % configs)
 
-   ! Set config_start_date, etc. (these will not appear in the dycore namelist)
-   call get_start_date(yr, mon, day, tod)
+   ! Set config_start_time, etc. (these will not appear in the dycore namelist)
+   ! The MPAS clock starts at CAM's current time, which is the run start date for
+   ! initial runs and the restart date for continuation and branch runs.
+   call get_curr_date(yr, mon, day, tod)
    ndate = yr*10000 + mon*100 + day
    call mpas_pool_add_config(domain_ptr % configs, 'config_start_time', date2yyyymmdd(ndate)//'_'//sec2hms(tod))
 
@@ -294,8 +296,8 @@ subroutine dyn_readnl(NLFileName)
    ndate = yr*10000 + mon*100 + day
    call mpas_pool_add_config(domain_ptr % configs, 'config_stop_time', date2yyyymmdd(ndate)//'_'//sec2hms(tod))
 
-   call get_run_duration(nday, nsec)
-   call mpas_pool_add_config(domain_ptr % configs, 'config_run_duration', trim(int2str(nday))//'_'//sec2hms(nsec))
+   ! Let the MPAS clock use config_stop_time to set its stop time.
+   call mpas_pool_add_config(domain_ptr % configs, 'config_run_duration', 'none')
 
    ! Although the following namelist options are not expected to be used by CAM-MPAS, the MPAS-A dycore
    ! references these options, and they therefore must be defined in the configs pool
