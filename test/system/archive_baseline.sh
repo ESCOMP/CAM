@@ -32,8 +32,8 @@ BASELINE ARCHIVED LOCATION
 
 	izumi:    /fs/cgd/csm/models/atm/cam/pretag_bl/TAGNAME_gnu
 	          /fs/cgd/csm/models/atm/cam/pretag_bl/TAGNAME_nag
-        derecho:  /glade/campaign/cesm/community/amwg/cam_baselines/TAGNAME_intel
-                  /glade/campaign/cesm/community/amwg/cam_baselines/TAGNAME_nvhpc
+        derecho:  /glade/campaign/cesm/amwg/soft_eng/cam_baselines/TAGNAME_intel
+                  /glade/campaign/cesm/amwg/soft_eng/cam_baselines/TAGNAME_nvhpc
 
 
 
@@ -77,7 +77,7 @@ case $hostname in
     fi
     test_file_list="tests_pretag_derecho_${CAM_FC,,}"
     cam_tag=$1_${CAM_FC,,}
-    baselinedir="/glade/campaign/cesm/community/amwg/cam_baselines/$cam_tag"
+    baselinedir="/glade/campaign/cesm/amwg/soft_eng/cam_baselines/$cam_tag"
   ;;
 
   * ) echo "ERROR: machine $hostname not currently supported"; exit 1 ;;
