@@ -1,6 +1,99 @@
+
 ===============================================================
 
-Tag name: cam6_4_128
+Tag name: cam6_4_219
+Originator(s): cacraigucar, bdobbins, brianpm
+Date: Nov 5, 2026
+One-line Summary: Updated atmos_phys to get PUMAS bug fixes
+Github PR URL: https://github.com/ESCOMP/CAM/pull/1743
+
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+  - Bring in upcoming PUMAS bug fixes (ESCOMP/PUMAS#81) - https://github.com/ESCOMP/CAM/issues/1732
+
+Describe any changes made to build system: N/A
+
+Describe any changes made to the namelist: N/A
+
+List any changes to the defaults for the boundary datasets: N/A
+
+Describe any substantial timing or memory changes: N/A
+
+Code reviewed by: peverwhee
+
+List all files eliminated: N/A
+
+List all files added and what they do:
+A       cime_config/testdefs/testmods_dirs/cam/outfrq9s_gpu_ne3/shell_commands
+A       cime_config/testdefs/testmods_dirs/cam/outfrq9s_gpu_ne3/user_nl_cam
+A       cime_config/testdefs/testmods_dirs/cam/outfrq9s_gpu_ne3/user_nl_clm
+          - setup GPU job for ne3pg3 grid
+
+List all existing files that have been modified, and describe the changes:
+M       .gitmodules
+M       src/atmos_phys
+          - update atmos_phys external (which contains the reference to the updated PUMAS external)
+
+M       test/system/archive_baseline.sh
+          - Update baseline location
+
+M       cime_config/testdefs/testlist_cam.xml
+          - setup GPU job for ne3pg3 grid
+
+If there were any failures reported from running test_driver.sh on any test
+platform, and checkin with these failures has been OK'd by the gatekeeper,
+then copy the lines from the td.*.status files for the failed tests to the
+appropriate machine below.  All failed tests must be justified.
+
+derecho/intel/aux_cam:
+  ERC_D_Ln9.ne3_ne3_mg37.QPC7.derecho_intel.cam-outfrq9s_rttov (Overall: FAIL) details:
+     - rttov library location shifted by CISL - see issue https://github.com/ESCOMP/CAM/issues/1745
+
+  ERC_D_Ln9.mpasa120_mpasa120.FHISTC_LTso.derecho_intel.cam-outfrq9s_mpasa120 (Overall: DIFF) details:
+  ERC_D_Ln9.mpasa120_mpasa120.QPC7.derecho_intel.cam-outfrq9s_mpasa120 (Overall: DIFF) details:
+  ERC_D_Ln9.ne30pg2_ne30pg2_mt233.QPC7.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+  ERC_D_Ln9.ne30pg3_ne30pg3_mt233.F1850C_LTso.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+  ERC_D_Ln9.ne3pg3_ne3pg3_mt233.FHISTC_LTso.derecho_intel.cam-outfrq9s_mcsp (Overall: DIFF) details:
+  ERC_D_Ln9_P128x4.ne30pg3_ne30pg3_mt233.F1850C_LTso.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+  ERI_D_Ln18.ne30pg3_ne30pg3_mt233.FHISTC_LTso.derecho_intel.cam-outfrq3s_eri (Overall: DIFF) details:
+  ERP_D_Ln9.ne30pg3_ne30pg3_mt233.F1850C_MTso.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+  ERP_Ld3.ne16pg3_ne16pg3_mt233.FHISTC_WAt1ma.derecho_intel.cam-reduced_hist1d (Overall: DIFF) details:
+  ERP_Ld3.ne30pg3_ne30pg3_mt233.FHISTC_MTt4s.derecho_intel.cam-outfrq1d_aoa (Overall: DIFF) details:
+  ERP_Ln9.ne30pg3_ne30pg3_mt233.FHISTC_WAma.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+  ERR_Ld3.ne16pg3_ne16pg3_mt233.FHISTC_LTso.derecho_intel.cam-outfrq1d_bwic_newyear (Overall: DIFF) details:
+  ERS_Ln9.ne30pg3_ne30pg3_mt233.FHISTC_WXma.derecho_intel.cam-outfrq9s_ctem (Overall: DIFF) details:
+  SMS_C2_D_Ln9.ne16pg3_ne16pg3_mt233.FHISTC_WXma.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+  SMS_D_Ln9.ne30pg3_ne30pg3_mt233.1850_CAM70%MT%CT4S2_CLM60%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV_SESP.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+  SMS_D_Ln9.ne30pg3_ne30pg3_mt233.FHISTC_MTso.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+  SMS_D_Ln9_P1280x1.ne30pg3_ne30pg3_mt233.FHISTC_MTt1s.derecho_intel.cam-outfrq9s_Leung_dust (Overall: DIFF) details:
+     - answer changing for PUMAS runs
+
+derecho/nvhpc/aux_cam:
+  ERS_Ln9.ne3pg3_ne3pg3_mt233.FHISTC_LTso.derecho_nvhpc.cam-outfrq9s_gpu_ne3 (Overall: DIFF) details:
+     - changed the resolution to ne3pg3, so no baseline for comparison
+
+izumi/nag/aux_cam:
+  ERC_D_Ln9.mpasa480_mpasa480_mt233.QPC7.izumi_nag.cam-outfrq9s_mpasa480 (Overall: DIFF) details:
+  ERC_D_Ln9.ne3pg3_ne3pg3_mt233.FHISTC_LTso.izumi_nag.cam-cosp_rad_diags (Overall: DIFF) details:
+  ERC_D_Ln9.ne3pg3_ne3pg3_mt233.FHISTC_LTso.izumi_nag.cam-outfrq9s_nochem (Overall: DIFF) details:
+  SMS_D_Ln9.ne3pg3_ne3pg3_mt233.QPC7.izumi_nag.cam-carma_test_tracers (Overall: DIFF) details:
+     - answer changing for PUMAS runs
+
+izumi/gnu/aux_cam:
+  ERC_D_Ln9.mpasa480_mpasa480_mt233.FHISTC_LTso.izumi_gnu.cam-outfrq9s_mpasa480 (Overall: DIFF) details:
+  ERC_D_Ln9.ne3pg3_ne3pg3_mt233.FHISTC_LTso.izumi_gnu.cam-nochem_clubbmf (Overall: DIFF) details:
+  ERC_D_Ln9.ne3pg3_ne3pg3_mt233.FHISTC_LTso.izumi_gnu.cam-sat_lcltod (Overall: DIFF) details:
+  ERC_D_Ln9.ne3pg3_ne3pg3_mt233.QPC7.izumi_gnu.cam-outfrq9s (Overall: DIFF) details:
+     - answer changing for PUMAS runs
+
+Summarize any changes to answers, i.e.,
+- what code configurations: all PUMAS
+- what platforms/compilers: all compilers
+    - These changes were validated by both Brian Mederios and Cecile Hannay.  AMP scientists approved the changes.
+
+===============================================================
+===============================================================
+
+Tag name: cam6_4_218
 Originator(s): pel, cacraigucar
 Date: Nov 2, 2026
 One-line Summary: Fix missing cpair factor in Mesophere/Lower Thermosphere shortwave heating (radheat)
