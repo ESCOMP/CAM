@@ -23,7 +23,7 @@ use cam_abortutils, only: endrun
 use cam_shmem_mod,  only: cam_shmem_alloc_r8_2d, cam_shmem_alloc_r8_4d, &
                           cam_shmem_alloc_r8_5d, cam_shmem_free,        &
                           cam_shmem_fence, cam_shmem_is_leader,         &
-                          cam_shmem_npes_per_node
+                          cam_shmem_npes_per_node, cam_shmem_enabled
 
 implicit none
 private
@@ -313,7 +313,7 @@ subroutine physprop_init()
    ! report shared-memory savings (collective: every rank calls the helper so the
    ! lazy node-communicator setup is not entered on masterproc alone)
    npernode = cam_shmem_npes_per_node()
-   if (masterproc) then
+   if (masterproc .and. cam_shmem_enabled()) then
       write(iulog,*) 'phys_prop: large aerosol-optics tables held in per-node shared memory; ', &
          npernode-1, ' redundant copies/node avoided'
    end if

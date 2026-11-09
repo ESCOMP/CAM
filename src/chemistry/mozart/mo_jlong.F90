@@ -17,7 +17,7 @@
                                    cam_shmem_alloc_r8_3d, cam_shmem_fence,       &
                                    cam_shmem_free,                               &
                                    cam_shmem_is_leader, cam_shmem_leader_comm,   &
-                                   cam_shmem_npes_per_node
+                                   cam_shmem_npes_per_node, cam_shmem_enabled
 
       implicit none
 
@@ -279,7 +279,7 @@
       call cam_shmem_alloc_r8_3d( xs_o3b, win_o3b,  nw, nt, np_xs )
       allocate( prs(np_xs), dprs(np_xs-1), stat=iret )
       if( iret /= 0 ) call alloc_err( iret, 'get_xsqy', 'prs,dprs', np_xs )
-      if( masterproc ) then
+      if( masterproc .and. cam_shmem_enabled() ) then
          write(iulog,*) 'mo_jlong: xsqy/xs_o2b/o3a/o3b held in per-node shared memory; ', &
               cam_shmem_npes_per_node()-1, ' redundant copies/node avoided'
       end if
@@ -466,7 +466,7 @@
       end if
       ! rsf_tab is large and read-only; hold one copy per node in shared memory.
       call cam_shmem_alloc_r4_5d( rsf_tab, win_rsf, nw, nump, numsza, numcolo3, numalb )
-      if( masterproc ) then
+      if( masterproc .and. cam_shmem_enabled() ) then
          write(iulog,*) 'mo_jlong: rsf_tab held in per-node shared memory; ', &
               cam_shmem_npes_per_node()-1, ' redundant copies/node avoided'
       end if

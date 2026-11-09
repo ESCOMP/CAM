@@ -16,6 +16,15 @@ module cam_shmem_mod
 ! further synchronization.  Free it with cam_shmem_free(ptr, win) at finalize
 ! (collective over the node communicator); otherwise MPI_Finalize reclaims it.
 !
+! Node-shared memory is used only if a small probe at init shows that MPI-3
+! shared windows work on every node and cam_shmem_force_private is .false.
+! Otherwise (and in non-SPMD builds) sharing is off: cam_shmem_alloc_* is a plain
+! allocate, cam_shmem_fence does nothing, cam_shmem_free deallocates,
+! cam_shmem_is_leader is .true. on every rank, cam_shmem_leader_comm is mpicom,
+! and callers that test cam_shmem_enabled() take their original per-rank code
+! paths.  No MPI-3 window is created in that mode (none at all when
+! cam_shmem_force_private is set, since the probe is then skipped).
+!
 ! This module uses the F90 'mpi' module (not mpif.h).  MPI-3.0 makes the TYPE(C_PTR)
 ! overloads of MPI_WIN_ALLOCATE_SHARED / MPI_WIN_SHARED_QUERY optional in the 'mpi'
 ! module, and some implementations (cray-mpich) do not expose those two routines
@@ -31,7 +40,7 @@ module cam_shmem_mod
    use spmd_utils,     only: mpicom
    use mpi,            only: MPI_ADDRESS_KIND, MPI_COMM_NULL, MPI_COMM_TYPE_SHARED,   &
                              MPI_INFO_NULL, MPI_SUCCESS, MPI_UNDEFINED, MPI_WIN_NULL, &
-                             mpi_comm_rank, mpi_comm_size, mpi_comm_split,            &
+                             mpi_comm_rank, mpi_comm_size, mpi_comm_split, mpi_comm_free,            &
                              mpi_comm_split_type, mpi_win_fence, mpi_win_free,        &
                              MPI_INTEGER, MPI_MIN
    use, intrinsic :: iso_c_binding, only: c_ptr, c_f_pointer, c_associated
@@ -53,6 +62,7 @@ module cam_shmem_mod
    public :: cam_shmem_npes_per_node ! number of ranks sharing this node
    public :: cam_shmem_init          ! force one-time node-comm setup at an early collective point
    public :: cam_shmem_readnl        ! read the cam_shmem_nl namelist
+   public :: cam_shmem_enabled       ! .true. if tables are held in node-shared memory
 
    ! Generic finalizer: free whatever node-shared table the pointer aliases.  Safe
    ! to call blindly on an unallocated table (win == -1 / null pointer -> no-op).
@@ -111,9 +121,13 @@ module cam_shmem_mod
    logical, save :: is_leader   = .true.
 #endif
 
+   ! .true. once init has decided to use node-shared windows (probe passed and
+   ! sharing not switched off); .false. means the original per-rank code paths.
+   logical, save :: shared_active = .false.
+
    ! Namelist switch (cam_shmem_nl): .true. disables node-shared memory, so every
-   ! rank holds private copies.  Answers must not change.  A fail-safe only;
-   ! not written to atm_in unless set in user_nl_cam.
+   ! rank allocates and reads its own copy as in the original code.  Answers must
+   ! not change.  A fail-safe only; not written to atm_in unless set in user_nl_cam.
    logical, save :: cam_shmem_force_private = .false.
 
 contains
@@ -122,62 +136,63 @@ contains
 
 #ifdef SPMD
    subroutine init_comms()
-      ! Lazily build the node-local and node-leader communicators.  Collective
-      ! over mpicom; safe to call from every shared-memory allocation request.
-      integer :: ierr, color, wrank, nsize0
+      ! One-time setup, collective over mpicom.  Decides whether node-shared memory
+      ! is used.  If cam_shmem_force_private is set, nothing is probed and no MPI-3
+      ! window is ever created.  Otherwise a small probe verifies that MPI-3 shared
+      ! windows really work: some MPI setups (e.g. MVAPICH2 under CESM on izumi)
+      ! build node_comm correctly but return windows that are not shared-memory
+      ! backed, so peers get no address from MPI_Win_shared_query.  If any rank
+      ! fails the probe, sharing is off and callers use their original per-rank
+      ! code paths (see the module header), so answers are unchanged.
+      integer :: ierr, color, nsize0
       logical :: shared_ok
 
       if (initialized) return
 
-      call mpi_comm_split_type(mpicom, MPI_COMM_TYPE_SHARED, 0, MPI_INFO_NULL, &
-                               node_comm, ierr)
-      call mpi_comm_rank(node_comm, node_rank, ierr)
-      call mpi_comm_size(node_comm, node_size, ierr)
-      is_leader = (node_rank == 0)
-      nsize0 = node_size
+      shared_ok = .false.
+      nsize0    = 1
+      if (.not. cam_shmem_force_private) then
+         call mpi_comm_split_type(mpicom, MPI_COMM_TYPE_SHARED, 0, MPI_INFO_NULL, &
+                                  node_comm, ierr)
+         call mpi_comm_rank(node_comm, node_rank, ierr)
+         call mpi_comm_size(node_comm, node_size, ierr)
+         is_leader = (node_rank == 0)
+         nsize0    = node_size
+         shared_ok = probe_shared_windows()
+      end if
+      shared_active = shared_ok
 
-      ! Verify that MPI-3 shared windows really work before relying on them: some
-      ! MPI setups (e.g. MVAPICH2 under CESM on izumi) build node_comm correctly but
-      ! return windows that are not shared-memory backed, so peers get no address
-      ! from MPI_Win_shared_query.  If any rank fails the probe, or the namelist
-      ! switch asks for it, every rank becomes its own "node": node_size 1, every
-      ! rank a leader, leader_comm = all ranks.  Callers then hold private copies
-      ! and their leader broadcasts reach every rank, so answers are unchanged.
-      shared_ok = probe_shared_windows()
-      if (cam_shmem_force_private .or. .not. shared_ok) then
-         call mpi_comm_free(node_comm, ierr)
-         call mpi_comm_rank(mpicom, wrank, ierr)
-         call mpi_comm_split(mpicom, wrank, 0, node_comm, ierr)
+      if (shared_active) then
+         ! Communicator of node leaders only (used to distribute data between
+         ! nodes).  masterproc (global rank 0) is a node leader and is rank 0 here.
+         if (is_leader) then
+            color = 0
+         else
+            color = MPI_UNDEFINED
+         end if
+         call mpi_comm_split(mpicom, color, 0, leader_comm, ierr)
+      else
+         if (node_comm /= MPI_COMM_NULL) call mpi_comm_free(node_comm, ierr)
          node_rank = 0
          node_size = 1
          is_leader = .true.
       end if
+
       if (masterproc) then
-         if (shared_ok) then
+         if (cam_shmem_force_private) then
+            write(iulog,'(a)') 'cam_shmem_mod: cam_shmem_force_private = .true.: node-shared ' // &
+                 'memory off; original per-rank code paths'
+         else if (shared_ok) then
             write(iulog,'(a,i0,a)') 'cam_shmem_mod: MPI-3 shared-memory probe PASSED (', nsize0, &
                  ' ranks on the first node)'
+            write(iulog,'(a)') 'cam_shmem_mod: node-shared tables enabled'
          else
             write(iulog,'(a)') 'cam_shmem_mod: MPI-3 shared-memory probe FAILED (peers got no ' // &
                  'address from MPI_Win_shared_query)'
-         end if
-         if (cam_shmem_force_private) then
-            write(iulog,'(a)') 'cam_shmem_mod: cam_shmem_force_private = .true.: using per-rank ' // &
-                 'private memory'
-         else if (shared_ok) then
-            write(iulog,'(a)') 'cam_shmem_mod: node-shared tables enabled'
-         else
-            write(iulog,'(a)') 'cam_shmem_mod: falling back to per-rank private memory'
+            write(iulog,'(a)') 'cam_shmem_mod: falling back to per-rank private memory ' // &
+                 '(original per-rank code paths)'
          end if
       end if
-
-      ! Communicator of node leaders only (used to distribute data between nodes).
-      ! masterproc (global rank 0) is a node leader and is rank 0 here.
-      if (is_leader) then
-         color = 0
-      else
-         color = MPI_UNDEFINED
-      end if
-      call mpi_comm_split(mpicom, color, 0, leader_comm, ierr)
 
       initialized = .true.
    end subroutine init_comms
@@ -295,15 +310,19 @@ contains
 #ifdef SPMD
       integer(kind=MPI_ADDRESS_KIND) :: nbytes
       type(c_ptr) :: baseptr
-      nbytes = int(n1,MPI_ADDRESS_KIND)*int(n2,MPI_ADDRESS_KIND) &
-              *int(n3,MPI_ADDRESS_KIND)*int(n4,MPI_ADDRESS_KIND) &
-              *int(bytes_r4,MPI_ADDRESS_KIND)
-      call shmem_alloc_bytes(nbytes, bytes_r4, win, baseptr)
-      call c_f_pointer(baseptr, ptr, [n1, n2, n3, n4])
-#else
+      call init_comms()
+      if (shared_active) then
+         nbytes = int(n1,MPI_ADDRESS_KIND)*int(n2,MPI_ADDRESS_KIND) &
+                 *int(n3,MPI_ADDRESS_KIND)*int(n4,MPI_ADDRESS_KIND) &
+                 *int(bytes_r4,MPI_ADDRESS_KIND)
+         call shmem_alloc_bytes(nbytes, bytes_r4, win, baseptr)
+         call c_f_pointer(baseptr, ptr, [n1, n2, n3, n4])
+         return
+      end if
+#endif
+      ! sharing off (or non-SPMD): ordinary per-rank allocation
       win = -1
       allocate(ptr(n1,n2,n3,n4))
-#endif
    end subroutine cam_shmem_alloc_r4_4d
 
 !===============================================================================
@@ -315,15 +334,19 @@ contains
 #ifdef SPMD
       integer(kind=MPI_ADDRESS_KIND) :: nbytes
       type(c_ptr) :: baseptr
-      nbytes = int(n1,MPI_ADDRESS_KIND)*int(n2,MPI_ADDRESS_KIND) &
-              *int(n3,MPI_ADDRESS_KIND)*int(n4,MPI_ADDRESS_KIND) &
-              *int(n5,MPI_ADDRESS_KIND)*int(bytes_r4,MPI_ADDRESS_KIND)
-      call shmem_alloc_bytes(nbytes, bytes_r4, win, baseptr)
-      call c_f_pointer(baseptr, ptr, [n1, n2, n3, n4, n5])
-#else
+      call init_comms()
+      if (shared_active) then
+         nbytes = int(n1,MPI_ADDRESS_KIND)*int(n2,MPI_ADDRESS_KIND) &
+                 *int(n3,MPI_ADDRESS_KIND)*int(n4,MPI_ADDRESS_KIND) &
+                 *int(n5,MPI_ADDRESS_KIND)*int(bytes_r4,MPI_ADDRESS_KIND)
+         call shmem_alloc_bytes(nbytes, bytes_r4, win, baseptr)
+         call c_f_pointer(baseptr, ptr, [n1, n2, n3, n4, n5])
+         return
+      end if
+#endif
+      ! sharing off (or non-SPMD): ordinary per-rank allocation
       win = -1
       allocate(ptr(n1,n2,n3,n4,n5))
-#endif
    end subroutine cam_shmem_alloc_r4_5d
 
 !===============================================================================
@@ -335,14 +358,18 @@ contains
 #ifdef SPMD
       integer(kind=MPI_ADDRESS_KIND) :: nbytes
       type(c_ptr) :: baseptr
-      nbytes = int(n1,MPI_ADDRESS_KIND)*int(n2,MPI_ADDRESS_KIND) &
-              *int(bytes_r8,MPI_ADDRESS_KIND)
-      call shmem_alloc_bytes(nbytes, bytes_r8, win, baseptr)
-      call c_f_pointer(baseptr, ptr, [n1, n2])
-#else
+      call init_comms()
+      if (shared_active) then
+         nbytes = int(n1,MPI_ADDRESS_KIND)*int(n2,MPI_ADDRESS_KIND) &
+                 *int(bytes_r8,MPI_ADDRESS_KIND)
+         call shmem_alloc_bytes(nbytes, bytes_r8, win, baseptr)
+         call c_f_pointer(baseptr, ptr, [n1, n2])
+         return
+      end if
+#endif
+      ! sharing off (or non-SPMD): ordinary per-rank allocation
       win = -1
       allocate(ptr(n1,n2))
-#endif
    end subroutine cam_shmem_alloc_r8_2d
 
 !===============================================================================
@@ -354,14 +381,18 @@ contains
 #ifdef SPMD
       integer(kind=MPI_ADDRESS_KIND) :: nbytes
       type(c_ptr) :: baseptr
-      nbytes = int(n1,MPI_ADDRESS_KIND)*int(n2,MPI_ADDRESS_KIND) &
-              *int(n3,MPI_ADDRESS_KIND)*int(bytes_r8,MPI_ADDRESS_KIND)
-      call shmem_alloc_bytes(nbytes, bytes_r8, win, baseptr)
-      call c_f_pointer(baseptr, ptr, [n1, n2, n3])
-#else
+      call init_comms()
+      if (shared_active) then
+         nbytes = int(n1,MPI_ADDRESS_KIND)*int(n2,MPI_ADDRESS_KIND) &
+                 *int(n3,MPI_ADDRESS_KIND)*int(bytes_r8,MPI_ADDRESS_KIND)
+         call shmem_alloc_bytes(nbytes, bytes_r8, win, baseptr)
+         call c_f_pointer(baseptr, ptr, [n1, n2, n3])
+         return
+      end if
+#endif
+      ! sharing off (or non-SPMD): ordinary per-rank allocation
       win = -1
       allocate(ptr(n1,n2,n3))
-#endif
    end subroutine cam_shmem_alloc_r8_3d
 
 !===============================================================================
@@ -373,15 +404,19 @@ contains
 #ifdef SPMD
       integer(kind=MPI_ADDRESS_KIND) :: nbytes
       type(c_ptr) :: baseptr
-      nbytes = int(n1,MPI_ADDRESS_KIND)*int(n2,MPI_ADDRESS_KIND) &
-              *int(n3,MPI_ADDRESS_KIND)*int(n4,MPI_ADDRESS_KIND) &
-              *int(bytes_r8,MPI_ADDRESS_KIND)
-      call shmem_alloc_bytes(nbytes, bytes_r8, win, baseptr)
-      call c_f_pointer(baseptr, ptr, [n1, n2, n3, n4])
-#else
+      call init_comms()
+      if (shared_active) then
+         nbytes = int(n1,MPI_ADDRESS_KIND)*int(n2,MPI_ADDRESS_KIND) &
+                 *int(n3,MPI_ADDRESS_KIND)*int(n4,MPI_ADDRESS_KIND) &
+                 *int(bytes_r8,MPI_ADDRESS_KIND)
+         call shmem_alloc_bytes(nbytes, bytes_r8, win, baseptr)
+         call c_f_pointer(baseptr, ptr, [n1, n2, n3, n4])
+         return
+      end if
+#endif
+      ! sharing off (or non-SPMD): ordinary per-rank allocation
       win = -1
       allocate(ptr(n1,n2,n3,n4))
-#endif
    end subroutine cam_shmem_alloc_r8_4d
 
 !===============================================================================
@@ -393,15 +428,19 @@ contains
 #ifdef SPMD
       integer(kind=MPI_ADDRESS_KIND) :: nbytes
       type(c_ptr) :: baseptr
-      nbytes = int(n1,MPI_ADDRESS_KIND)*int(n2,MPI_ADDRESS_KIND) &
-              *int(n3,MPI_ADDRESS_KIND)*int(n4,MPI_ADDRESS_KIND) &
-              *int(n5,MPI_ADDRESS_KIND)*int(bytes_r8,MPI_ADDRESS_KIND)
-      call shmem_alloc_bytes(nbytes, bytes_r8, win, baseptr)
-      call c_f_pointer(baseptr, ptr, [n1, n2, n3, n4, n5])
-#else
+      call init_comms()
+      if (shared_active) then
+         nbytes = int(n1,MPI_ADDRESS_KIND)*int(n2,MPI_ADDRESS_KIND) &
+                 *int(n3,MPI_ADDRESS_KIND)*int(n4,MPI_ADDRESS_KIND) &
+                 *int(n5,MPI_ADDRESS_KIND)*int(bytes_r8,MPI_ADDRESS_KIND)
+         call shmem_alloc_bytes(nbytes, bytes_r8, win, baseptr)
+         call c_f_pointer(baseptr, ptr, [n1, n2, n3, n4, n5])
+         return
+      end if
+#endif
+      ! sharing off (or non-SPMD): ordinary per-rank allocation
       win = -1
       allocate(ptr(n1,n2,n3,n4,n5))
-#endif
    end subroutine cam_shmem_alloc_r8_5d
 
 !===============================================================================
@@ -412,15 +451,16 @@ contains
       integer, intent(in) :: win
 #ifdef SPMD
       integer :: ierr
+      if (win == -1) return            ! table not shared: nothing to synchronize
       call mpi_win_fence(0, win, ierr)
       if (ierr /= MPI_SUCCESS) call endrun('cam_shmem_mod: MPI_Win_fence failed')
 #endif
    end subroutine cam_shmem_fence
 
 !===============================================================================
-! cam_shmem_free generic procedures.  Each frees the node-shared window (in SPMD)
-! and disassociates the pointer, or deallocates it (non-SPMD).  Collective over
-! the node communicator in SPMD; a no-op when win == -1 (table never shared).
+! cam_shmem_free generic procedures.  A node-shared table (win /= -1) is freed
+! with MPI_Win_free (collective over the node communicator) and the pointer
+! nullified; an unshared table (win == -1) is deallocated if allocated.
 !===============================================================================
 
    subroutine cam_shmem_free_r4_4d(ptr, win)
@@ -431,11 +471,12 @@ contains
       if (win /= -1 .and. win /= MPI_WIN_NULL) then
          call mpi_win_free(win, ierr)
          if (ierr /= MPI_SUCCESS) call endrun('cam_shmem_mod: MPI_Win_free failed')
+         nullify(ptr)
+         win = -1
+         return
       end if
-      if (associated(ptr)) nullify(ptr)
-#else
-      if (associated(ptr)) deallocate(ptr)
 #endif
+      if (associated(ptr)) deallocate(ptr)
       win = -1
    end subroutine cam_shmem_free_r4_4d
 
@@ -447,11 +488,12 @@ contains
       if (win /= -1 .and. win /= MPI_WIN_NULL) then
          call mpi_win_free(win, ierr)
          if (ierr /= MPI_SUCCESS) call endrun('cam_shmem_mod: MPI_Win_free failed')
+         nullify(ptr)
+         win = -1
+         return
       end if
-      if (associated(ptr)) nullify(ptr)
-#else
-      if (associated(ptr)) deallocate(ptr)
 #endif
+      if (associated(ptr)) deallocate(ptr)
       win = -1
    end subroutine cam_shmem_free_r4_5d
 
@@ -463,11 +505,12 @@ contains
       if (win /= -1 .and. win /= MPI_WIN_NULL) then
          call mpi_win_free(win, ierr)
          if (ierr /= MPI_SUCCESS) call endrun('cam_shmem_mod: MPI_Win_free failed')
+         nullify(ptr)
+         win = -1
+         return
       end if
-      if (associated(ptr)) nullify(ptr)
-#else
-      if (associated(ptr)) deallocate(ptr)
 #endif
+      if (associated(ptr)) deallocate(ptr)
       win = -1
    end subroutine cam_shmem_free_r8_2d
 
@@ -479,11 +522,12 @@ contains
       if (win /= -1 .and. win /= MPI_WIN_NULL) then
          call mpi_win_free(win, ierr)
          if (ierr /= MPI_SUCCESS) call endrun('cam_shmem_mod: MPI_Win_free failed')
+         nullify(ptr)
+         win = -1
+         return
       end if
-      if (associated(ptr)) nullify(ptr)
-#else
-      if (associated(ptr)) deallocate(ptr)
 #endif
+      if (associated(ptr)) deallocate(ptr)
       win = -1
    end subroutine cam_shmem_free_r8_3d
 
@@ -495,11 +539,12 @@ contains
       if (win /= -1 .and. win /= MPI_WIN_NULL) then
          call mpi_win_free(win, ierr)
          if (ierr /= MPI_SUCCESS) call endrun('cam_shmem_mod: MPI_Win_free failed')
+         nullify(ptr)
+         win = -1
+         return
       end if
-      if (associated(ptr)) nullify(ptr)
-#else
-      if (associated(ptr)) deallocate(ptr)
 #endif
+      if (associated(ptr)) deallocate(ptr)
       win = -1
    end subroutine cam_shmem_free_r8_4d
 
@@ -511,11 +556,12 @@ contains
       if (win /= -1 .and. win /= MPI_WIN_NULL) then
          call mpi_win_free(win, ierr)
          if (ierr /= MPI_SUCCESS) call endrun('cam_shmem_mod: MPI_Win_free failed')
+         nullify(ptr)
+         win = -1
+         return
       end if
-      if (associated(ptr)) nullify(ptr)
-#else
-      if (associated(ptr)) deallocate(ptr)
 #endif
+      if (associated(ptr)) deallocate(ptr)
       win = -1
    end subroutine cam_shmem_free_r8_5d
 
@@ -533,11 +579,26 @@ contains
    integer function cam_shmem_leader_comm()
 #ifdef SPMD
       call init_comms()
-      cam_shmem_leader_comm = leader_comm
+      if (shared_active) then
+         cam_shmem_leader_comm = leader_comm
+      else
+         cam_shmem_leader_comm = mpicom   ! every rank is a leader
+      end if
 #else
       cam_shmem_leader_comm = -1
 #endif
    end function cam_shmem_leader_comm
+
+!===============================================================================
+
+   logical function cam_shmem_enabled()
+      ! .true. if large tables are held in node-shared memory; .false. means
+      ! callers should use their original per-rank code paths.
+#ifdef SPMD
+      call init_comms()
+#endif
+      cam_shmem_enabled = shared_active
+   end function cam_shmem_enabled
 
 !===============================================================================
 

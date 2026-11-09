@@ -28,7 +28,7 @@ module tracer_data
                                pio_inquire_variable
   use cam_shmem_mod,    only : cam_shmem_alloc_r8_3d, cam_shmem_fence, &
                                cam_shmem_free, cam_shmem_is_leader, cam_shmem_npes_per_node, &
-                               cam_shmem_leader_comm
+                               cam_shmem_leader_comm, cam_shmem_enabled
 #ifdef SPMD
   use mpishorthand,     only : mpir8
 #endif
@@ -417,7 +417,10 @@ contains
     ! already on the unstructured physics grid (read_physgrid_*) and zonal-average
     ! files (read_za_trc) do not.  One physical copy per node; reused across all
     ! fields of this file and all subsequent updates (freed at MPI_Finalize).
-    if ( .not.file%unstructured .and. .not.file%zonal_ave .and. &
+    ! When node-shared memory is off, shr_src stays unassociated and read_2d_trc /
+    ! read_3d_trc use the original path (every rank reads the field via PIO).
+    if ( cam_shmem_enabled() .and. &
+         .not.file%unstructured .and. .not.file%zonal_ave .and. &
          .not.associated(file%shr_src) ) then
        call cam_shmem_alloc_r8_3d( file%shr_src, file%win_shr_src, &
                                    file%nlon, file%nlat, max(file%nlev,1) )

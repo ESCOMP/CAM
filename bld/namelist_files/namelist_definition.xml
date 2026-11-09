@@ -5967,7 +5967,8 @@ Default: 50.
 <entry id="cam_shmem_force_private" type="logical"  category="performance"
        group="cam_shmem_nl" valid_values="" >
 If .true., do not use MPI-3 node-shared memory for large read-only tables
-(cam_shmem_mod); every MPI rank holds a private copy instead.
+(cam_shmem_mod); every MPI rank allocates and reads its own copy, as in the
+code before node-shared memory was added.
 Default: .false.
 </entry>
 
