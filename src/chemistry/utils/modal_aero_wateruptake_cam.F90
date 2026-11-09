@@ -234,7 +234,20 @@ contains
       real(r8) :: pm10_mmr(pcols,pver)      ! PM10 mass mixing ratio     dmleung, 20 Nov 2023
       real(r8) :: pmtot_mmr(pcols,pver)      ! total PM mass mixing ratio
       real(r8) :: massfrac1, massfrac25, massfrac10   ! mode mass fraction below PM1, PM2.5, PM10 cuts
-      ! dmleung --
+      real(r8) :: sqrt2_alnsg                         ! sqrt(2)*ln(sigma_g) of the current mode
+
+      ! aerodynamic cut diameters defining the PM1, PM2.5, PM10 diagnostics (m)
+      real(r8), parameter :: pm1_cut_diameter  =  1.0e-6_r8
+      real(r8), parameter :: pm25_cut_diameter =  2.5e-6_r8
+      real(r8), parameter :: pm10_cut_diameter = 10.0e-6_r8
+      ! Reference density defining the aerodynamic diameter (kg/m3):
+      ! The diameter of a unit-density (1 g/cm3) sphere with the same settling velocity as the particle.
+      ! See Seinfeld and Pandis, 2ed. 9.7.3 Classical aerodynamic diameter. eq. (9.112)
+      ! This conventional unit density only coincidentally equals the density of water (rhoh2o) but is not.
+      real(r8), parameter :: rho0_aero = 1000._r8
+      ! minimum mode dry volume for which an aerodynamic diameter is computed (m3)
+      real(r8), parameter :: dryvol_min = 1.0e-30_r8
+      real(r8), parameter :: sqrt2 = sqrt(2._r8)
 
       character(len=3) :: trnum       ! used to hold mode number (as characters)
 
@@ -401,18 +414,19 @@ contains
          ! calculate PM diagnostics -- dgncur_a is zero above top_lev
          ! PM is the MASS fraction below an AERODYNAMIC cut,
          ! so use the mass median aerodynamic diameter of the mode:
-         !   daero_a = dgncur_a*exp(3*ln^2(sigma_g))*sqrt(rhop/rho0),  rho0 = 1000 kg/m3
+         !   daero_a = dgncur_a*exp(3*ln^2(sigma_g))*sqrt(rhop/rho0_aero)
          ! rhop is the mode-mean dry particle density; spherical particles assumed.
+         sqrt2_alnsg = sqrt2*alnsg(m)
          do k = top_lev, pver
             do i=1,ncol
                ! dmleung 30 Oct 2026: updated PM diagnostics calculation ++
-               if (dgncur_a(i,k,m) > 0._r8 .and. dryvol(i,k,m) > 1.0e-30_r8) then
+               if (dgncur_a(i,k,m) > 0._r8 .and. dryvol(i,k,m) > dryvol_min) then
                   ! convert from number median geometric diameter to mass median aerodynamic diameter
                   daero_a(i,k,m) = dgncur_a(i,k,m)*exp(3._r8*alnsg(m)**2) &
                                  * sqrt(drymass(i,k,m)/(rhoh2o*dryvol(i,k,m)))
-                  massfrac1  = 0.5_r8*(1._r8 + erf(log( 1.0e-6_r8/daero_a(i,k,m))/(sqrt(2._r8)*alnsg(m))))
-                  massfrac25 = 0.5_r8*(1._r8 + erf(log( 2.5e-6_r8/daero_a(i,k,m))/(sqrt(2._r8)*alnsg(m))))
-                  massfrac10 = 0.5_r8*(1._r8 + erf(log(10.0e-6_r8/daero_a(i,k,m))/(sqrt(2._r8)*alnsg(m))))
+                  massfrac1  = 0.5_r8*(1._r8 + erf(log(pm1_cut_diameter /daero_a(i,k,m))/sqrt2_alnsg))
+                  massfrac25 = 0.5_r8*(1._r8 + erf(log(pm25_cut_diameter/daero_a(i,k,m))/sqrt2_alnsg))
+                  massfrac10 = 0.5_r8*(1._r8 + erf(log(pm10_cut_diameter/daero_a(i,k,m))/sqrt2_alnsg))
                else
                   daero_a(i,k,m) = 0._r8
                   massfrac1  = 0._r8
