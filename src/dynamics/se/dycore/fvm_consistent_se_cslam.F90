@@ -317,9 +317,11 @@ contains
     fvm%dp_fvm(1:nc,1:nc,ilev) = fvm%dp_fvm(1:nc,1:nc,ilev)*fvm%area_sphere
     do itr=1,ntrac
       fvm%c(1:nc,1:nc,ilev,itr) = fvm%c(1:nc,1:nc,ilev,itr)*fvm%dp_fvm(1:nc,1:nc,ilev)
-      do iw=1,irecons_tracer_actual
-        ctracer(iw,1-nhe:nc+nhe,1-nhe:nc+nhe,itr)=ctracer(iw,1-nhe:nc+nhe,1-nhe:nc+nhe,itr)*&
-             dp(1-nhe:nc+nhe,1-nhe:nc+nhe)
+      do j=1-nhe,nc+nhe
+        do i=1-nhe,nc+nhe
+          ctracer(1:irecons_tracer_actual,i,j,itr) = &
+               ctracer(1:irecons_tracer_actual,i,j,itr)*dp(i,j)
+        end do
       end do
     end do
 
@@ -635,16 +637,22 @@ contains
     integer, dimension(4), parameter :: jmax_side = (/nc+1,nc  ,nc  ,nc  /)
 
     integer :: i,j,iside,itr
+    logical :: init_done
     real (kind=r8)    :: flux,flux_tracer(ntrac)
     real (kind=r8), dimension(0:nc+1,0:nc+1)      :: inv_dp_area
     real (kind=r8), dimension(0:nc+1,0:nc+1,ntrac):: c_tmp
 
-    inv_dp_area=1.0_r8/fvm%dp_fvm(0:nc+1,0:nc+1,ilev)
-    c_tmp      = fvm%c(0:nc+1,0:nc+1,ilev,1:ntrac)
+    init_done = .false.
     do iside=1,4
       do j=jmin_side(iside),jmax_side(iside)
         do i=imin_side(iside),imax_side(iside)
           if (fvm%se_flux(i,j,iside,ilev)>eps) then
+            ! Snapshot pre-increment state on first use; must precede fvm%c/dp_fvm updates
+            if (.not. init_done) then
+              inv_dp_area = 1.0_r8/fvm%dp_fvm(0:nc+1,0:nc+1,ilev)
+              c_tmp       = fvm%c(0:nc+1,0:nc+1,ilev,1:ntrac)
+              init_done   = .true.
+            end if
             flux = fvm%se_flux(i,j,iside,ilev)
 #ifdef waccm_debug
             if (i>0.and.j>0.and.i<nc+1.and.j<nc+1) then
