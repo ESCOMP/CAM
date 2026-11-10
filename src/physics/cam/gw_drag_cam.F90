@@ -19,7 +19,7 @@ module gw_drag_cam
   ! These are the actual switches for different gravity wave sources.
   use phys_control,   only: use_gw_oro, use_gw_front, use_gw_front_igw, &
                             use_gw_convect_dp, use_gw_convect_sh,       &
-                            use_simple_phys, use_gw_movmtn_pbl, phys_getopts
+                            use_simple_phys, use_gw_movmtn, phys_getopts
 
   implicit none
   private
@@ -47,8 +47,8 @@ module gw_drag_cam
   ! Ridge scheme.
   logical  :: use_gw_rdg_beta      = .false.
   integer  :: n_rdg_beta           = 1
-  real(r8) :: effgw_rdg_beta       = unset_r8
-  real(r8) :: effgw_rdg_beta_max   = unset_r8
+  real(r8) :: gwcli_rdg_beta       = unset_r8
+  real(r8) :: gwcli_rdg_beta_max   = unset_r8
   real(r8) :: rdg_beta_cd_llb      = unset_r8  ! Low-level obstacle drag coefficient Ridge scheme.
   logical  :: trpd_leewv_rdg_beta  = .false.
 
@@ -71,7 +71,7 @@ module gw_drag_cam
   ! Beres (shallow convection).
   real(r8) :: effgw_beres_sh = unset_r8
   ! PBL moving mtn
-  real(r8) :: effgw_movmtn_pbl = unset_r8
+  real(r8) :: gwcli_movmtn   = unset_r8
   integer  :: movmtn_ksteer  = -1
   integer  :: movmtn_klaunch = -1
   integer  :: movmtn_source  = -1
@@ -207,14 +207,14 @@ subroutine gw_drag_cam_readnl(nlfile)
        effgw_beres_dp, effgw_beres_sh, effgw_cm, effgw_cm_igw, effgw_oro, &
        frontgfc, gw_drag_file, gw_drag_file_sh, gw_drag_file_mm, taubgnd, &
        taubgnd_igw, gw_polar_taper, &
-       use_gw_rdg_beta, n_rdg_beta, effgw_rdg_beta, effgw_rdg_beta_max, &
+       use_gw_rdg_beta, n_rdg_beta, gwcli_rdg_beta, gwcli_rdg_beta_max, &
        rdg_beta_cd_llb, trpd_leewv_rdg_beta, &
        use_gw_rdg_gamma, n_rdg_gamma, effgw_rdg_gamma, effgw_rdg_gamma_max, &
        rdg_gamma_cd_llb, trpd_leewv_rdg_gamma, bnd_rdggm, &
        gw_oro_south_fac, &
        gw_lndscl_sgh, gw_prndl, gw_apply_tndmax, gw_qbo_hdepth_scaling, &
        gw_top_taper, front_gaussian_width, alpha_gw_movmtn, use_gw_rdg_resid, &
-       effgw_rdg_resid, effgw_movmtn_pbl, movmtn_source, movmtn_psteer, &
+       effgw_rdg_resid, gwcli_movmtn, movmtn_source, movmtn_psteer, &
        movmtn_plaunch
 
    namelist /gw_rdg_nl/ gw_rdg_do_divstream, gw_rdg_C_BetaMax_DS, gw_rdg_C_GammaMax, &
@@ -264,10 +264,10 @@ subroutine gw_drag_cam_readnl(nlfile)
   if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: use_gw_rdg_beta")
   call mpi_bcast(n_rdg_beta, 1, mpi_integer, mstrid, mpicom, ierr)
   if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: n_rdg_beta")
-  call mpi_bcast(effgw_rdg_beta, 1, mpi_real8, mstrid, mpicom, ierr)
-  if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: effgw_rdg_beta")
-  call mpi_bcast(effgw_rdg_beta_max, 1, mpi_real8, mstrid, mpicom, ierr)
-  if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: effgw_rdg_beta_max")
+  call mpi_bcast(gwcli_rdg_beta, 1, mpi_real8, mstrid, mpicom, ierr)
+  if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: gwcli_rdg_beta")
+  call mpi_bcast(gwcli_rdg_beta_max, 1, mpi_real8, mstrid, mpicom, ierr)
+  if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: gwcli_rdg_beta_max")
   call mpi_bcast(rdg_beta_cd_llb, 1, mpi_real8, mstrid, mpicom, ierr)
   if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: rdg_beta_cd_llb")
   call mpi_bcast(trpd_leewv_rdg_beta, 1, mpi_logical, mstrid, mpicom, ierr)
@@ -324,8 +324,8 @@ subroutine gw_drag_cam_readnl(nlfile)
 
   call mpi_bcast(alpha_gw_movmtn, 1, mpi_real8, mstrid, mpicom, ierr)
   if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: alpha_gw_movmtn")
-  call mpi_bcast(effgw_movmtn_pbl, 1, mpi_real8, mstrid, mpicom, ierr)
-  if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: effgw_movmtn_pbl")
+  call mpi_bcast(gwcli_movmtn, 1, mpi_real8, mstrid, mpicom, ierr)
+  if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: gwcli_movmtn")
   call mpi_bcast(movmtn_source, 1, mpi_integer, mstrid, mpicom, ierr)
   if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: movmtn_source")
   call mpi_bcast(movmtn_psteer, 1, mpi_real8, mstrid, mpicom, ierr)
@@ -498,11 +498,11 @@ subroutine gw_drag_cam_init()
      end if
   end if
   !movmtn files
-  if (use_gw_movmtn_pbl) then
+  if (use_gw_movmtn) then
      if( trim(gw_drag_file_mm) /= "") then
         call getfil(gw_drag_file_mm, gw_drag_file_mm_loc)
      else
-        call endrun('ERROR gw_drag_cam_init: use_gw_movmtn_pbl is true but gw_drag_file_mm is not specified in namelist')
+        call endrun('ERROR gw_drag_cam_init: use_gw_movmtn is true but gw_drag_file_mm is not specified in namelist')
      end if
   end if
 
@@ -543,7 +543,7 @@ subroutine gw_drag_cam_init()
      frontga_idx = pbuf_get_index('FRONTGA')
   endif
 
-  if(use_gw_movmtn_pbl) then
+  if(use_gw_movmtn) then
      ! get pbuf indices for CLUBB couplings
      ttend_clubb_idx     = pbuf_get_index('TTEND_CLUBB')
      thlp2_clubb_gw_idx  = pbuf_get_index('THLP2_CLUBB_GW')
@@ -564,7 +564,7 @@ subroutine gw_drag_cam_init()
 
   call phys_getopts(deep_scheme_out = deep_scheme)
 
-  if (deep_scheme == 'ZM' .and. (use_gw_convect_dp .or. use_gw_movmtn_pbl)) then
+  if (deep_scheme == 'ZM' .and. (use_gw_convect_dp .or. use_gw_movmtn)) then
      ttend_dp_idx = pbuf_get_index('TTEND_DP',errflg)
   end if
 
@@ -572,7 +572,7 @@ subroutine gw_drag_cam_init()
 
   ! Output initialization status
   if(masterproc) then
-    write(iulog,*) "gw_drag_cam_init: use_gw_movmtn_pbl = ", use_gw_movmtn_pbl
+    write(iulog,*) "gw_drag_cam_init: use_gw_movmtn = ", use_gw_movmtn
 
     write(iulog,*) "gw_drag_cam_init: use_gw_convect_dp = ", use_gw_convect_dp
     write(iulog,*) "gw_drag_cam_init: use_gw_convect_sh = ", use_gw_convect_sh
@@ -603,7 +603,7 @@ subroutine gw_drag_cam_init()
   if(errflg /= 0) call endrun("gravity_wave_drag_common_init: " // errmsg)
 
   ! Call the CCPPized initialization subroutines for individual parameterizations.
-  if(use_gw_movmtn_pbl) then
+  if(use_gw_movmtn) then
     call gravity_wave_drag_moving_mountain_init(pver = pver, &
                         masterproc = masterproc, &
                         iulog = iulog, &
@@ -890,7 +890,7 @@ subroutine gw_drag_cam_init()
 
   if(use_gw_rdg_beta) then
     call gravity_wave_drag_ridge_beta_init( &
-      effgw_rdg_beta         = effgw_rdg_beta, &
+      gwcli_rdg_beta         = gwcli_rdg_beta, &
       errmsg = errmsg, &
       errflg = errflg)
     if (errflg /= 0) then
@@ -933,8 +933,8 @@ subroutine gw_drag_cam_init()
   end if
 
   ! Moving mountain terms.
-  if (use_gw_movmtn_pbl) then
-     call gw_drag_cam_movmtn_diag_init(use_gw_movmtn_pbl, gw_drag_file_mm, movmtn_psteer, movmtn_plaunch, movmtn_source)
+  if (use_gw_movmtn) then
+     call gw_drag_cam_movmtn_diag_init(use_gw_movmtn, gw_drag_file_mm, movmtn_psteer, movmtn_plaunch, movmtn_source)
   end if
 
   ! Gravity wave convective terms.
@@ -1178,18 +1178,18 @@ subroutine gw_drag_cam_beres_diag_init(use_gw_convect_dp,use_gw_convect_sh, gw_d
 end subroutine gw_drag_cam_beres_diag_init
 
 !==============================================================
-subroutine gw_drag_cam_movmtn_diag_init(use_gw_movmtn_pbl, file_name, psteer, plaunch, source)
+subroutine gw_drag_cam_movmtn_diag_init(use_gw_movmtn, file_name, psteer, plaunch, source)
 
   use cam_history, only: addfld
   use cam_history_support, only: horiz_only
 
   character(len=*), intent(in) :: file_name
-  logical, intent(in) :: use_gw_movmtn_pbl
+  logical, intent(in) :: use_gw_movmtn
   real(r8), intent(in) :: psteer
   real(r8), intent(in) :: plaunch
   integer, intent(in)  :: source
 
-  if (use_gw_movmtn_pbl) then
+  if (use_gw_movmtn) then
      call addfld ('VORT4GW', (/ 'lev' /), 'A', 's-1', &
           'Vorticity')
      call addfld ('TILT_MOVMTN',(/ 'lev' /),'I','s-2', &
@@ -1445,7 +1445,7 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
   end if
 
   ttend_dp_arr(:,:) = 0._r8
-  if(use_gw_movmtn_pbl .or. use_gw_convect_dp) then
+  if(use_gw_movmtn .or. use_gw_convect_dp) then
     ! Set up heating
     if (ttend_dp_idx > 0) then
       call pbuf_get_field(pbuf, ttend_dp_idx, ttend_dp)
@@ -1453,7 +1453,7 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
     end if
   endif
 
-  if (use_gw_movmtn_pbl) then
+  if (use_gw_movmtn) then
      ! New couplings from CLUBB
      call pbuf_get_field(pbuf, ttend_clubb_idx, ttend_clubb)
      call pbuf_get_field(pbuf, thlp2_clubb_gw_idx, thlp2_clubb_gw)
@@ -1536,7 +1536,7 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
   ttgw(:,:) = 0._r8
 
   ! Call the CCPPized subroutine for the moving mountain gravity waves.
-  if (use_gw_movmtn_pbl) then
+  if (use_gw_movmtn) then
     call outfld('U_MOVMTN_IN', state1%u, pcols, lchnk)
     call outfld('V_MOVMTN_IN', state1%v, pcols, lchnk)
 
@@ -1579,9 +1579,9 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
       zm                  = state1%zm(:ncol,:), &
       prect               = prect(:ncol), &
       alpha_gw_movmtn     = alpha_gw_movmtn, &
-      effgw_movmtn_pbl    = effgw_movmtn_pbl, &
+      gwcli_movmtn        = gwcli_movmtn, &
       gw_apply_tndmax     = gw_apply_tndmax, &
-      use_gw_movmtn_pbl   = use_gw_movmtn_pbl, &
+      use_gw_movmtn       = use_gw_movmtn, &
       ! Input/output arguments
       q_tend              = ptend%q(:ncol,:pver,:pcnst), &
       u_tend              = ptend%u(:ncol,:pver), &
@@ -2074,8 +2074,8 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
       kvt_gw                  = kvt_gw(:ncol,:pverp), &
       use_gw_rdg_resid        = use_gw_rdg_resid, &
       effgw_rdg_resid         = effgw_rdg_resid, &
-      effgw_rdg_beta          = effgw_rdg_beta, &
-      effgw_rdg_beta_max      = effgw_rdg_beta_max, &
+      gwcli_rdg_beta          = gwcli_rdg_beta, &
+      gwcli_rdg_beta_max      = gwcli_rdg_beta_max, &
       rdg_beta_cd_llb         = rdg_beta_cd_llb, &
       trpd_leewv_rdg_beta     = trpd_leewv_rdg_beta, &
       ! Input data for beta waves - stored for all chunks

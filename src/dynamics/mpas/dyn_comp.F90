@@ -39,7 +39,7 @@ use cam_mpas_subdriver, only: cam_mpas_global_sum_real
 use cam_budget,         only: cam_budget_em_snapshot, cam_budget_em_register
 
 
-use phys_control,       only: use_gw_front, use_gw_front_igw, use_gw_movmtn_pbl
+use phys_control,       only: use_gw_front, use_gw_front_igw, use_gw_movmtn
 
 implicit none
 private
@@ -329,7 +329,7 @@ subroutine dyn_register()
       call pbuf_add_field("FRONTGA", "global", dtype_r8, (/pcols,pver/), frontga_idx)
    end if
 
-   if (use_gw_movmtn_pbl) then
+   if (use_gw_movmtn) then
       ! Add vorticity field to physics buffer for the "moving mountain" gravity wave scheme.
       ! This field will be updated during dynamics-physics coupling.
       call pbuf_add_field("VORT4GW", "global", dtype_r8, (/pcols, pver/), vort4gw_idx)

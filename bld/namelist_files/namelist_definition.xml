@@ -1293,7 +1293,7 @@ Whether or not to enable gravity waves produced by shallow convection.
 Default: .false.
 </entry>
 
-<entry id="use_gw_movmtn_pbl" type="logical" category="gw_drag"
+<entry id="use_gw_movmtn" type="logical" category="gw_drag"
        group="phys_ctl_nl" valid_values="" >
 Whether or not to enable gravity waves from PBL moving mountains source.
 Default: .false.
@@ -1390,13 +1390,13 @@ Number of meso-Beta ridges (per gridbox) to invoke.
 Default: 10 (set by build-namelist)
 </entry>
 
-<entry id="effgw_rdg_beta" type="real" category="gw_drag"
+<entry id="gwcli_rdg_beta" type="real" category="gw_drag"
        group="gw_drag_nl" valid_values="" >
 Efficiency scaling factor associated with anisotropic OGW.
 Default: set by build-namelist.
 </entry>
 
-<entry id="effgw_rdg_beta_max" type="real" category="gw_drag"
+<entry id="gwcli_rdg_beta_max" type="real" category="gw_drag"
        group="gw_drag_nl" valid_values="" >
 Max efficiency associated with anisotropic OGW.
 Default: 1.0
@@ -1408,7 +1408,7 @@ Efficiency scaling factor associated with residual non-ridge topo
 Default: set by build-namelist.
 </entry>
 
-<entry id="effgw_movmtn_pbl" type="real" category="gw_drag"
+<entry id="gwcli_movmtn" type="real" category="gw_drag"
        group="gw_drag_nl" valid_values="" >
 Efficiency scaling factor for moving mountain source
 Default: set by build-namelist.
