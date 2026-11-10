@@ -28,6 +28,7 @@ public :: cam_snapshot_all_outfld
 public :: cam_snapshot_ptend_outfld
 public :: snapshot_type
 public :: cam_state_snapshot_init
+public :: cam_grid_snapshot_init
 public :: cam_cnst_snapshot_init
 public :: cam_tend_snapshot_init
 public :: cam_ptend_snapshot_init
@@ -38,6 +39,7 @@ public :: snapshot_addfld
 
 private :: snapshot_addfld_nd
 private :: state_snapshot_all_outfld
+private :: grid_snapshot_all_outfld
 private :: cnst_snapshot_all_outfld
 private :: tend_snapshot_all_outfld
 private :: cam_in_snapshot_all_outfld
@@ -72,6 +74,7 @@ type pbuf_info_type
 end type pbuf_info_type
 
 integer :: nstate_var
+integer :: ngrid_var
 integer :: ncnst_var
 integer :: ntend_var
 integer :: ncam_in_var
@@ -82,6 +85,7 @@ integer :: cam_snapshot_before_num, cam_snapshot_after_num
 
 ! Note the maximum number of variables for each type
 type (snapshot_type)    ::  state_snapshot(30)
+type (snapshot_type)    ::  grid_snapshot(2)
 type (snapshot_type)    ::  cnst_snapshot(pcnst)
 type (snapshot_type)    ::  tend_snapshot(6)
 type (snapshot_type)    ::  cam_in_snapshot(pcnst+35)   ! needs to be bigger than pcnst because cam_in%cflx is split by constituent and cam_in%dstflx by bin.
@@ -119,6 +123,9 @@ use time_manager,   only: is_first_step
 
    ! Write out all the state fields
    call state_snapshot_all_outfld(lchnk, file_num, state)
+
+   ! Write out the physics grid coordinates in radians
+   call grid_snapshot_all_outfld(lchnk, file_num)
 
    ! Write out all the constituent fields
    call cnst_snapshot_all_outfld(lchnk, file_num, state%q)
@@ -288,6 +295,25 @@ subroutine cam_state_snapshot_init(cam_snapshot_before_num_in, cam_snapshot_afte
 
 end subroutine cam_state_snapshot_init
 
+subroutine cam_grid_snapshot_init(cam_snapshot_before_num, cam_snapshot_after_num)
+
+!--------------------------------------------------------
+! This subroutine does the addfld calls for the physics grid coordinates in radians.
+! The history coordinates lat and lon are written in degrees.
+!--------------------------------------------------------
+
+   integer,intent(in) :: cam_snapshot_before_num, cam_snapshot_after_num
+
+   ngrid_var = 0
+
+   call snapshot_addfld( ngrid_var, grid_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
+     'grid%lat_rad',    'lat_rad',          'radians',         horiz_only)
+
+   call snapshot_addfld( ngrid_var, grid_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
+     'grid%lon_rad',    'lon_rad',          'radians',         horiz_only)
+
+end subroutine cam_grid_snapshot_init
+
 subroutine cam_cnst_snapshot_init(cam_snapshot_before_num, cam_snapshot_after_num)
 
 !--------------------------------------------------------
@@ -381,30 +407,6 @@ subroutine cam_ptend_snapshot_init(cam_snapshot_after_num)
       call addfld('ptend_v', (/ 'lev' /), 'I', 'm s-1 s-1',          &
            'momentum tendency snapshot')
       call add_default('ptend_v', cam_snapshot_after_num, ' ')
-
-      call addfld('ptend_hflux_srf', horiz_only, 'I', 'W m-2',       &
-           'net zonal stress at surface snapshot')
-      call add_default('ptend_hflux_srf', cam_snapshot_after_num, ' ')
-
-      call addfld('ptend_hflux_top', horiz_only, 'I', 'W m-2',       &
-           'net zonal stress at top of model snapshot')
-      call add_default('ptend_hflux_top', cam_snapshot_after_num, ' ')
-
-      call addfld('ptend_taux_srf', horiz_only, 'I', 'Pa',           &
-           'net meridional stress at surface snapshot')
-      call add_default('ptend_taux_srf', cam_snapshot_after_num, ' ')
-
-      call addfld('ptend_taux_top', horiz_only, 'I', 'Pa',           &
-           'net zonal stress at top of model snapshot')
-      call add_default('ptend_taux_top', cam_snapshot_after_num, ' ')
-
-      call addfld('ptend_tauy_srf', horiz_only, 'I', 'Pa',           &
-           'net meridional stress at surface snapshot')
-      call add_default('ptend_tauy_srf', cam_snapshot_after_num, ' ')
-
-      call addfld('ptend_tauy_top', horiz_only, 'I', 'Pa',           &
-           'net meridional stress at top of model snapshot')
-      call add_default('ptend_tauy_top', cam_snapshot_after_num, ' ')
 
       do mcnst = 1, pcnst
          fname = 'ptend_'//trim(cnst_name(mcnst))
@@ -787,6 +789,41 @@ subroutine snapshot_addfld(nddt_var, ddt_snapshot, cam_snapshot_before_num, cam_
 
 end subroutine snapshot_addfld
 
+subroutine grid_snapshot_all_outfld(lchnk, file_num)
+
+   use phys_grid, only: get_rlat_all_p, get_rlon_all_p
+
+   integer, intent(in) :: lchnk
+   integer, intent(in) :: file_num
+
+   real(r8) :: rcoord(pcols)
+   integer  :: i
+
+   do i=1, ngrid_var
+
+      ! Turn on the writing for only the requested tape (file_num)
+      call cam_history_snapshot_activate(trim(grid_snapshot(i)%standard_name), file_num)
+
+      ! Select the coordinate which is being written
+      select case(grid_snapshot(i)%ddt_string)
+
+      case ('grid%lat_rad')
+         call get_rlat_all_p(lchnk, pcols, rcoord)
+
+      case ('grid%lon_rad')
+         call get_rlon_all_p(lchnk, pcols, rcoord)
+
+      case default
+         call endrun('ERROR in grid_snapshot_all_outfld: no case for '//trim(grid_snapshot(i)%ddt_string))
+
+      end select
+
+      call outfld(grid_snapshot(i)%standard_name, rcoord, pcols, lchnk)
+
+   end do
+
+end subroutine grid_snapshot_all_outfld
+
 subroutine state_snapshot_all_outfld(lchnk, file_num, state)
 
    use physics_types,    only: phys_te_idx, dyn_te_idx
@@ -928,26 +965,14 @@ subroutine cam_snapshot_ptend_outfld(ptend, lchnk)
 
    if (ptend%ls) then
       call outfld('ptend_s', ptend%s, pcols, lchnk)
-
-      call outfld('ptend_hflux_srf', ptend%hflux_srf, pcols, lchnk)
-
-      call outfld('ptend_hflux_top', ptend%hflux_top, pcols, lchnk)
    end if
 
    if (ptend%lu) then
       call outfld('ptend_u', ptend%u, pcols, lchnk)
-
-      call outfld('ptend_taux_srf', ptend%taux_srf, pcols, lchnk)
-
-      call outfld('ptend_taux_top', ptend%taux_top, pcols, lchnk)
    end if
 
    if (ptend%lv) then
       call outfld('ptend_v', ptend%v, pcols, lchnk)
-
-      call outfld('ptend_tauy_srf', ptend%tauy_srf, pcols, lchnk)
-
-      call outfld('ptend_tauy_top', ptend%tauy_top, pcols, lchnk)
    end if
 
    do mcnst = 1, pcnst

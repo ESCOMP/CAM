@@ -25,12 +25,10 @@ module dust_model
   integer, protected :: dust_nnum != 2
   character(len=6), protected, allocatable :: dust_names(:)
 
-  real(r8), allocatable :: dust_dmt_grd(:)
   real(r8), allocatable :: dust_emis_sclfctr(:)
 
   integer , protected, allocatable :: dust_indices(:)
   real(r8), allocatable :: dust_dmt_vwr(:)
-  real(r8), allocatable :: dust_stk_crc(:)
 
   real(r8)          :: dust_emis_fact = 0._r8     ! tuning parameter for dust emissions
   character(len=cl) :: soil_erod_file = 'none'    ! full pathname for soil erodibility dataset
@@ -107,43 +105,23 @@ module dust_model
     use constituents,  only: cnst_get_ind
     use aerosol_instances_mod, only: aerosol_instances_get_props, aerosol_instances_get_num_models
     use aerosol_properties_mod, only: aerosol_properties
-    use dust_common,   only: dust_set_params
+    use physconst,     only: pi, rair, gravit
+    use modal_dust_emissions, only: modal_dust_emissions_init
 
     integer :: l, m, mm, ndx, nspec, iaermod
     character(len=32) :: spec_name
     integer, parameter :: mymodes(7) = (/ 2, 1, 3, 4, 5, 6, 7 /) ! tricky order ...
     class(aerosol_properties), pointer :: aero_props_modal
+    character(len=256) :: errmsg
+    integer :: errflg
 
     dust_nbin = ndst
     dust_nnum = ndst
 
     allocate( dust_names(2*ndst) )
     allocate( dust_indices(2*ndst) )
-    allocate( dust_dmt_grd(ndst+1) )
     allocate( dust_emis_sclfctr(ndst) )
     allocate( dust_dmt_vwr(ndst) )
-    allocate( dust_stk_crc(ndst) )
-
-    ! dmleung edited the mass fraction of the emitted dust size distribution. 27 Oct 2025 ++
-    ! The new mass fraction comes from Jun Meng et al. (2022) and MERRA-2.
-    ! Jun Meng's table indicates 2.1 % mass for 0.1-1 um and 97.9 % mass for 1-10 um.
-    ! ref: https://zenodo.org/records/6344524
-    ! MERRA-2 dust emissions indicate 6 % mass for 0.1-1 um (bin1) and 94 % for 1-10 um (bin2-5).
-    ! dmleung adopts 2.1 % mass for 0.1-1 um and 97.9 % mass for 1-10 um for dust.
-    ! Distributing more mass to accumulation mode allows a longer lifetime of dust, reducing
-    ! low dust biases over remote oceans and reducing high dust biases over the Sahara.
-    ! This change impacts both Zender_2003 dust and Leung_2023 dust.
-    if ( ntot_amode == 3 ) then
-       dust_dmt_grd(:) = (/ 0.1e-6_r8, 1.0e-6_r8, 10.0e-6_r8/)
-       dust_emis_sclfctr(:) = (/ 0.021_r8,0.979_r8 /)
-    elseif ( ntot_amode == 4 .or. ntot_amode == 5 ) then
-       dust_dmt_grd(:) = (/ 0.01e-6_r8, 0.1e-6_r8, 1.0e-6_r8, 10.0e-6_r8 /)
-       dust_emis_sclfctr(:) = (/ 1.65E-05_r8, 0.021_r8, 0.979_r8 /)
-    else if( ntot_amode == 7 ) then
-       dust_dmt_grd(:) = (/ 0.1e-6_r8, 2.0e-6_r8, 10.0e-6_r8/)
-       dust_emis_sclfctr(:) = (/ 0.12_r8, 0.88_r8 /)
-    endif
-    ! dmleung --
 
     ! Find modal properties object from factory
     aero_props_modal => null()
@@ -176,17 +154,23 @@ module dust_model
        call  soil_erod_init( dust_emis_fact, soil_erod_file )
     end if
 
-    call dust_set_params( dust_nbin, dust_dmt_grd, dust_dmt_vwr, dust_stk_crc )
+    call modal_dust_emissions_init( ntot_amode=ntot_amode, dust_nbin=dust_nbin,   &
+                                    pi=pi, rair=rair, gravit=gravit,              &
+                                    dust_emis_sclfctr=dust_emis_sclfctr,          &
+                                    dust_dmt_vwr=dust_dmt_vwr,                    &
+                                    errmsg=errmsg, errflg=errflg )
+    if (errflg /= 0) then
+       call endrun('dust_init: '//trim(errmsg))
+    end if
 
   end subroutine dust_init
 
   !===============================================================================
   !===============================================================================
   subroutine dust_emis( ncol, lchnk, dust_flux_in, cflx, soil_erod )
-    use soil_erod_mod, only : soil_erod_fact
     use soil_erod_mod, only : soil_erodibility
-    use mo_constants,  only : dust_density
     use physconst,     only : pi
+    use modal_dust_emissions, only: modal_dust_emissions_run
 
   ! args
     integer,  intent(in)    :: ncol, lchnk
@@ -195,42 +179,27 @@ module dust_model
     real(r8), intent(out)   :: soil_erod(:)
 
   ! local vars
-    integer :: i, m, idst, inum
-    real(r8) :: x_mton
-    real(r8),parameter :: soil_erod_threshold = 0.1_r8
+    logical  :: zender_soil_erod_from_atm
+    real(r8) :: soil_erod_in(ncol)
 
-    ! set dust emissions
+    zender_soil_erod_from_atm = is_zender_soil_erod_from_atm()
 
-    if (is_zender_soil_erod_from_atm()) then   ! Zender_2003 dust emissions
-       col_loop1: do i = 1,ncol
-          soil_erod(i) = soil_erodibility( i, lchnk )
-          if( soil_erod(i) .lt. soil_erod_threshold ) soil_erod(i) = 0._r8
-
-          ! rebin and adjust dust emissons.
-          do m = 1,dust_nbin
-             idst = dust_indices(m)
-             cflx(i,idst) = sum( -dust_flux_in(i,:) ) &
-                  * dust_emis_sclfctr(m)*soil_erod(i)/dust_emis_fact*1.15_r8
-             x_mton = 6._r8 / (pi * dust_density * (dust_dmt_vwr(m)**3._r8))
-             inum = dust_indices(m+dust_nbin)
-             cflx(i,inum) = cflx(i,idst)*x_mton
-          enddo
-       enddo col_loop1
-    else ! Leung_2023 dust emissions
-
-       col_loop2: do i = 1,ncol
-          ! rebin and adjust dust emissons.
-          do m = 1,dust_nbin
-             idst = dust_indices(m)
-
-             cflx(i,idst) = sum( -dust_flux_in(i,:) ) &
-                  * dust_emis_sclfctr(m) / dust_emis_fact
-             x_mton = 6._r8 / (pi * dust_density * (dust_dmt_vwr(m)**3._r8))
-             inum = dust_indices(m+dust_nbin)
-             cflx(i,inum) = cflx(i,idst)*x_mton
-          enddo
-       enddo col_loop2
+    ! soil_erod_mod storage exists only when Zender soil erosion is in atm
+    if (zender_soil_erod_from_atm) then
+       soil_erod_in(:ncol) = soil_erodibility(:ncol,lchnk)
+    else
+       soil_erod_in(:ncol) = 0._r8
     end if
+
+    call modal_dust_emissions_run( ncol=ncol, dust_nbin=dust_nbin,                    &
+                                   dust_indices=dust_indices,                         &
+                                   dust_emis_sclfctr=dust_emis_sclfctr,               &
+                                   dust_dmt_vwr=dust_dmt_vwr,                         &
+                                   dust_emis_fact=dust_emis_fact,                     &
+                                   zender_soil_erod_from_atm=zender_soil_erod_from_atm, &
+                                   soil_erodibility=soil_erod_in,                     &
+                                   dust_flux_in=dust_flux_in,                         &
+                                   pi=pi, cflx=cflx, soil_erod=soil_erod )
 
   end subroutine dust_emis
 

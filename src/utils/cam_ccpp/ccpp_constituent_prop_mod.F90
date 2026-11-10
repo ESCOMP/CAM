@@ -4,6 +4,8 @@ module ccpp_constituent_prop_mod
    implicit none
    private
 
+   integer, public, parameter :: int_unassigned = HUGE(-1)
+
    ! Define CAM version of constituent properties mod
    type, public :: ccpp_constituent_prop_ptr_t
       logical, private :: thermo_active = .false.
@@ -11,18 +13,24 @@ module ccpp_constituent_prop_mod
       logical, private :: species_is_dry
       logical, private :: species_is_wet
       character(len=256) :: std_name = ''
+      character(len=256) :: diag_name = ''
+      integer :: const_ind = int_unassigned
 
       contains
-      procedure :: standard_name     => ccp_get_standard_name
-      procedure :: set_standard_name => ccp_set_standard_name
-      procedure :: is_thermo_active  => ccp_is_thermo_active
-      procedure :: is_water_species  => ccp_is_water_species
-      procedure :: set_thermo_active => ccp_set_thermo_active
-      procedure :: set_water_species => ccp_set_water_species
-      procedure :: is_dry            => ccp_is_dry
-      procedure :: set_dry           => ccp_set_dry
-      procedure :: is_wet            => ccp_is_wet
-      procedure :: set_wet           => ccp_set_wet
+      procedure :: standard_name       => ccp_get_standard_name
+      procedure :: set_standard_name   => ccp_set_standard_name
+      procedure :: diagnostic_name     => ccp_get_diagnostic_name
+      procedure :: set_diagnostic_name => ccp_set_diagnostic_name
+      procedure :: const_index         => ccp_const_index
+      procedure :: set_const_index     => ccp_set_const_index
+      procedure :: is_thermo_active    => ccp_is_thermo_active
+      procedure :: is_water_species    => ccp_is_water_species
+      procedure :: set_thermo_active   => ccp_set_thermo_active
+      procedure :: set_water_species   => ccp_set_water_species
+      procedure :: is_dry              => ccp_is_dry
+      procedure :: set_dry             => ccp_set_dry
+      procedure :: is_wet              => ccp_is_wet
+      procedure :: set_wet             => ccp_set_wet
 
    end type ccpp_constituent_prop_ptr_t
 
@@ -36,7 +44,6 @@ module ccpp_constituent_prop_mod
 
    ! Public properties DDT variable:
    type(ccpp_constituent_prop_ptr_t), allocatable, public :: ccpp_const_props(:)
-   integer, public, parameter :: int_unassigned = HUGE(-1)
 
 contains
 
@@ -87,6 +94,99 @@ contains
       end if
 
    end subroutine ccp_set_standard_name
+
+   !------
+
+   subroutine ccp_get_diagnostic_name(this, diag_name, errcode, errmsg)
+      ! Return this constituent's diagnostic (history output) name
+
+      ! Dummy arguments
+      class(ccpp_constituent_prop_ptr_t),   intent(in)  :: this
+      character(len=*),                     intent(out) :: diag_name
+      integer,          optional,           intent(out) :: errcode
+      character(len=*), optional,           intent(out) :: errmsg
+
+      diag_name = this%diag_name
+
+      ! Provide err values if requested:
+      if(present(errcode)) then
+         errcode = 0
+      end if
+      if(present(errmsg)) then
+         errmsg = ''
+      end if
+
+   end subroutine ccp_get_diagnostic_name
+
+   !------
+
+   subroutine ccp_set_diagnostic_name(this, diag_name, errcode, errmsg)
+      ! Set this constituent's diagnostic (history output) name
+
+      ! Dummy arguments
+      class(ccpp_constituent_prop_ptr_t),   intent(inout)  :: this
+      character(len=*),                     intent(in)  :: diag_name
+      integer,          optional,           intent(out) :: errcode
+      character(len=*), optional,           intent(out) :: errmsg
+
+      this%diag_name = diag_name
+
+      ! Provide err values if requested:
+      if(present(errcode)) then
+         errcode = 0
+      end if
+      if(present(errmsg)) then
+         errmsg = ''
+      end if
+
+   end subroutine ccp_set_diagnostic_name
+
+   !------
+
+   subroutine ccp_const_index(this, index, errcode, errmsg)
+      ! Return this constituent's index in the constituent array
+      ! (int_unassigned if not set)
+
+      ! Dummy arguments
+      class(ccpp_constituent_prop_ptr_t),   intent(in)  :: this
+      integer,                              intent(out) :: index
+      integer,          optional,           intent(out) :: errcode
+      character(len=*), optional,           intent(out) :: errmsg
+
+      index = this%const_ind
+
+      ! Provide err values if requested:
+      if(present(errcode)) then
+         errcode = 0
+      end if
+      if(present(errmsg)) then
+         errmsg = ''
+      end if
+
+   end subroutine ccp_const_index
+
+   !------
+
+   subroutine ccp_set_const_index(this, index, errcode, errmsg)
+      ! Set this constituent's index in the constituent array
+
+      ! Dummy arguments
+      class(ccpp_constituent_prop_ptr_t),   intent(inout) :: this
+      integer,                              intent(in)    :: index
+      integer,          optional,           intent(out)   :: errcode
+      character(len=*), optional,           intent(out)   :: errmsg
+
+      this%const_ind = index
+
+      ! Provide err values if requested:
+      if(present(errcode)) then
+         errcode = 0
+      end if
+      if(present(errmsg)) then
+         errmsg = ''
+      end if
+
+   end subroutine ccp_set_const_index
 
    !------
 
@@ -325,8 +425,12 @@ subroutine ccpp_const_props_init(ix_qv)
     ! Set "std_name" for all constituents using cnst_name as baseline.
     ! This allows chemistry species (O3, NO, NO2, ...) to be looked up
     ! via ccpp_constituent_index using their constituent name directly.
+    ! The diagnostic name in CAM is the constituent name, and the
+    ! constituent index is the index in the constituents (state%q) array.
     do m=1,pcnst
        call ccpp_const_props(m)%set_standard_name(trim(cnst_name(m)))
+       call ccpp_const_props(m)%set_diagnostic_name(trim(cnst_name(m)))
+       call ccpp_const_props(m)%set_const_index(m)
     end do
 
     ! Override with proper CCPP standard names for known species:

@@ -92,7 +92,6 @@ contains
 
     character(len=1), parameter :: filelist = ''
     character(len=1), parameter :: datapath = ''
-    logical         , parameter :: rmv_file = .false.
     logical  :: history_aerosol
     logical  :: history_chemistry
     logical  :: history_cesm_forcing
@@ -326,7 +325,7 @@ contains
                           forcings(m)%filename, filelist, datapath, &
                           forcings(m)%fields,  &
                           forcings(m)%file, &
-                          rmv_file, extfrc_cycle_yr, extfrc_fixed_ymd, extfrc_fixed_tod, trim(extfrc_type) )
+                          extfrc_cycle_yr, extfrc_fixed_ymd, extfrc_fixed_tod, trim(extfrc_type) )
 
     enddo frcing_loop
 

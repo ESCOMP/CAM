@@ -186,7 +186,7 @@ CONTAINS
     end if
   end subroutine set_interp_hfile
 
-  subroutine write_interpolated_scalar(File, varid, fld, numlev, data_type, decomp_type)
+  subroutine write_interpolated_scalar(File, varid, fld, ext_dims, data_type, decomp_type)
     use pio,              only: file_desc_t, var_desc_t
     use pio,              only: iosystem_desc_t
     use pio,              only: pio_initdecomp, pio_freedecomp
@@ -213,7 +213,8 @@ CONTAINS
     type(file_desc_t), intent(inout) :: File
     type(var_desc_t) , intent(inout) :: varid
     real(r8),          intent(in)    :: fld(:,:,:)
-    integer,           intent(in)    :: numlev, data_type, decomp_type
+    integer,           intent(in)    :: ext_dims(:)
+    integer,           intent(in)    :: data_type, decomp_type
     !
     ! local variables
     !
@@ -237,6 +238,14 @@ CONTAINS
     integer          :: nlon, nlat, ncol, nsize, nhalo, nhcc
     logical          :: usefillvalues
     character(len=*), parameter :: subname = 'write_interpolated_scalar'
+    integer          :: numlev
+
+    numlev = 1
+    if (size(ext_dims) > 0) then
+      do k = 1, size(ext_dims)
+        numlev = numlev * ext_dims(k)
+      end do
+    end if
 
     usefillvalues=.false.
 
@@ -384,10 +393,16 @@ CONTAINS
       st = en+1
     end do
 
-    if(numlev==1) then
+    if(size(ext_dims)==0) then
        call pio_initdecomp(pio_subsystem, data_type, (/nlon,nlat/), idof, iodesc)
+    else if(size(ext_dims)==1) then
+       call pio_initdecomp(pio_subsystem, data_type, (/nlon,nlat,ext_dims(1)/), idof, iodesc)
+    else if(size(ext_dims)==2) then
+       call pio_initdecomp(pio_subsystem, data_type, (/nlon,nlat,ext_dims(1),ext_dims(2)/), idof, iodesc)
+    else if(size(ext_dims)==3) then
+       call pio_initdecomp(pio_subsystem, data_type, (/nlon,nlat,ext_dims(1),ext_dims(2),ext_dims(3)/), idof, iodesc)
     else
-       call pio_initdecomp(pio_subsystem, data_type, (/nlon,nlat,numlev/), idof, iodesc)
+       call endrun(subname//': too many extra dimensions')
     end if
 
     if(data_type == pio_real) then
@@ -404,7 +419,7 @@ CONTAINS
 
   end subroutine write_interpolated_scalar
 
-  subroutine write_interpolated_vector(File, varidu, varidv, fldu, fldv, numlev, data_type, decomp_type)
+  subroutine write_interpolated_vector(File, varidu, varidv, fldu, fldv, ext_dims, data_type, decomp_type)
     use pio,              only: file_desc_t, var_desc_t
     use pio,              only: iosystem_desc_t
     use pio,              only: pio_initdecomp, pio_freedecomp
@@ -432,7 +447,8 @@ CONTAINS
     type(file_desc_t), intent(inout) :: File
     type(var_desc_t),  intent(inout) :: varidu, varidv
     real(r8),          intent(in)    :: fldu(:,:,:), fldv(:,:,:)
-    integer,           intent(in)    :: numlev, data_type, decomp_type
+    integer,           intent(in)    :: ext_dims(:)
+    integer,           intent(in)    :: data_type, decomp_type
 
     type(hybrid_t)                 :: hybrid
     type(io_desc_t)                :: iodesc
@@ -455,6 +471,14 @@ CONTAINS
     real (r8)        :: D(2,2)   ! derivative of gnomonic mapping
     real (r8)        :: v1,v2
     character(len=*), parameter :: subname = 'write_interpolated_vector'
+    integer          :: numlev
+
+    numlev = 1
+    if (size(ext_dims) > 0) then
+      do k = 1, size(ext_dims)
+        numlev = numlev * ext_dims(k)
+      end do
+    end if
 
     usefillvalues=.false.
 
@@ -641,10 +665,16 @@ CONTAINS
       st = en+1
     end do
 
-    if(numlev==1) then
+    if(size(ext_dims)==0) then
        call pio_initdecomp(pio_subsystem, data_type, (/nlon,nlat/), idof, iodesc)
+    else if(size(ext_dims)==1) then
+       call pio_initdecomp(pio_subsystem, data_type, (/nlon,nlat,ext_dims(1)/), idof, iodesc)
+    else if(size(ext_dims)==2) then
+       call pio_initdecomp(pio_subsystem, data_type, (/nlon,nlat,ext_dims(1),ext_dims(2)/), idof, iodesc)
+    else if(size(ext_dims)==3) then
+       call pio_initdecomp(pio_subsystem, data_type, (/nlon,nlat,ext_dims(1),ext_dims(2),ext_dims(3)/), idof, iodesc)
     else
-       call pio_initdecomp(pio_subsystem, data_type, (/nlon,nlat,numlev/), idof, iodesc)
+       call endrun(subname//': too many extra dimensions')
     end if
 
     if(data_type == pio_real) then

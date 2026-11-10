@@ -12,7 +12,7 @@ module aero_model
   use aerodep_flx,       only: aerodep_flx_prescribed
   use physics_types,     only: physics_state, physics_ptend, physics_ptend_init
   use physics_buffer,    only: physics_buffer_desc
-  use physconst,         only: gravit, rair
+  use physconst,         only: gravit, rair, tmelt
   use dust_model,        only: dust_active, dust_names, dust_nbin
   use seasalt_model,     only: sslt_active=>seasalt_active, seasalt_names, seasalt_nbin
   use spmd_utils,        only: masterproc
@@ -154,10 +154,9 @@ contains
     use mo_setsoa,      only: soa_inti
     use dust_model,     only: dust_init
     use seasalt_model,  only: seasalt_init
-    use aer_drydep_mod, only: inidrydep
-    use wetdep,         only: wetdep_init
-    use mo_setsox,      only: has_sox
-    use mo_setsox,      only: sox_inti
+    use wetdep_cam,     only: wetdep_init
+    use mo_setsox_cam,  only: has_sox
+    use mo_setsox_cam,  only: sox_inti
 
     ! args
     type(physics_buffer_desc), pointer :: pbuf2d(:,:)
@@ -277,8 +276,6 @@ contains
     enddo
 
     if (ndrydep>0) then
-
-       call inidrydep(rair, gravit)
 
        dummy = 'RAM1'
        call addfld (dummy,horiz_only, 'A','frac','RAM1')
@@ -424,7 +421,7 @@ contains
   subroutine aero_model_drydep  ( state, pbuf, obklen, ustar, cam_in, dt, cam_out, ptend )
 
     use dust_sediment_mod, only: dust_sediment_tend
-    use aer_drydep_mod,    only: d3ddflux, calcram
+    use aero_drydep_core,  only: calcram
     use dust_model,        only: dust_depvel, dust_nbin, dust_names
     use seasalt_model,     only: sslt_depvel=>seasalt_depvel, sslt_nbin=>seasalt_nbin, sslt_names=>seasalt_names
 
@@ -472,10 +469,12 @@ contains
     real(r8) :: pvaeros(pcols,pverp)    ! sedimentation velocity in Pa
     real(r8) :: sflx(pcols)
 
-    real(r8) :: tvs(pcols,pver)
     real(r8) :: rho(pcols,pver)      ! air density in kg/m3
 
     integer :: m,mm, i, im
+
+    character(len=512) :: errmsg
+    integer            :: errflg
 
     if (ndrydep<1) return
 
@@ -491,7 +490,7 @@ contains
     ! calc ram and fv over ocean and sea ice ...
     call calcram( ncol,landfrac,icefrac,ocnfrac,obklen,&
                   ustar,ram1in,ram1,state%t(:,pver),state%pmid(:,pver),&
-                  state%pdel(:,pver),fvin,fv)
+                  state%pdel(:,pver),fvin,fv,rair,gravit)
 
     call outfld( 'airFV', fv(:), pcols, lchnk )
     call outfld( 'RAM1', ram1(:), pcols, lchnk )
@@ -507,7 +506,6 @@ contains
     lchnk = state%lchnk
     ncol  = state%ncol
 
-    tvs(:ncol,:) = state%t(:ncol,:)
     rho(:ncol,:) = state%pmid(:ncol,:)/(rair*state%t(:ncol,:))
 
     ! compute dep velocities for sea salt and dust...
@@ -536,18 +534,16 @@ contains
 
        call outfld( trim(cnst_name(mm))//'DV', pvaeros(:,2:pverp), pcols, lchnk )
 
-       if(.true.) then ! use phil's method
-          !      convert from meters/sec to pascals/sec
-          !      pvaeros(:,1) is assumed zero, use density from layer above in conversion
-          pvaeros(:ncol,2:pverp) = pvaeros(:ncol,2:pverp) * rho(:ncol,:)*gravit
+       !      convert from meters/sec to pascals/sec
+       !      pvaeros(:,1) is assumed zero, use density from layer above in conversion
+       pvaeros(:ncol,2:pverp) = pvaeros(:ncol,2:pverp) * rho(:ncol,:)*gravit
 
-          !      calculate the tendencies and sfc fluxes from the above velocities
-          call dust_sediment_tend( &
-               ncol,             dt,       state%pint(:,:), state%pmid, state%pdel, state%t , &
-               state%q(:,:,mm) , pvaeros  , ptend%q(:,:,mm), sflx  )
-       else   !use charlie's method
-          call d3ddflux(ncol, vlc_dry(:,:,im), state%q(:,:,mm),state%pmid,state%pdel, tvs,sflx,ptend%q(:,:,mm),dt)
-       endif
+       !      calculate the tendencies and sfc fluxes from the above velocities
+       call dust_sediment_tend( &
+            ncol,             dt,       state%pint(:,:), state%pdel, &
+            state%q(:,:,mm) , pvaeros  , ptend%q(:,:,mm), sflx, &
+            pver,             gravit,   errmsg,          errflg )
+       if (errflg /= 0) call endrun('aero_model_drydep: '//trim(errmsg))
        ! apportion dry deposition into turb and gravitational settling for tapes
        do i=1,ncol
           dep_trb(i)=sflx(i)*vlc_trb(i,im)/vlc_dry(i,pver,im)
@@ -595,7 +591,8 @@ contains
   !=============================================================================
   subroutine aero_model_wetdep( state, dt, dlf, cam_out, ptend, pbuf)
 
-    use wetdep,        only : wetdepa_v1, wetdep_inputs_set, wetdep_inputs_t
+    use wetdep,        only : wetdepa_v1
+    use wetdep_cam,    only : wetdep_inputs_set, wetdep_inputs_t
     use dust_model,    only : dust_names
     use seasalt_model, only : sslt_names=>seasalt_names
 
@@ -628,6 +625,8 @@ contains
     real(r8) :: bsscavt(pcols, pver)
 
     real(r8) :: sol_factb, sol_facti
+    character(len=512) :: errmsg   ! error handling for the portable wetdepa_v1
+    integer            :: errflg
 
     real(r8) :: rainmr(pcols,pver)       ! mixing ratio of rain within cloud volume
     real(r8) :: cldv(pcols,pver)         ! cloudy volume undergoing scavenging
@@ -661,15 +660,16 @@ contains
 
        scavcoef(:ncol,:) = aer_scav_coef(m)
 
-       call wetdepa_v1( state%t, state%pmid, state%q(:,:,1), state%pdel, &
-            dep_inputs%cldt, dep_inputs%cldcu, dep_inputs%cmfdqr, &
-            dep_inputs%conicw, dep_inputs%prain, dep_inputs%qme, &
+       call wetdepa_v1( state%t, state%pdel, &
+            dep_inputs%cldt, dep_inputs%cmfdqr, &
+            dep_inputs%conicw, dep_inputs%prain, &
             dep_inputs%evapr, dep_inputs%totcond, state%q(:,:,mm), dt, &
             scavt, iscavt, dep_inputs%cldv, &
             fracis(:,:,mm), sol_factb, ncol, &
-            scavcoef, &
+            scavcoef, tmelt, gravit, pver, errmsg, errflg, &
             sol_facti_in=sol_facti, &
             icscavt=icscavt, isscavt=isscavt, bcscavt=bcscavt, bsscavt=bsscavt )
+       if (errflg /= 0) call endrun(trim(errmsg))
 
        ptend%q(:ncol,:,mm)=scavt(:ncol,:)
 
@@ -1058,7 +1058,7 @@ contains
 
     use chem_mods,   only : gas_pcnst
     use mo_aerosols, only : aerosols_formation, has_aerosols
-    use mo_setsox,   only : setsox, has_sox
+    use mo_setsox_cam, only : setsox, has_sox
     use mo_setsoa,   only : setsoa, has_soa
     use aerosol_state_mod, only : aerosol_state
 

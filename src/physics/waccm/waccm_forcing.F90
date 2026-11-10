@@ -39,7 +39,6 @@ module waccm_forcing
   character(len=256) :: filelist = ''
   character(len=256) :: datapath = ''
   character(len=32)  :: datatype = 'CYCLICAL'
-  logical            :: rmv_file = .false.
 
   integer            :: cycle_yr  = 0
   integer            :: fixed_ymd = 0
@@ -72,7 +71,6 @@ contains
     character(len=256) :: waccm_forcing_filelist
     character(len=256) :: waccm_forcing_datapath
     character(len=32)  :: waccm_forcing_type
-    logical            :: waccm_forcing_rmfile
     integer            :: waccm_forcing_cycle_yr
     integer            :: waccm_forcing_fixed_ymd
     integer            :: waccm_forcing_fixed_tod
@@ -83,7 +81,6 @@ contains
          waccm_forcing_filelist,  &
          waccm_forcing_datapath,  &
          waccm_forcing_type,      &
-         waccm_forcing_rmfile,    &
          waccm_forcing_cycle_yr,  &
          waccm_forcing_fixed_ymd, &
          waccm_forcing_fixed_tod      
@@ -95,7 +92,6 @@ contains
     waccm_forcing_filelist = filelist
     waccm_forcing_datapath = datapath
     waccm_forcing_type     = datatype
-    waccm_forcing_rmfile   = rmv_file
     waccm_forcing_cycle_yr = cycle_yr
     waccm_forcing_fixed_ymd= fixed_ymd
     waccm_forcing_fixed_tod= fixed_tod
@@ -122,7 +118,6 @@ contains
     call mpibcast(waccm_forcing_filelist, len(waccm_forcing_filelist), mpichar, 0, mpicom)
     call mpibcast(waccm_forcing_datapath, len(waccm_forcing_datapath), mpichar, 0, mpicom)
     call mpibcast(waccm_forcing_type,     len(waccm_forcing_type),     mpichar, 0, mpicom)
-    call mpibcast(waccm_forcing_rmfile,   1, mpilog,  0, mpicom)
     call mpibcast(waccm_forcing_cycle_yr, 1, mpiint,  0, mpicom)
     call mpibcast(waccm_forcing_fixed_ymd,1, mpiint,  0, mpicom)
     call mpibcast(waccm_forcing_fixed_tod,1, mpiint,  0, mpicom)
@@ -134,7 +129,6 @@ contains
     filelist   = waccm_forcing_filelist
     datapath   = waccm_forcing_datapath
     datatype   = waccm_forcing_type
-    rmv_file   = waccm_forcing_rmfile
     cycle_yr   = waccm_forcing_cycle_yr
     fixed_ymd  = waccm_forcing_fixed_ymd
     fixed_tod  = waccm_forcing_fixed_tod
@@ -156,7 +150,7 @@ contains
     allocate(file%in_pbuf(size(specifier)))
     file%in_pbuf(:) = .false.
     call trcdata_init( specifier, filename, filelist, datapath, fields, file, &
-                       rmv_file, cycle_yr, fixed_ymd, fixed_tod, datatype)
+                       cycle_yr, fixed_ymd, fixed_tod, datatype)
 
     do i = 1,N_FLDS
        call addfld( 'WFRC_'//trim(fields(i)%fldnam), (/ 'lev' /), 'I', fields(i)%units, 'for waccm forcing' )

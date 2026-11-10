@@ -20,8 +20,8 @@ module insoluble_aerosol_optics_mod
      real(r8), pointer :: sw_ssa(:)
      real(r8), pointer :: sw_asm(:)
 
-     ! aerosol mass mixing ratio
-     real(r8), pointer :: mmr(:,:)
+     ! total bin dry aerosol mass mixing ratio, summed over all species in the bin
+     real(r8), allocatable :: mmr(:,:)
 
    contains
 
@@ -49,6 +49,8 @@ contains
     type(insoluble_aerosol_optics), pointer :: newobj
 
     integer :: ierr
+    integer :: ispec
+    real(r8), pointer :: specmmr(:,:)
 
     allocate(newobj, stat=ierr)
     if (ierr/=0) then
@@ -63,7 +65,22 @@ contains
          sw_insoluble_asm=newobj%sw_asm, &
          lw_insoluble_ext=newobj%lw_abs )
 
-    call aero_state%get_ambient_mmr(species_ndx=1, bin_ndx=ibin, mmr=newobj%mmr)
+    ! The mass-specific optics tables apply to the total particle mass of the bin,
+    ! so sum the mass mixing ratio over all species in the bin.
+    ! For single-species (e.g. bulk) aerosols this reduces to the species mass.
+    call aero_state%get_ambient_mmr(species_ndx=1, bin_ndx=ibin, mmr=specmmr)
+
+    allocate(newobj%mmr(size(specmmr,dim=1),size(specmmr,dim=2)), stat=ierr)
+    if (ierr/=0) then
+       nullify(newobj)
+       return
+    end if
+    newobj%mmr(:,:) = specmmr(:,:)
+
+    do ispec = 2, aero_props%nspecies(ibin)
+       call aero_state%get_ambient_mmr(species_ndx=ispec, bin_ndx=ibin, mmr=specmmr)
+       newobj%mmr(:,:) = newobj%mmr(:,:) + specmmr(:,:)
+    end do
 
   end function constructor
 
@@ -74,12 +91,15 @@ contains
 
     type(insoluble_aerosol_optics), intent(inout) :: self
 
-    ! table and mmr pointers are views of data owned elsewhere; disassociate only
+    if (allocated(self%mmr)) then
+       deallocate(self%mmr)
+    end if
+
+    ! table pointers are views of data owned elsewhere; disassociate only
     nullify(self%lw_abs)
     nullify(self%sw_ext)
     nullify(self%sw_ssa)
     nullify(self%sw_asm)
-    nullify(self%mmr)
 
   end subroutine destructor
 

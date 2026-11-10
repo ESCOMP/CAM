@@ -34,7 +34,6 @@ module prescribed_ozone
   character(len=256) :: filelist = ' '
   character(len=256) :: datapath = ' '
   character(len=32)  :: data_type = 'SERIAL'
-  logical            :: rmv_file = .false.
   integer            :: cycle_yr  = 0
   integer            :: fixed_ymd = 0
   integer            :: fixed_tod = 0
@@ -82,7 +81,7 @@ contains
     allocate(file%in_pbuf(size(specifier)))
     file%in_pbuf(:) = .true.
     call trcdata_init( specifier, filename, filelist, datapath, fields, file, &
-                       rmv_file, cycle_yr, fixed_ymd, fixed_tod, data_type)
+                       cycle_yr, fixed_ymd, fixed_tod, data_type)
 
     call addfld(ozone_name, (/ 'lev' /), &
          'I','mol/mol', 'prescribed ozone' )
@@ -108,7 +107,6 @@ subroutine prescribed_ozone_readnl(nlfile)
    character(len=256) :: prescribed_ozone_filelist
    character(len=256) :: prescribed_ozone_datapath
    character(len=32)  :: prescribed_ozone_type
-   logical            :: prescribed_ozone_rmfile
    integer            :: prescribed_ozone_cycle_yr
    integer            :: prescribed_ozone_fixed_ymd
    integer            :: prescribed_ozone_fixed_tod
@@ -119,7 +117,6 @@ subroutine prescribed_ozone_readnl(nlfile)
       prescribed_ozone_filelist,  &
       prescribed_ozone_datapath,  &
       prescribed_ozone_type,      &
-      prescribed_ozone_rmfile,    &
       prescribed_ozone_cycle_yr,  &
       prescribed_ozone_fixed_ymd, &
       prescribed_ozone_fixed_tod      
@@ -131,7 +128,6 @@ subroutine prescribed_ozone_readnl(nlfile)
    prescribed_ozone_filelist = filelist
    prescribed_ozone_datapath = datapath
    prescribed_ozone_type     = data_type
-   prescribed_ozone_rmfile   = rmv_file
    prescribed_ozone_cycle_yr = cycle_yr
    prescribed_ozone_fixed_ymd= fixed_ymd
    prescribed_ozone_fixed_tod= fixed_tod
@@ -158,7 +154,6 @@ subroutine prescribed_ozone_readnl(nlfile)
    call mpibcast(prescribed_ozone_filelist, len(prescribed_ozone_filelist), mpichar, 0, mpicom)
    call mpibcast(prescribed_ozone_datapath, len(prescribed_ozone_datapath), mpichar, 0, mpicom)
    call mpibcast(prescribed_ozone_type,     len(prescribed_ozone_type),     mpichar, 0, mpicom)
-   call mpibcast(prescribed_ozone_rmfile,   1, mpilog,  0, mpicom)
    call mpibcast(prescribed_ozone_cycle_yr, 1, mpiint,  0, mpicom)
    call mpibcast(prescribed_ozone_fixed_ymd,1, mpiint,  0, mpicom)
    call mpibcast(prescribed_ozone_fixed_tod,1, mpiint,  0, mpicom)
@@ -170,7 +165,6 @@ subroutine prescribed_ozone_readnl(nlfile)
    filelist   = prescribed_ozone_filelist
    datapath   = prescribed_ozone_datapath
    data_type  = prescribed_ozone_type
-   rmv_file   = prescribed_ozone_rmfile
    cycle_yr   = prescribed_ozone_cycle_yr
    fixed_ymd  = prescribed_ozone_fixed_ymd
    fixed_tod  = prescribed_ozone_fixed_tod

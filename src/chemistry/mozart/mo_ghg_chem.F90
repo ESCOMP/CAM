@@ -31,6 +31,7 @@ module mo_ghg_chem
   integer :: n2o_rxt, ch4_rxt, cfc11_rxt, cfc12_rxt, lyman_alpha_rxt
   integer :: n2o_ndx, ch4_ndx, cfc11_ndx, cfc12_ndx
   integer :: ghg_ndx(ncnst)
+  integer :: ghg_cnst(ncnst)
   character(len=6) :: ghg_bnd_names(ncnst)
 
   logical :: lyman_alpha = .false.
@@ -43,6 +44,8 @@ contains
 !-----------------------------------------------------------------
   subroutine ghg_chem_init(phys_state, bndtvg, h2orates)
     use mo_chem_utls, only : get_rxt_ndx, get_spc_ndx
+    use mo_tracname,  only : solsym
+    use constituents, only : cnst_get_ind
     use cam_history,  only : addfld
 
     implicit none
@@ -95,6 +98,11 @@ contains
 
     ghg_ndx =       (/  n2o_ndx,  ch4_ndx, cfc11_ndx, cfc12_ndx /)
     ghg_bnd_names = (/ 'N2OVMR', 'CH4VMR',  'F11VMR',  'F12VMR' /)
+
+    ! has_flbc is indexed by constituent, ghg_ndx by chemical species
+    do m = 1, ncnst
+       call cnst_get_ind( trim(solsym(ghg_ndx(m))), ghg_cnst(m), abort=.false. )
+    end do
 
   end subroutine ghg_chem_init
 
@@ -175,10 +183,15 @@ contains
     integer,  intent(in)    :: ncol                           ! number columns in chunk
     real(r8), intent(inout) ::  vmr(ncol,pver,gas_pcnst)              ! xported species (vmr)
     integer  :: i,ndx
+    logical  :: flbc_set_by_file
 
     do i = 1,ncnst
-       ndx = ghg_ndx(i)
-       if ( has_flbc(ndx)) then
+       ndx = ghg_ndx(i)                                   ! chemistry species index: indexes vmr
+       ! has_flbc is indexed by CONSTITUENT index, not chemistry species index
+       flbc_set_by_file = .false.
+       if ( ghg_cnst(i) > 0 ) flbc_set_by_file = has_flbc(ghg_cnst(i))
+       if ( flbc_set_by_file ) then
+          ! flbc_set has already placed the lower-boundary-file value at level pver
           vmr(:ncol, pver-1, ndx) = vmr(:ncol, pver, ndx)
        else
           vmr(:ncol, pver-1:pver, ndx) = chem_surfvals_get(ghg_bnd_names(i))
