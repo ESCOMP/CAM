@@ -122,8 +122,8 @@ contains
 
        call slope_limiter(nhe,nc,nhc,fcube,jx,jy,k_in,nlev_in,ntrac_in,irecons,recons,&
             spherecentroid(:,1-nhe:nc+nhe,1-nhe:nc+nhe),&
-            recons_metrics,vertex_recons_weights,vtx_cart,irecons_actual,llimiter,&
-            cubeboundary)
+            recons_metrics,recons_metrics_integral,vertex_recons_weights,vtx_cart,&
+            irecons_actual,llimiter,cubeboundary)
        if(FVM_TIMERS) call t_stopf('FVM:reconstruction:part#2')
     end if
     if(FVM_TIMERS) call t_startf('FVM:reconstruction:part#3')
@@ -153,29 +153,7 @@ contains
         end do
       end do
     case(6)
-      do itr=1,ntrac_in
-        do in=1,3
-          do j=jy(1,in),jy(2,in)
-            do i=jx(1,in),jx(2,in)
-              recons(1,i,j,itr)  = fcube(i,j,k_in,itr) &
-                   - recons(2,i,j,itr)*spherecentroid(1,i,j) &
-                   - recons(3,i,j,itr)*spherecentroid(2,i,j) &
-                   + recons(4,i,j,itr)*recons_metrics_integral(1,i,j) &
-                   + recons(5,i,j,itr)*recons_metrics_integral(2,i,j) &
-                   + recons(6,i,j,itr)*recons_metrics_integral(3,i,j)
-              recons(2,i,j,itr) = recons(2,i,j,itr)                 &
-                   - recons(4,i,j,itr)*2.0_r8*spherecentroid(1,i,j) &
-                   - recons(6,i,j,itr)       *spherecentroid(2,i,j)
-              recons(3,i,j,itr) = recons(3,i,j,itr)                &
-                   - recons(5,i,j,itr)*2.0_r8*spherecentroid(2,i,j) &
-                   - recons(6,i,j,itr)*spherecentroid(1,i,j)
-              !
-              ! recons(i,j,4:6) already set in get_gradients
-              !
-            end do
-          end do
-        end do
-      end do
+      ! recons(i,j,4:6) already set in get_gradients; recons(1:3) finalized in slope_limiter
     case default
       write(*,*) "irecons out of range in get_ceof", irecons
     end select
@@ -299,7 +277,7 @@ contains
 
 
   subroutine slope_limiter(nhe,nc,nhc,fcube,jx,jy,k,nlev,ntrac,irecons,recons,spherecentroid,recons_metrics,&
-       vertex_recons_weights,vtx_cart,irecons_actual,llimiter,cubeboundary)
+       recons_metrics_integral,vertex_recons_weights,vtx_cart,irecons_actual,llimiter,cubeboundary)
     implicit none
     integer                                                           , intent(in) :: irecons_actual,k,nlev,ntrac
     integer                                                           , intent(in) :: irecons,nhe,nc,nhc
@@ -308,6 +286,7 @@ contains
     integer,               dimension(2,3)                             , intent(in) :: jx,jy
     real (kind=r8), dimension(irecons-1,1-nhe:nc+nhe,1-nhe:nc+nhe)    , intent(in) :: spherecentroid
     real (kind=r8), dimension(3,1-nhe:nc+nhe,1-nhe:nc+nhe)            , intent(in) :: recons_metrics
+    real (kind=r8), dimension(3,1-nhe:nc+nhe,1-nhe:nc+nhe)            , intent(in) :: recons_metrics_integral
     real (kind=r8), dimension(4,1:irecons-1,1-nhe:nc+nhe,1-nhe:nc+nhe), intent(in) :: vertex_recons_weights
     real (kind=r8), dimension(4,2,1-nhc:nc+nhc,1-nhc:nc+nhc)          , intent(in) :: vtx_cart
     logical,        dimension(ntrac)                                  , intent(in) :: llimiter
@@ -315,8 +294,9 @@ contains
 
     real (kind=r8):: minval_patch,maxval_patch
     real (kind=r8):: phi, min_val, max_val,disc
-    real (kind=r8):: v1,v2,v3,v4,vx1,vx2,vx3,vx4,vy1,vy2,vy3,vy4,r2,r3,r4,r5,r6,scx,scy,dx,dy,ex1,ex2,f0,val
-    real (kind=r8):: m1,m2,m3
+    real (kind=r8):: v1,v2,v3,v4,vx1,vx2,vx3,vx4,vy1,vy2,vy3,vy4,r2,r3,r4,r5,r6,scx,scy,dx,dy,ex1,ex2,f0
+    real (kind=r8):: m1,m2,m3,rmi1,rmi2,rmi3
+    real (kind=r8):: vw1(4),vw2(4),vw3(4),vw4(4),vw5(4),vvert(4)
 
     real (kind=r8):: min_phi
     real (kind=r8):: extrema(2), xminmax(2),yminmax(2),extrema_value(13)
@@ -417,6 +397,8 @@ contains
     case(6)
        !
        ! default branch
+       ! Also shifts recons(1:3) to the cell origin for all tracers (formerly
+       ! part#3 case(6) in reconstruction), so it must run even when all(.not. llimiter).
        !
        do in=1,3
           do j=jy(1,in),jy(2,in)
@@ -437,10 +419,29 @@ contains
                 m1 = recons_metrics(1,i,j)
                 m2 = recons_metrics(2,i,j)
                 m3 = recons_metrics(3,i,j)
+                rmi1 = recons_metrics_integral(1,i,j)
+                rmi2 = recons_metrics_integral(2,i,j)
+                rmi3 = recons_metrics_integral(3,i,j)
+                vw1 = vertex_recons_weights(:,1,i,j)
+                vw2 = vertex_recons_weights(:,2,i,j)
+                vw3 = vertex_recons_weights(:,3,i,j)
+                vw4 = vertex_recons_weights(:,4,i,j)
+                vw5 = vertex_recons_weights(:,5,i,j)
                 im1 = i-1; ip1 = i+1
                 jm1 = j-1; jp1 = j+1
                 do itr = 1, ntrac
-                   if (.not. llimiter(itr)) cycle
+                   f0 = fcube(i,j,k,itr)
+                   r2 = recons(2,i,j,itr)
+                   r3 = recons(3,i,j,itr)
+                   r4 = recons(4,i,j,itr)
+                   r5 = recons(5,i,j,itr)
+                   r6 = recons(6,i,j,itr)
+                   if (.not. llimiter(itr)) then
+                      recons(1,i,j,itr) = f0 - r2*scx - r3*scy + r4*rmi1 + r5*rmi2 + r6*rmi3
+                      recons(2,i,j,itr) = r2 - r4*2.0_r8*scx - r6*scy
+                      recons(3,i,j,itr) = r3 - r5*2.0_r8*scy - r6*scx
+                      cycle
+                   end if
                    !rck combined min/max and unrolled inner loop
                    !minval_patch = MINVAL(fcube(i-1:i+1,j-1:j+1))
                    !maxval_patch = MAXVAL(fcube(i-1:i+1,j-1:j+1))
@@ -452,21 +453,11 @@ contains
                                        max( fcube(im1,jp1,k,itr), fcube(i ,jp1,k,itr), fcube(ip1,jp1,k,itr) ) )
                    min_phi=1.0_r8
 
-                   f0  = fcube(i,j,k,itr)
-                   min_val = f0; max_val = f0!initialize min/max
                    !
                    ! compute min/max value at cell corners
-                   !DIR$ SIMD
-                   do vertex=1,4
-                      val = f0
-                      do itmp1=1,irecons-1
-                         val = val + recons(itmp1+1,i,j,itr)*vertex_recons_weights(vertex,itmp1,i,j)
-                      enddo
-                      min_val = min(min_val,val)
-                      max_val = max(max_val,val)
-                   enddo
-                   r2 = recons(2,i,j,itr);  r3 = recons(3,i,j,itr)
-                   r4 = recons(4,i,j,itr);  r5 = recons(5,i,j,itr);  r6 = recons(6,i,j,itr)
+                   vvert = ((((f0 + r2*vw1) + r3*vw2) + r4*vw3) + r5*vw4) + r6*vw5
+                   min_val = min(f0, vvert(1), vvert(2), vvert(3), vvert(4))
+                   max_val = max(f0, vvert(1), vvert(2), vvert(3), vvert(4))
                    ! Check if the quadratic is minimized within the element
                    ! Extrema in the interior of the element (there might be just one candidate)
                    ! DO NOT NEED ABS here, if disc<0 we have a saddle point (no maximum or minimum)
@@ -529,6 +520,11 @@ contains
                       if (phi<min_phi) min_phi=phi
                    end if
                    recons(2:6,i,j,itr)=min_phi*recons(2:6,i,j,itr)
+                   recons(1,i,j,itr) = f0 &
+                        - recons(2,i,j,itr)*scx - recons(3,i,j,itr)*scy &
+                        + recons(4,i,j,itr)*rmi1 + recons(5,i,j,itr)*rmi2 + recons(6,i,j,itr)*rmi3
+                   recons(2,i,j,itr) = recons(2,i,j,itr) - recons(4,i,j,itr)*2.0_r8*scx - recons(6,i,j,itr)*scy
+                   recons(3,i,j,itr) = recons(3,i,j,itr) - recons(5,i,j,itr)*2.0_r8*scy - recons(6,i,j,itr)*scx
                 end do
              end do
           end do
