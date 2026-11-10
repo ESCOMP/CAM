@@ -1313,7 +1313,7 @@ subroutine cam_pbuf_snapshot_all_outfld(lchnk, file_num, pbuf)
              trim(pbuf_snapshot(i)%ddt_string) == 'ZM_MAXG' .or. &
              trim(pbuf_snapshot(i)%ddt_string) == 'ZM_IDEEP' .or. &
              trim(pbuf_snapshot(i)%ddt_string) == 'NMXRGN' .or. &
-             trim(pbuf_snapshot(i)%ddt_string) == 'ACNUNM') then
+             trim(pbuf_snapshot(i)%ddt_string) == 'ACNUM') then
             call pbuf_get_field(pbuf, pbuf_idx, tmpptr2d_int)
             ! copy into real
             allocate(tmpptr2d(size(tmpptr2d_int, 1), size(tmpptr2d_int, 2)))
