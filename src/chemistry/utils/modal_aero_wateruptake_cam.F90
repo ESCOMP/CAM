@@ -124,7 +124,6 @@ contains
 
       call addfld('PM25',     (/ 'lev' /), 'A', 'kg/m3', 'PM2.5 mass concentration')
       call addfld('PM25_SRF', horiz_only,  'A', 'kg/m3', 'surface PM2.5 mass concentration')
-      ! dmleung added a few more below, 20 Nov 2023
       call addfld('PM25_MMR',     (/ 'lev' /), 'A', 'kg/kg', 'PM2.5 mass mixing ratio')
       call addfld('PM1_SRF',      horiz_only,  'A', 'kg/m3', 'surface PM1 mass concentration')
       call addfld('PM1_MMR',      (/ 'lev' /), 'A', 'kg/kg', 'PM1 mass mixing ratio')
@@ -137,7 +136,6 @@ contains
       call add_default('PM25_SRF', 1, ' ')
       call add_default('PM25_MMR',  1, ' ')
       call add_default('PM10_MMR',  1, ' ')
-      ! dmleung --
 
       if (is_first_step()) then
          ! initialize fields in physics buffer
@@ -239,12 +237,14 @@ contains
       real(r8), parameter :: pm1_cut_diameter  =  1.0e-6_r8
       real(r8), parameter :: pm25_cut_diameter =  2.5e-6_r8
       real(r8), parameter :: pm10_cut_diameter = 10.0e-6_r8
+
       ! Reference density defining the aerodynamic diameter (kg/m3):
       ! The diameter of a unit-density (1 g/cm3) sphere with the same settling velocity as the particle.
       ! See Seinfeld and Pandis, 2ed. 9.7.3 Classical aerodynamic diameter. eq. (9.112)
       ! This conventional unit density only coincidentally equals the density of water (rhoh2o)
       ! but is actually a separate definition.
       real(r8), parameter :: rho0_aero = 1000._r8
+
       ! minimum mode dry volume for which an aerodynamic diameter is computed (m3)
       real(r8), parameter :: dryvol_min = 1.0e-30_r8
       real(r8), parameter :: sqrt2 = sqrt(2._r8)
