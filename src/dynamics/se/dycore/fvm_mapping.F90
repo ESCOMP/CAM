@@ -748,16 +748,19 @@ contains
 
   end subroutine setup_interpdata_for_gll_to_phys_vec_mapping
 
-  function lagrange_1d(src_grid,src_val,ngrid,dst_point,iwidth) result(val)
-    integer              , intent(in)  :: ngrid,iwidth
-    real (kind=r8), intent(in)  :: src_grid(ngrid), src_val(ngrid)
-    real (kind=r8)              :: val
-
+  ! Precompute 1D Lagrange stencil start index and basis weights for dst_point.
+  ! base_idx is the caller-array index of the first stencil point given that
+  ! src_grid(1) sits at caller index lo_idx.
+  pure subroutine lagrange_1d_weights(src_grid,lo_idx,dst_point,iwidth,base_idx,wloc)
+    real (kind=r8), intent(in)  :: src_grid(:)
+    integer       , intent(in)  :: lo_idx
     real (kind=r8), intent(in)  :: dst_point
+    integer       , intent(in)  :: iwidth
+    integer       , intent(out) :: base_idx
+    real (kind=r8), intent(out) :: wloc(2*iwidth)
+    integer :: iref, j, k, m, ngrid
 
-    integer :: iref, j,k
-    real (kind=r8)              :: w(ngrid)
-
+    ngrid = size(src_grid)
     if (dst_point.LE.src_grid(1)) then
       iref=1
     else
@@ -773,19 +776,45 @@ contains
 
     iref=MIN(MAX(iref,iwidth),ngrid-iwidth)
 
-    w = 1.0_r8
+    base_idx = lo_idx + iref - iwidth
+    wloc = 1.0_r8
     do j=iref-(iwidth-1),iref+iwidth
+      m = j - iref + iwidth
       do k=iref-(iwidth-1),iref+iwidth
-        if (k.ne.j) then
-          w(j)=w(j)*(dst_point-src_grid(k))/(src_grid(j)-src_grid(k))
+        if (k /= j) then
+          wloc(m)=wloc(m)*(dst_point-src_grid(k))/(src_grid(j)-src_grid(k))
         end if
       end do
     end do
+  end subroutine lagrange_1d_weights
 
-    val=0.0_r8
-    do j=iref-(iwidth-1),iref+iwidth
-      val=val+w(j)*src_val(j)
+  ! Evaluate 1D Lagrange interpolation from precomputed weights.
+  pure function lagrange_1d_apply(npts,src,w) result(val)
+    integer       , intent(in) :: npts
+    real (kind=r8), intent(in) :: src(npts)
+    real (kind=r8), intent(in) :: w(npts)
+    real (kind=r8)             :: val
+    integer :: m
+
+    val = 0.0_r8
+    do m=1,npts
+      val = val + w(m)*src(m)
     end do
+  end function lagrange_1d_apply
+
+  ! Wrapper preserving lagrange_1d for corner halo interpolation.
+  pure function lagrange_1d(src_grid,src_val,ngrid,dst_point,iwidth) result(val)
+    integer       , intent(in) :: ngrid
+    real (kind=r8), intent(in) :: src_grid(ngrid)
+    real (kind=r8), intent(in) :: src_val(ngrid)
+    real (kind=r8), intent(in) :: dst_point
+    integer       , intent(in) :: iwidth
+    real (kind=r8)             :: val
+    real (kind=r8)             :: wloc(2*iwidth)
+    integer :: b0
+
+    call lagrange_1d_weights(src_grid,1,dst_point,iwidth,b0,wloc)
+    val = lagrange_1d_apply(2*iwidth,src_val(b0:b0+2*iwidth-1),wloc)
   end function lagrange_1d
 
   subroutine tensor_lagrange_interp(cubeboundary,np,nc,nhc,num_lev,nflds,psi,interp_value,llimiter,iwidth,norm_elem_coord)
@@ -806,9 +835,13 @@ contains
     real (kind=r8):: val_tmp(1-nhc:nc+nhc,1-nhc:nc+nhc)
 
     real (kind=r8):: min_value(np,np,num_lev,nflds), max_value(np,np,num_lev,nflds)
+    ! First-pass and second-pass 1D weights and stencil start indices
+    real (kind=r8):: w_1(2*iwidth,1-iwidth:nc+iwidth,np), w_2(2*iwidth,np)
 
     integer :: imin(1-nhc:nc+nhc), imax(1-nhc:nc+nhc)
+    integer :: idx_1(1-iwidth:nc+iwidth,np), idx_2(np)
     integer :: k,i,j,isearch,igll,jgll,jrow,h,irow,itr
+    integer :: b0
 
     gll_points(1) = -1.0_r8
     gll_points(2) = -sqrt(1.0_r8/5.0_r8)
@@ -954,6 +987,16 @@ contains
     if (cubeboundary==0.or.cubeboundary==north.or.cubeboundary==south.or.&
          cubeboundary==swest.or.cubeboundary==nwest.or.&
          cubeboundary==seast.or.cubeboundary==neast) then
+      do igll=1,np
+        do jrow=1-iwidth,nc+iwidth
+          call lagrange_1d_weights(norm_elem_coord(1,imin(jrow):imax(jrow),jrow),imin(jrow),gll_points(igll),iwidth,&
+               idx_1(jrow,igll),w_1(:,jrow,igll))
+        end do
+      end do
+      do jgll=1,np
+        call lagrange_1d_weights(norm_elem_coord(2,1,1-iwidth:nc+iwidth),1-iwidth,gll_points(jgll),iwidth,&
+             idx_2(jgll),w_2(:,jgll))
+      end do
       do itr=1,nflds
         do k=1,num_lev
           do igll=1,np
@@ -961,17 +1004,27 @@ contains
             ! cubic along constant y (j=jrow)
             !
             do jrow=1-iwidth,nc+iwidth
-              value(jrow) = lagrange_1d(norm_elem_coord(1,imin(jrow):imax(jrow),jrow),psi(imin(jrow):imax(jrow),jrow,k,itr),&
-                   imax(jrow)-imin(jrow)+1,gll_points(igll),iwidth)
+              b0 = idx_1(jrow,igll)
+              value(jrow) = lagrange_1d_apply(2*iwidth,psi(b0:b0+2*iwidth-1,jrow,k,itr),w_1(:,jrow,igll))
             end do
             do jgll=1,np
-              interp_value(igll,jgll,k,itr) = lagrange_1d(norm_elem_coord(2,1,1-iwidth:nc+iwidth),value,nc+2*iwidth,&
-                   gll_points(jgll),iwidth)
+              b0 = idx_2(jgll)
+              interp_value(igll,jgll,k,itr) = lagrange_1d_apply(2*iwidth,value(b0:b0+2*iwidth-1),w_2(:,jgll))
             end do
           end do
         end do
       end do
     else if (cubeboundary==east.or.cubeboundary==west) then
+      do jgll=1,np
+        do irow=1-iwidth,nc+iwidth
+          call lagrange_1d_weights(norm_elem_coord(2,irow,1-nhc:nc+nhc),1-nhc,gll_points(jgll),iwidth,&
+               idx_1(irow,jgll),w_1(:,irow,jgll))
+        end do
+      end do
+      do igll=1,np
+        call lagrange_1d_weights(norm_elem_coord(1,1-iwidth:nc+iwidth,1),1-iwidth,gll_points(igll),iwidth,&
+             idx_2(igll),w_2(:,igll))
+      end do
       do itr=1,nflds
         do k=1,num_lev
           do jgll=1,np
@@ -979,12 +1032,12 @@ contains
             ! cubic along constant x (i=irow)
             !
             do irow=1-iwidth,nc+iwidth
-              value(irow) = lagrange_1d(norm_elem_coord(2,irow,1-nhc:nc+nhc),psi(irow,1-nhc:nc+nhc,k,itr),nc+2*nhc,&
-                   gll_points(jgll),iwidth)
+              b0 = idx_1(irow,jgll)
+              value(irow) = lagrange_1d_apply(2*iwidth,psi(irow,b0:b0+2*iwidth-1,k,itr),w_1(:,irow,jgll))
             end do
             do igll=1,np
-              interp_value(igll,jgll,k,itr) = lagrange_1d(norm_elem_coord(1,1-iwidth:nc+iwidth,1),value,nc+2*iwidth,&
-                   gll_points(igll),iwidth)
+              b0 = idx_2(igll)
+              interp_value(igll,jgll,k,itr) = lagrange_1d_apply(2*iwidth,value(b0:b0+2*iwidth-1),w_2(:,igll))
             end do
           end do
         end do
