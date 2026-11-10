@@ -749,6 +749,13 @@ sub _parse_next {
 	  # value
 	  elsif ( $expect eq "varorvalue"
 		  &&   /^\s*([\s,]*)($nrvalmatch)([\s,]*)(.*?)$/ ) {
+	      # Nothing was consumed (e.g. a '#' comment or unterminated string); error out instead of looping forever
+	      if ( $1 eq "" && $2 eq "" ) {
+		  $err = "ERROR($nm): expect a F90 namelist constant or variable instead got: $_\n" .
+		         "(Check for an unterminated string, or a comment starting with '#' instead of '!')\n";
+		  $$expect_ref = "error";
+		  return( $err );
+	      }
 	      $$line_ref = $4;
 	      $$expect_ref = "varorvalue";
 	      my $val = $2;
