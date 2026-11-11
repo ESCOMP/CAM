@@ -1460,13 +1460,13 @@ Number of meso-gamma ridges (per gridbox) to invoke.
 Default: -1 (set by build-namelist)
 </entry>
 
-<entry id="effgw_rdg_gamma" type="real" category="gw_drag"
+<entry id="gwcli_rdg_gamma" type="real" category="gw_drag"
        group="gw_drag_nl" valid_values="" >
 Efficiency scaling factor associated with anisotropic OGW.
 Default: set by build-namelist.
 </entry>
 
-<entry id="effgw_rdg_gamma_max" type="real" category="gw_drag"
+<entry id="gwcli_rdg_gamma_max" type="real" category="gw_drag"
        group="gw_drag_nl" valid_values="" >
 Max efficiency associated with anisotropic OGW.
 Default: 1.0

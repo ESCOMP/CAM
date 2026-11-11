@@ -4175,8 +4175,8 @@ if ($do_gw_rdg_resid) {
 
 if ($do_gw_rdg_gamma) {
     add_default($nl, 'n_rdg_gamma',           'val'=>'-1');
-    add_default($nl, 'effgw_rdg_gamma',       'val'=>'1.0D0');
-    add_default($nl, 'effgw_rdg_gamma_max',   'val'=>'1.0D0');
+    add_default($nl, 'gwcli_rdg_gamma',       'val'=>'1.0D0');
+    add_default($nl, 'gwcli_rdg_gamma_max',   'val'=>'1.0D0');
     add_default($nl, 'trpd_leewv_rdg_gamma',  'val'=>'.true.');
     add_default($nl, 'rdg_gamma_cd_llb',      'val'=>'1.0D0');
     add_default($nl, 'bnd_rdggm');

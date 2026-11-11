@@ -54,8 +54,8 @@ module gw_drag_cam
 
   logical  :: use_gw_rdg_gamma     = .false.
   integer  :: n_rdg_gamma          = -1
-  real(r8) :: effgw_rdg_gamma      = unset_r8
-  real(r8) :: effgw_rdg_gamma_max  = unset_r8
+  real(r8) :: gwcli_rdg_gamma      = unset_r8
+  real(r8) :: gwcli_rdg_gamma_max  = unset_r8
   real(r8) :: rdg_gamma_cd_llb     = unset_r8
   logical  :: trpd_leewv_rdg_gamma = .false.
   character(len=cl) :: bnd_rdggm   = 'bnd_rdggm' ! full pathname for meso-Gamma ridge dataset
@@ -209,7 +209,7 @@ subroutine gw_drag_cam_readnl(nlfile)
        taubgnd_igw, gw_polar_taper, &
        use_gw_rdg_beta, n_rdg_beta, gwcli_rdg_beta, gwcli_rdg_beta_max, &
        rdg_beta_cd_llb, trpd_leewv_rdg_beta, &
-       use_gw_rdg_gamma, n_rdg_gamma, effgw_rdg_gamma, effgw_rdg_gamma_max, &
+       use_gw_rdg_gamma, n_rdg_gamma, gwcli_rdg_gamma, gwcli_rdg_gamma_max, &
        rdg_gamma_cd_llb, trpd_leewv_rdg_gamma, bnd_rdggm, &
        gw_oro_south_fac, &
        gw_lndscl_sgh, gw_prndl, gw_apply_tndmax, gw_qbo_hdepth_scaling, &
@@ -277,10 +277,10 @@ subroutine gw_drag_cam_readnl(nlfile)
   if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: use_gw_rdg_gamma")
   call mpi_bcast(n_rdg_gamma, 1, mpi_integer, mstrid, mpicom, ierr)
   if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: n_rdg_gamma")
-  call mpi_bcast(effgw_rdg_gamma, 1, mpi_real8, mstrid, mpicom, ierr)
-  if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: effgw_rdg_gamma")
-  call mpi_bcast(effgw_rdg_gamma_max, 1, mpi_real8, mstrid, mpicom, ierr)
-  if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: effgw_rdg_gamma_max")
+  call mpi_bcast(gwcli_rdg_gamma, 1, mpi_real8, mstrid, mpicom, ierr)
+  if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: gwcli_rdg_gamma")
+  call mpi_bcast(gwcli_rdg_gamma_max, 1, mpi_real8, mstrid, mpicom, ierr)
+  if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: gwcli_rdg_gamma_max")
   call mpi_bcast(rdg_gamma_cd_llb, 1, mpi_real8, mstrid, mpicom, ierr)
   if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: rdg_gamma_cd_llb")
   call mpi_bcast(trpd_leewv_rdg_gamma, 1, mpi_logical, mstrid, mpicom, ierr)
@@ -900,7 +900,7 @@ subroutine gw_drag_cam_init()
 
   if(use_gw_rdg_gamma) then
     call gravity_wave_drag_ridge_gamma_init( &
-      effgw_rdg_gamma        = effgw_rdg_gamma, &
+      gwcli_rdg_gamma        = gwcli_rdg_gamma, &
       errmsg = errmsg, &
       errflg = errflg)
     if (errflg /= 0) then
@@ -2154,8 +2154,8 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
       kvt_gw                  = kvt_gw(:ncol,:pverp), &
       effgw_rdg_resid         = effgw_rdg_resid, &
       use_gw_rdg_resid        = use_gw_rdg_resid, &
-      effgw_rdg_gamma         = effgw_rdg_gamma, &
-      effgw_rdg_gamma_max     = effgw_rdg_gamma_max, &
+      gwcli_rdg_gamma         = gwcli_rdg_gamma, &
+      gwcli_rdg_gamma_max     = gwcli_rdg_gamma_max, &
       rdg_gamma_cd_llb        = rdg_gamma_cd_llb, &
       trpd_leewv_rdg_gamma    = trpd_leewv_rdg_gamma, &
       ! Input data for beta/gamma waves - stored for all chunks
