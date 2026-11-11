@@ -3,9 +3,9 @@ my $pkg_nm = 'Build::Namelist';
 #-----------------------------------------------------------------------------------------------
 #
 # SYNOPSIS
-# 
+#
 #   use Build::Namelist;
-# 
+#
 #   # create empty object
 #   my $nl = Build::Namelist->new();
 #
@@ -14,7 +14,7 @@ my $pkg_nm = 'Build::Namelist';
 #
 #   # initialize object with a namelist formatted string
 #   my $nl = Build::Namelist->new("&nl1 var1=val1 var2=val2 /");
-# 
+#
 #   # get array of namelist group names defined in $nl
 #   my @groups = $nl->get_group_names();
 #
@@ -37,11 +37,11 @@ my $pkg_nm = 'Build::Namelist';
 #   $nl->write($namelist_file_out, 'append'=>1);
 #
 #   # write a subset of the groups to the output file
-#   $nl->write($namelist_file_out, 'groups'=>['name1','name2']) 
+#   $nl->write($namelist_file_out, 'groups'=>['name1','name2'])
 #
-# 
+#
 # DESCRIPTION
-# 
+#
 # Build::Namelist objects are used to:
 # 1. Parse Fortran namelist input (can handle multiple namelist groups).
 # 2. Get group name, variable names, variable values.
@@ -73,7 +73,7 @@ my $pkg_nm = 'Build::Namelist';
 #     Returns a scalar containing the value of variable in the specified namelist group.
 #
 # get_value($variable_name)
-#     Convenience function to get the value of a variable assuming there is only 
+#     Convenience function to get the value of a variable assuming there is only
 #     one group with that variable name in it.
 #
 # set_variable_value($group_name, $variable_name, $value)
@@ -96,7 +96,7 @@ my $pkg_nm = 'Build::Namelist';
 #     **** N.B. **** This is a class method.
 #
 # COLLABORATORS
-# 
+#
 #-----------------------------------------------------------------------------------------------
 #
 # Date        Author                  Modification
@@ -122,7 +122,7 @@ my $group_name;       # namelist group for current parser state
 my $variable_name;    # variable name for current parser state
 my $variable_value;   # variable value for current parser state
 
-sub new 
+sub new
 {
     my $class = shift;
     my $in    = shift;   # input namelist as either a string or the name of a file
@@ -133,10 +133,10 @@ sub new
     # if new is invoked with no argument, create empty namelist object
     if ( ! defined($in) ) { return bless($self, $class); }
 
-    # Determine which form of input has been used.  If a filename has been given then 
+    # Determine which form of input has been used.  If a filename has been given then
     # read the namelist file before invoking the parser.
 
-    # Pass the parser an array of lines.  If the namelist input has been provided in 
+    # Pass the parser an array of lines.  If the namelist input has been provided in
     # a string, then put it into $line[0].  It the namelist has been provided by a
     # file, then read the file into @lines.
 
@@ -163,7 +163,7 @@ sub new
     }
 
     _parse($self, \@lines);
-    
+
     return bless($self, $class);
 }
 
@@ -277,7 +277,7 @@ sub delete_variable {
       delete $self->{$lc_group}->{$lc_var};
   }
 
-  # Check whether the group has any other variables.  If not then delete the 
+  # Check whether the group has any other variables.  If not then delete the
   # group as well.
   my @vars = $self->get_variable_names($lc_group);
   unless (@vars) {delete $self->{$lc_group};}
@@ -324,13 +324,13 @@ sub write {
 # The default is to overwrite an existing file.  To append
 # to existing file set the optional argument 'append' to true, e.g.,
 #
-# $nl->write('filepath', 'append'=>1) 
+# $nl->write('filepath', 'append'=>1)
 #
-# The default is to write all the groups in the namelist to the 
+# The default is to write all the groups in the namelist to the
 # specified output file.  To only write a subset of the groups
 # supply the optional argument 'groups'=>['name1','name2',...], i.e.,
 #
-# $nl->write('filepath', 'groups'=>['name1','name2']) 
+# $nl->write('filepath', 'groups'=>['name1','name2'])
 #
 # To write a note at the end of the file:
 #
@@ -449,12 +449,12 @@ my $valcomplex = "$valcomplex1|$valcomplex2|$valcomplex3|$valcomplex4";
 my $valcomplex_repeat = "${valint}\\*$valcomplex1|${valint}\\*$valcomplex2|${valint}\\*$valcomplex3|${valint}\\*$valcomplex4";
 
 # Match for all valid data-types: integer, real, complex, logical, or string data
-# note: valreal MUST come before valint in this string to prevent integer portion of real 
+# note: valreal MUST come before valint in this string to prevent integer portion of real
 #       being separated from decimal portion
 my $valall = "$vallogical|$valstring|$valreal|$valint|$valcomplex";
 
 # Match for all valid data-types with repeater: integer, real, complex, logical, or string data
-# note: valrepeat MUST come before valall in this string to prevent integer repeat specifier 
+# note: valrepeat MUST come before valall in this string to prevent integer repeat specifier
 #       being accepted alone as a value
 my $valrepeat = "$vallogical_repeat|$valstring_repeat|$valreal_repeat|$valint_repeat|$valcomplex_repeat";
 
@@ -494,13 +494,13 @@ sub validate_variable_value
   }
   foreach my $item ( "arrayNDims", "arrayDims", "type", "strlen", "validValues" ) {
      if ( ! exists($$type_ref{$item}) ) {
-         die "ERROR: in $nm (package $pkg_nm): Variable name $item not " . 
+         die "ERROR: in $nm (package $pkg_nm): Variable name $item not " .
              "defined in input type hash.\n";
      }
   }
   # if multi-dimensional array -- signal an error
   if ( $$type_ref{'arrayNDims'} > 1 ) {
-      die "ERROR: in $nm (package $pkg_nm): Variable name $var is defined " . 
+      die "ERROR: in $nm (package $pkg_nm): Variable name $var is defined " .
           "as a multidimensional array -- which is invalid for a namelist.\n";
   }
 
@@ -519,7 +519,7 @@ sub validate_variable_value
         } elsif ( $$type_ref{'type'} eq "real" ) {
            $compare = $valreal;
         } else {
-	   die "ERROR: in $nm (package $pkg_nm): Type of variable name $var is " . 
+	   die "ERROR: in $nm (package $pkg_nm): Type of variable name $var is " .
                "not a valid FORTRAN type (logical, integer, real, complex or char).\n";
         }
         if ( $i !~ /^\s*${compare}$/ ) {
@@ -548,7 +548,7 @@ sub validate_variable_value
   # Otherwise if a string
   } else {
     if ( $$type_ref{'type'} ne "char" ) {
-       die "ERROR: in $nm (package $pkg_nm): Type of variable name $var is " . 
+       die "ERROR: in $nm (package $pkg_nm): Type of variable name $var is " .
            "not a valid FORTRAN type (logical, integer, real, complex or char).\n";
     }
     my $val = $value;
@@ -576,7 +576,7 @@ sub validate_variable_value
   my $arr_ref = $$type_ref{'arrayDims'};
   # Check only if this is an integer and not a variable.
   if ( $$arr_ref[0] =~ m/^-?\d+$/ and $#values > $$arr_ref[0] ) {
-     die "ERROR: in $nm (package $pkg_nm): Variable name $var has exceeded " . 
+     die "ERROR: in $nm (package $pkg_nm): Variable name $var has exceeded " .
          "the dimension size of the array.\n";
   }
 
@@ -641,7 +641,7 @@ sub _parse {
     # Loop over each line in the namelist.
     while ( defined(my $line = shift @lines) ) {
 
-	# The local variable $line is modified by the parser.  It removes tokens 
+	# The local variable $line is modified by the parser.  It removes tokens
 	# from $line as they are recognized.  Loop over line until all recognized
 	# tokens have been removed.
 	while ( defined($line) ) {
@@ -685,7 +685,7 @@ sub _parse_next {
 #
     my $self   = shift;
     my $line_ref   = shift;      # Current state of a line read from file
-    my $expect_ref = shift;      # Type of item you expect next 
+    my $expect_ref = shift;      # Type of item you expect next
                                  # ("group", "variable", "varorvalue", "=", or "value")
 
     my $line = $$line_ref;
@@ -752,7 +752,7 @@ sub _parse_next {
 	      # Nothing was consumed (e.g. a '#' comment or unterminated string); error out instead of looping forever
 	      if ( $1 eq "" && $2 eq "" ) {
 		  $err = "ERROR($nm): expect a F90 namelist constant or variable instead got: $_\n" .
-		         "(Check for an unterminated string, or a comment starting with '#' instead of '!')\n";
+		         "(Check for a missing quote or a comment starting with '#' instead of '!')\n";
 		  $$expect_ref = "error";
 		  return( $err );
 	      }
