@@ -1,6 +1,160 @@
 
 ===============================================================
 
+Tag name: cam6_4_220
+Originator(s): sjsprecious
+Date: Nov 11, 2026
+One-line Summary: Reduce CAM init memory: node-shared read-only tables (with safe per-rank fallback), ndep mapalgo option
+Github PR URL: https://github.com/ESCOMP/CAM/pull/1643
+
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+  - Closes #1640 (Out of memory issue in CAM at ne1024)
+  - Reduce memory use during CAM initialization at very high resolution. Large read-only tables
+    (aerosol optics in phys_prop, photolysis tables in mo_jlong, soil erodibility in soil_erod_mod,
+    lat-lon source fields in tracer_data) are held once per node in MPI-3 shared memory instead of
+    once per MPI rank.
+  - At init, a small probe checks that MPI-3 shared windows work on every node. If they do not
+    (e.g. MVAPICH2 < 2.3.4, whose MPI_Win_shared_query returns a bad address; the izumi NAG and
+    Intel builds use 2.3.3), or if the new namelist option cam_shmem_force_private is .true.,
+    node-shared memory is off and CAM uses the original per-rank data paths (allocation, file reads
+    and broadcasts). The only additions in that mode are the init-time probe (skipped with
+    cam_shmem_force_private) and the release of the tables at finalization; answers are unchanged.
+  - New namelist option stream_ndep_mapalgo for the nitrogen-deposition stream (default bilinear,
+    as before; redist for an ndep file already on the model grid).
+  - Close the initial-condition and topography files at the end of cam_init (after their last use)
+    instead of in cam_final; avoid re-reading unchanged time slices in tracer_data.
+
+Describe any changes made to build system: N/A
+
+Describe any changes made to the namelist:
+  - stream_ndep_mapalgo (new; default 'bilinear', same as the previous hard-coded value)
+  - cam_shmem_force_private in new group cam_shmem_nl (default .false.; fail-safe only, not written
+    to atm_in unless set in user_nl_cam)
+
+List any changes to the defaults for the boundary datasets: N/A
+
+Describe any substantial timing or memory changes:
+  - Lower per-node memory for the tables above: one copy per node instead of one per MPI rank.
+  - No measurable timing change on derecho GPU nodes (SMS_Ln9 ne30pg3 FHISTC_LTso nvhpc gpu_default:
+    0.04 SYPD with and without node-shared tables; history files identical).
+
+Code reviewed by: jtruesdal, cacraigucar, bdobbins
+
+List all files eliminated: N/A
+
+List all files added and what they do:
+A       src/utils/cam_shmem_mod.F90
+          - node-shared memory for read-only tables: probe, allocation, fences, free;
+            plain per-rank allocation when sharing is off
+
+List all existing files that have been modified, and describe the changes:
+M       bld/build-namelist
+M       bld/namelist_files/namelist_defaults_cam.xml
+M       bld/namelist_files/namelist_definition.xml
+          - add stream_ndep_mapalgo; add cam_shmem_force_private (cam_shmem_nl)
+
+M       src/chemistry/aerosol/soil_erod_mod.F90
+          - soil erodibility input in node-shared memory; original PIO read when sharing is off
+
+M       src/chemistry/mozart/chemistry.F90
+M       src/chemistry/mozart/mo_jlong.F90
+M       src/chemistry/mozart/mo_photo.F90
+          - photolysis tables in node-shared memory; photo_final/jlong_final release them
+
+M       src/chemistry/utils/tracer_data.F90
+          - lat-lon source fields in a node-shared buffer when sharing is on (original PIO read
+            otherwise); skip re-reading unchanged time slices
+
+M       src/control/cam_comp.F90
+          - call cam_shmem_init after read_namelist; close initial/topo files at end of cam_init
+
+M       src/control/runtime_opts.F90
+          - read cam_shmem_nl
+
+M       src/cpl/nuopc/atm_stream_ndep.F90
+          - stream_ndep_mapalgo namelist option
+
+M       src/physics/cam/phys_prop.F90
+          - aerosol optics tables in node-shared memory; physprop_final
+
+M       src/physics/cam/physpkg.F90
+M       src/physics/cam7/physpkg.F90
+          - call physprop_final; initial-file close moved to cam_init
+
+If there were any failures reported from running test_driver.sh on any test
+platform, and checkin with these failures has been OK'd by the gatekeeper,
+then copy the lines from the td.*.status files for the failed tests to the
+appropriate machine below.  All failed tests must be justified.
+
+derecho/intel/aux_cam:
+  ERC_D_Ln9.ne3_ne3_mg37.QPC7.derecho_intel.cam-outfrq9s_rttov (Overall: FAIL) details:
+     - pre-existing failure: rttov library location moved by CISL (https://github.com/ESCOMP/CAM/issues/1745)
+
+  ERC_D_Ln9.f09_f09_mt233.FHIST_BDRD.derecho_intel.cam-outfrq9s (Overall: NLFAIL) details:
+  ERC_D_Ln9.mpasa120_mpasa120.F2000climo.derecho_intel.cam-outfrq9s_mpasa120 (Overall: NLFAIL) details:
+  ERC_D_Ln9.mpasa120_mpasa120.FHISTC_LTso.derecho_intel.cam-outfrq9s_mpasa120 (Overall: NLFAIL) details:
+  ERC_D_Ln9.ne30pg3_ne30pg3_mt233.F1850C_LTso.derecho_intel.cam-outfrq9s (Overall: NLFAIL) details:
+  ERC_D_Ln9.ne3pg3_ne3pg3_mt233.FHISTC_LTso.derecho_intel.cam-outfrq9s_mcsp (Overall: NLFAIL) details:
+  ERC_D_Ln9_P128x4.ne30pg3_ne30pg3_mt233.F1850C_LTso.derecho_intel.cam-outfrq9s (Overall: NLFAIL) details:
+  ERC_Ln9.C96_C96_mt233.F2000climo.derecho_intel.cam-outfrq9s (Overall: NLFAIL) details:
+  ERI_D_Ln18.f09_f09_mt233.FHIST.derecho_intel.cam-outfrq3s_eri (Overall: NLFAIL) details:
+  ERI_D_Ln18.f19_f19_mt233.FHIST_C5.derecho_intel.cam-outfrq3s_eri (Overall: NLFAIL) details:
+  ERI_D_Ln18.ne16pg3_ne16pg3_mt233.FHIST_C4.derecho_intel.cam-outfrq3s_eri (Overall: NLFAIL) details:
+  ERI_D_Ln18.ne30pg3_ne30pg3_mt233.FHISTC_LTso.derecho_intel.cam-outfrq3s_eri (Overall: NLFAIL) details:
+  ERP_D_Ln9.ne30pg3_ne30pg3_mt233.F1850C_MTso.derecho_intel.cam-outfrq9s (Overall: NLFAIL) details:
+  ERP_Ln9.f19_f19_mt233.FWsc1850.derecho_intel.cam-outfrq9s (Overall: NLFAIL) details:
+  ERR_Ld3.ne16pg3_ne16pg3_mt233.FHISTC_LTso.derecho_intel.cam-outfrq1d_bwic_newyear (Overall: NLFAIL) details:
+  SMS_D_Ld5.f09_f09_mt233.PC6.derecho_intel.cam-cam6_port_f09 (Overall: NLFAIL) details:
+  SMS_D_Ld5.f19_f19_mt233.PC4.derecho_intel.cam-cam4_port5d (Overall: NLFAIL) details:
+  SMS_D_Ln9.f09_f09_mt233.FSD.derecho_intel.cam-outfrq9s (Overall: NLFAIL) details:
+  SMS_D_Ln9.f19_f19_mt233.FHIST_C5.derecho_intel.cam-mam7 (Overall: NLFAIL) details:
+  SMS_D_Ln9.ne0ARCTICne30x4_ne0ARCTICne30x4_mt12.FHIST.derecho_intel.cam-outfrq9s (Overall: NLFAIL) details:
+  SMS_D_Ln9.ne30pg3_ne30pg3_mt233.FHISTC_MTso.derecho_intel.cam-outfrq9s (Overall: NLFAIL) details:
+  SMS_Ld1.f09_f09_mt233.FCHIST_GC.derecho_intel.cam-outfrq1d (Overall: NLFAIL) details:
+  SMS_Ln9.f09_f09_mt233.F2010climo.derecho_intel.cam-nudging (Overall: NLFAIL) details:
+  SMS_Ln9.f19_f19_mt233.F2000climo.derecho_intel.cam-silhs (Overall: NLFAIL) details:
+     - new namelist variable stream_ndep_mapalgo written to atm_in; answers bit-for-bit
+
+derecho/nvhpc/aux_cam:
+  ERS_Ln9.ne3pg3_ne3pg3_mt233.FHISTC_LTso.derecho_nvhpc.cam-outfrq9s_gpu_ne3 (Overall: NLFAIL) details:
+     - new namelist variable stream_ndep_mapalgo written to atm_in; answers bit-for-bit
+
+izumi/nag/aux_cam:
+  ERC_D_Ln9.f10_f10_mt233.FHIST_C5.izumi_nag.cam-outfrq3s_subcol (Overall: NLFAIL) details:
+  ERC_D_Ln9.ne3pg3_ne3pg3_mt233.FHISTC_LTso.izumi_nag.cam-cosp_rad_diags (Overall: NLFAIL) details:
+  ERC_D_Ln9.ne3pg3_ne3pg3_mt233.FHISTC_LTso.izumi_nag.cam-outfrq9s_nochem (Overall: NLFAIL) details:
+  SMS_D_Ld2.f45_f45_mg37.PC5.izumi_nag.cam-outfrq24h_port (Overall: NLFAIL) details:
+  SMS_D_Ln9.f10_f10_mt233.F1850.izumi_nag.cam-outfrq9s (Overall: NLFAIL) details:
+  TMC_D_Ln9.f10_f10_mt233.FHIST_C5.izumi_nag.cam-mc_ttrac (Overall: NLFAIL) details:
+  ERC_D_Ln9.f10_f10_mt233.FHIST.izumi_nag.cam-outfrq3s_cospsathist (Overall: NLFAIL) details:
+     - new namelist variable stream_ndep_mapalgo written to atm_in; answers bit-for-bit
+
+izumi/gnu/aux_cam:
+  ERC_D_Ln9.f10_f10_mt233.FHIST_C5.izumi_gnu.cam-rad_diag (Overall: NLFAIL) details:
+  ERC_D_Ln9.f19_f19_mt233.FHIST.izumi_gnu.cam-lonlat_fv_diags (Overall: NLFAIL) details:
+  ERC_D_Ln9.mpasa480_mpasa480_mt233.FHISTC_LTso.izumi_gnu.cam-outfrq9s_mpasa480 (Overall: NLFAIL) details:
+  ERC_D_Ln9.ne3pg3_ne3pg3_mt233.F1850_C4.izumi_gnu.cam-co2rmp (Overall: NLFAIL) details:
+  ERC_D_Ln9.ne3pg3_ne3pg3_mt233.FHIST_C5.izumi_gnu.cam-carma_cosp_rad_diag_mam (Overall: NLFAIL) details:
+  ERC_D_Ln9.ne3pg3_ne3pg3_mt233.FHISTC_LTso.izumi_gnu.cam-nochem_clubbmf (Overall: NLFAIL) details:
+  ERC_D_Ln9.ne3pg3_ne3pg3_mt233.FHISTC_LTso.izumi_gnu.cam-sat_lcltod (Overall: NLFAIL) details:
+  ERS_Ln9_P24x1.mpasa480_mpasa480.F2000climo.izumi_gnu.cam-outfrq9s_mpasa480 (Overall: NLFAIL) details:
+  PLB_D_Ln9.f10_f10_mt233.FHIST_C5.izumi_gnu.cam-ttrac_loadbal0 (Overall: NLFAIL) details:
+  PLB_D_Ln9.f10_f10_mt233.FHIST_C5.izumi_gnu.cam-ttrac_loadbal1 (Overall: NLFAIL) details:
+  PLB_D_Ln9.f10_f10_mt233.FHIST_C5.izumi_gnu.cam-ttrac_loadbal3 (Overall: NLFAIL) details:
+  SMS_D_Ln3.ne3pg3_ne3pg3_mt233.PC7.izumi_gnu.cam-pc7_ne3pg3 (Overall: NLFAIL) details:
+  SUB_D_Ln9.ne3pg3_ne3pg3_mt233.FHIST.izumi_gnu.cam-outfrq9s (Overall: NLFAIL) details:
+     - new namelist variable stream_ndep_mapalgo written to atm_in; answers bit-for-bit
+
+Summarize any changes to answers, i.e.,
+- what code configurations: N/A (all bit-for-bit)
+- what platforms/compilers: N/A
+    - Node-shared tables are used on derecho (Cray MPICH) and izumi GNU (MVAPICH2 2.3.7); on izumi
+      NAG (MVAPICH2 2.3.3) the probe fails and the original per-rank paths are used. Both are
+      bit-for-bit with cam6_4_219.
+
+===============================================================
+===============================================================
+
 Tag name: cam6_4_219
 Originator(s): cacraigucar, bdobbins, brianpm
 Date: Nov 5, 2026

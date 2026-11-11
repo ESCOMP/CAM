@@ -5964,6 +5964,14 @@ Default: 50.
 
 <!-- Physics Debugging -->
 
+<entry id="cam_shmem_force_private" type="logical"  category="performance"
+       group="cam_shmem_nl" valid_values="" >
+If .true., do not use MPI-3 node-shared memory for large read-only tables
+(cam_shmem_mod); every MPI rank allocates and reads its own copy, as in the
+code before node-shared memory was added.
+Default: .false.
+</entry>
+
 <entry id="phys_debug_lat" type="real"  category="phys_debug"
        group="phys_debug_nl" valid_values="">
 Use this variable to specify the latitude (in degrees) of a column to
@@ -8435,6 +8443,23 @@ Nitrogen deposition stream data filename.
 <entry id="stream_ndep_mesh_filename" type="char*256" input_pathname="abs" category="Nitrogen Deposition"
        group="ndep_stream_nl" valid_values="" >
 Grid mesh file corresponding to stream_ndep_data_filename.
+</entry>
+
+<entry id="stream_ndep_mapalgo" type="char*40" category="Nitrogen Deposition"
+       group="ndep_stream_nl" valid_values="bilinear,nn,consf,consd,redist,none" >
+Spatial mapping (regrid) method used to map the nitrogen deposition stream data from
+the stream grid to the model grid.
+  bilinear = bilinear interpolation.
+  nn       = nearest neighbor: each model point takes the value of the nearest stream point.
+  consf    = first-order conservative, weights normalized by the destination fraction.
+  consd    = first-order conservative, weights normalized by the full destination cell area,
+             so partially covered model cells are left reduced by that fraction.
+  redist   = no interpolation; the stream data is copied one-to-one to the model
+             decomposition.  Requires the ndep data file to be on the model grid, and
+             avoids computing interpolation weights.
+  none     = no mapping is done.  Used for single point stream data, and set automatically
+             when the stream has no mesh file.
+Default: bilinear
 </entry>
 
 <entry id="megan_factors_file" type="char*256" input_pathname="abs" category="VOC_emissions"

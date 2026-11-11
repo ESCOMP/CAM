@@ -705,6 +705,7 @@ if (!($simple_phys or $aqua_mode)) {
   my $chem_nitrodep = chem_has_species($cfg, 'NO') and chem_has_species($cfg, 'NH3');
   if ((!$chem_nitrodep) or ($chem =~ /geoschem/)) {
     add_default($nl, 'stream_ndep_mesh_filename');
+    add_default($nl, 'stream_ndep_mapalgo');
     add_default($nl, 'stream_ndep_data_filename', 'sim_year'=>$sim_year);
     add_default($nl, 'stream_ndep_year_first', 'val'=>$sim_year_first);
     add_default($nl, 'stream_ndep_year_last',  'val'=>$sim_year_last);
