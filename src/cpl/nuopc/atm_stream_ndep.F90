@@ -43,6 +43,7 @@ module atm_stream_ndep
   integer           :: stream_ndep_year_first ! first year in stream to use
   integer           :: stream_ndep_year_last  ! last year in stream to use
   integer           :: stream_ndep_year_align ! align stream_year_firstndep with
+  character(len=CS) :: stream_ndep_mapalgo    ! stream->model mapping: bilinear|redist|nn|consf|consd|none
 
 !==============================================================================
 contains
@@ -66,6 +67,7 @@ contains
     namelist /ndep_stream_nl/      &
          stream_ndep_data_filename, &
          stream_ndep_mesh_filename, &
+         stream_ndep_mapalgo,       &
          stream_ndep_year_first,    &
          stream_ndep_year_last,     &
          stream_ndep_year_align
@@ -76,6 +78,15 @@ contains
     stream_ndep_year_first    = 1 ! first year in stream to use
     stream_ndep_year_last     = 1 ! last  year in stream to use
     stream_ndep_year_align    = 1 ! align stream_ndep_year_first with this model year
+    ! Spatial mapping from the stream grid to the model grid.  Initialized to an
+    ! invalid sentinel rather than a usable value so that an unset namelist variable
+    ! fails loudly instead of running on a hidden compiled-in default; build-namelist
+    ! supplies the value (default 'bilinear').  Use 'bilinear' when the ndep file is
+    ! on a different (coarser) grid than the model.  Use 'redist' (pure index-based
+    ! redistribution -- no interpolation weights, no ESMF route handle) when the ndep
+    ! file is already on the model grid; this avoids building an ESMF regrid over the
+    ! full grid and is far cheaper in memory at high resolution (e.g. ne1024pg2).
+    stream_ndep_mapalgo       = 'UNSET'
 
     ! For now variable list in stream data file is hard-wired
     stream_varlist_ndep = (/'NDEP_NHx_month', 'NDEP_NOy_month'/)
@@ -105,6 +116,8 @@ contains
     if (ierr /= 0) call endrun(trim(subname)//": FATAL: mpi_bcast: stream_ndep_year_last")
     call mpi_bcast(stream_ndep_year_align, 1, mpi_integer, 0, mpicom, ierr)
     if (ierr /= 0) call endrun(trim(subname)//": FATAL: mpi_bcast: stream_ndep_year_align")
+    call mpi_bcast(stream_ndep_mapalgo, len(stream_ndep_mapalgo), mpi_character, 0, mpicom, ierr)
+    if (ierr /= 0) call endrun(trim(subname)//": FATAL: mpi_bcast: stream_ndep_mapalgo")
 
     ndep_stream_active = len_trim(stream_ndep_data_filename)>0 .and. stream_ndep_data_filename/='UNSET'
 
@@ -118,11 +131,21 @@ contains
        return
     endif
 
+    ! The ndep stream is active, so stream_ndep_mapalgo must have been supplied by
+    ! build-namelist (add_default, alongside stream_ndep_data_filename).  Still holding
+    ! the sentinel means the namelist is inconsistent with an active ndep stream; fail
+    ! here rather than silently mapping with an unintended algorithm.
+    if (trim(stream_ndep_mapalgo) == 'UNSET') then
+       call endrun(trim(subname)//": FATAL: ndep stream is active but stream_ndep_mapalgo"// &
+            " is not set"//errMsg(sourcefile, __LINE__))
+    end if
+
     if (masterproc) then
        write(iulog,'(a)'   ) ' '
        write(iulog,'(a,i8)')  'stream ndep settings:'
        write(iulog,'(a,a)' )  '  stream_ndep_data_filename = ',trim(stream_ndep_data_filename)
        write(iulog,'(a,a)' )  '  stream_ndep_mesh_filename = ',trim(stream_ndep_mesh_filename)
+       write(iulog,'(a,a)' )  '  stream_ndep_mapalgo       = ',trim(stream_ndep_mapalgo)
        write(iulog,'(a,a,a)') '  stream_varlist_ndep       = ',trim(stream_varlist_ndep(1)), trim(stream_varlist_ndep(2))
        write(iulog,'(a,i8)')  '  stream_ndep_year_first    = ',stream_ndep_year_first
        write(iulog,'(a,i8)')  '  stream_ndep_year_last     = ',stream_ndep_year_last
@@ -152,28 +175,35 @@ contains
     ! Read in units
     call stream_ndep_check_units(stream_ndep_data_filename)
 
-    ! Initialize the cdeps data type sdat_ndep
-    call shr_strdata_init_from_inline(sdat_ndep,                    &
-         my_task             = iam,                                 &
-         logunit             = iulog,                               &
-         compname            = 'ATM',                               &
-         model_clock         = model_clock,                         &
-         model_mesh          = model_mesh,                          &
-         stream_meshfile     = trim(stream_ndep_mesh_filename),     &
-         stream_filenames    = (/trim(stream_ndep_data_filename)/), &
-         stream_yearFirst    = stream_ndep_year_first,              &
-         stream_yearLast     = stream_ndep_year_last,               &
-         stream_yearAlign    = stream_ndep_year_align,              &
-         stream_fldlistFile  = stream_varlist_ndep,                 &
-         stream_fldListModel = stream_varlist_ndep,                 &
-         stream_lev_dimname  = 'null',                              &
-         stream_mapalgo      = 'bilinear',                          &
-         stream_offset       = 0,                                   &
-         stream_taxmode      = 'cycle',                             &
-         stream_dtlimit      = 1.0e30_r8,                           &
-         stream_tintalgo     = 'linear',                            &
-         stream_name         = 'Nitrogen deposition data ',         &
-         rc                  = rc)
+    ! Initialize the cdeps data type sdat_ndep.
+    ! When the ndep file is already on the model grid, set mapalgo='redist' in the
+    ! namelist: CDEPS then reuses the already-built model mesh for the stream rather
+    ! than constructing a duplicate full ESMF mesh from stream_ndep_mesh_filename --
+    ! at ne1024pg2 that duplicate mesh (1.6 GB file read + mesh build) is a large
+    ! init memory/time cost. For other mapalgos (e.g. 'bilinear' with a coarser file)
+    ! the stream is on a different grid, so CDEPS still creates the stream mesh from
+    ! its own file.
+    call shr_strdata_init_from_inline(sdat_ndep,                       &
+            my_task             = iam,                                 &
+            logunit             = iulog,                               &
+            compname            = 'ATM',                               &
+            model_clock         = model_clock,                         &
+            model_mesh          = model_mesh,                          &
+            stream_meshfile     = trim(stream_ndep_mesh_filename),     &
+            stream_filenames    = (/trim(stream_ndep_data_filename)/), &
+            stream_yearFirst    = stream_ndep_year_first,              &
+            stream_yearLast     = stream_ndep_year_last,               &
+            stream_yearAlign    = stream_ndep_year_align,              &
+            stream_fldlistFile  = stream_varlist_ndep,                 &
+            stream_fldListModel = stream_varlist_ndep,                 &
+            stream_lev_dimname  = 'null',                              &
+            stream_mapalgo      = trim(stream_ndep_mapalgo),           &
+            stream_offset       = 0,                                   &
+            stream_taxmode      = 'cycle',                             &
+            stream_dtlimit      = 1.0e30_r8,                           &
+            stream_tintalgo     = 'linear',                            &
+            stream_name         = 'Nitrogen deposition data ',         &
+            rc                  = rc)
     if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) then
        call ESMF_Finalize(endflag=ESMF_END_ABORT)
     end if

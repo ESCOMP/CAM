@@ -28,6 +28,7 @@ use offline_driver,    only: offline_driver_init, offline_driver_dorun, offline_
 use perf_mod
 use cam_logfile,       only: iulog
 use cam_abortutils,    only: endrun
+use cam_shmem_mod,     only: cam_shmem_init
 
 implicit none
 private
@@ -70,7 +71,7 @@ subroutine cam_init(                                             &
    !
    !-----------------------------------------------------------------------
 
-   use cam_initfiles,    only: cam_initfiles_open
+   use cam_initfiles,    only: cam_initfiles_open, cam_initfiles_close
    use dyn_grid,         only: dyn_grid_init
    use phys_grid,        only: phys_grid_init
    use physpkg,          only: phys_register, phys_init
@@ -154,6 +155,14 @@ subroutine cam_init(                                             &
    filein = "atm_in" // trim(inst_suffix)
    call read_namelist(filein, single_column, scmlat, scmlon)
 
+   ! Build the cam_shmem per-node/leader communicators now, at this early all-ranks
+   ! collective point, so the first MPI_Comm_split_type(SHARED) is not paid cold mid-
+   ! physprop (rad_cnst_init).  Needed for the theta-l dycore, which (unlike
+   ! theta-l_kokkos/COMPOSE) does no early SHARED comm-split to warm it.  Called
+   ! after read_namelist so cam_shmem_force_private (cam_shmem_nl) is known; this
+   ! also runs the shared-window probe and reports it in the atm log.
+   call cam_shmem_init()
+
    ! Open initial or restart file, and topo file if specified.
    call cam_initfiles_open()
 
@@ -194,6 +203,13 @@ subroutine cam_init(                                             &
    if (write_camiop) call initialize_iop_history()
 
    call phys_init( phys_state, phys_tend, pbuf2d, cam_in, cam_out )
+
+   ! Initial-condition and topo files are fully read by the end of phys_init
+   ! (which is their last use); close them now to free PIO/NetCDF file handles
+   ! for the rest of the run rather than holding them open until cam_final.
+   if (initial_run_in) then
+      call cam_initfiles_close()
+   end if
 
    call stepon_init(dyn_in, dyn_out)
 
@@ -414,10 +430,8 @@ subroutine cam_final( cam_out, cam_in )
 !-----------------------------------------------------------------------
    use stepon,               only: stepon_final
    use physpkg,              only: phys_final
-   use cam_initfiles,        only: cam_initfiles_close
    use camsrfexch,           only: atm2hub_deallocate, hub2atm_deallocate
    use ionosphere_interface, only: ionosphere_final
-   use cam_control_mod,      only: initial_run
 
    !
    ! Arguments
@@ -433,9 +447,8 @@ subroutine cam_final( cam_out, cam_in )
    call stepon_final(dyn_in, dyn_out)
    call ionosphere_final()
 
-   if (initial_run) then
-      call cam_initfiles_close()
-   end if
+   ! Note: the initial-condition and topo files (fh_ini/fh_topo) are now closed at
+   ! the end of cam_init, immediately after their last use in phys_init.
 
    call hub2atm_deallocate(cam_in)
    call atm2hub_deallocate(cam_out)
