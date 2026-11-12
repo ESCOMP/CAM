@@ -818,10 +818,17 @@ contains
        !-------------------------------------------------------------------------------------------------
        do iVer = 1, teTiBot
           do iCol = 1, ncol
-             sourceR(iCol,iVer) = LOG( ndensE(iCol,iVer) / (ndensO2(iCol,iVer) + ndensN2(iCol,iVer) + &
-                  0.1_r8 * ndensO1(iCol,iVer)) )
-             sourceEff(iCol,iVer) = EXP( -(12.75_r8 + 6.941_r8 * sourceR(iCol,iVer) + 1.166_r8 * sourceR(iCol,iVer)**2 + &
-                  0.08043_r8 * sourceR(iCol,iVer)**3 + 0.001996_r8 * sourceR(iCol,iVer)**4) )
+
+             ! Electron heating formulation by Smithtro & Solomon (2008) https://doi.org/10.1029/2008JA013077
+
+             sourceR(iCol,iVer) = LOG( ndensE(iCol,iVer) / (ndensO2(iCol,iVer)+ndensN2(iCol,iVer)+ndensO1(iCol,iVer)) )
+
+             sourceEff(iCol,iVer) = EXP( 5.342_r8 +   &
+                  sourceR(iCol,iVer) * (1.056_r8 -    &
+                  sourceR(iCol,iVer) * (4.392e-2_r8 + &
+                  sourceR(iCol,iVer) * (5.9e-2_r8 +   &
+                  sourceR(iCol,iVer) * (9.346e-3_r8 + &
+                  sourceR(iCol,iVer) * (5.755e-4_r8 + 1.249e-5_r8 * sourceR(iCol,iVer)))))))
 
              !-------------------------------------------------------------------------------
              !  Calculate g4 source term for electron temperature update
