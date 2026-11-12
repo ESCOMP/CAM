@@ -261,7 +261,7 @@
 <ncdata hgrid="mpasa120" nlev="58" >/glade/campaign/cgd/amp/aherring/mpas-uniform/mpasa120/inic/betacast_mpasa120_L58_ERA5ml_c261112_cdf5.nc</ncdata>
 <ncdata hgrid="mpasa120" nlev="93" >/glade/campaign/cgd/amp/aherring/mpas-uniform/mpasa120/inic/betacast_mpasa120_L93_ERA5ml_c261112_cdf5.nc</ncdata>
 <ncdata hgrid="mpasa120" nlev="58" aquaplanet="1" >atm/cam/inic/mpas/QPC7_mpasa120_L58_cami_c250527.nc</ncdata>
-<ncdata hgrid="mpasa120" nlev="70" waccm_phys="1">atm/waccm/ic/mpasa120_L70.waccm_topography_SC_c240904.nc</ncdata>
+<ncdata hgrid="mpasa120" nlev="70" waccm_phys="1">/glade/campaign/cgd/amp/aherring/mpas-uniform/mpasa120/inic/mpasa120_L70.waccm_topography_SC_c261112.nc</ncdata>
 <!-- Next entries are mostly used in EarthWorks, real-data ICs -->
 <ncdata hgrid="mpasa60"  nlev="58" >atm/cam/inic/mpas/cami_01-01-2000_00Z_mpasa60_L58_CFSR_c240905.nc</ncdata>
 <ncdata hgrid="mpasa30"  nlev="58" >atm/cam/inic/mpas/cami_01-01-2000_00Z_mpasa30_L58_CFSR_c240905.nc</ncdata>
