@@ -13,11 +13,6 @@
       use mpishorthand,     only : mpicom,mpiint,mpir8, mpilog, mpir4
 #endif
       use spmd_utils,       only : masterproc
-      use cam_shmem_mod,    only : cam_shmem_alloc_r4_4d, cam_shmem_alloc_r4_5d, &
-                                   cam_shmem_alloc_r8_3d, cam_shmem_fence,       &
-                                   cam_shmem_free,                               &
-                                   cam_shmem_is_leader, cam_shmem_leader_comm,   &
-                                   cam_shmem_npes_per_node, cam_shmem_enabled
 
       implicit none
 
@@ -28,7 +23,6 @@
 
       private
       public :: jlong_init
-      public :: jlong_final
       public :: jlong_timestep_init
       public :: jlong
       public :: numj
@@ -48,10 +42,7 @@
       integer               :: numsza  		! number of zen angles in rsf
       integer               :: numalb  		! number of albedos in rsf
       integer               :: numcolo3		! number of o3 columns in rsf
-      ! Large read-only lookup tables held in per-node MPI shared memory
-      ! (one physical copy per node, mapped into every rank).  These are
-      ! pointers (not allocatables) so they can alias a shared-memory window.
-      real(r4), pointer     :: xsqy(:,:,:,:) => null()
+      real(r4), allocatable :: xsqy(:,:,:,:)
       real(r8), allocatable :: wc(:)
       real(r8), allocatable :: we(:)
       real(r8), allocatable :: wlintv(:)
@@ -59,9 +50,9 @@
       real(r8), allocatable :: bde_o2_b(:)
       real(r8), allocatable :: bde_o3_a(:)
       real(r8), allocatable :: bde_o3_b(:)
-      real(r8), pointer     :: xs_o2b(:,:,:) => null()
-      real(r8), pointer     :: xs_o3a(:,:,:) => null()
-      real(r8), pointer     :: xs_o3b(:,:,:) => null()
+      real(r8), allocatable :: xs_o2b(:,:,:)
+      real(r8), allocatable :: xs_o3a(:,:,:)
+      real(r8), allocatable :: xs_o3b(:,:,:)
       real(r8), allocatable :: p(:)
       real(r8), allocatable :: del_p(:)
       real(r8), allocatable :: prs(:)
@@ -73,9 +64,7 @@
       real(r8), allocatable :: o3rat(:)
       real(r8), allocatable :: del_o3rat(:)
       real(r8), allocatable :: colo3(:)
-      real(r4), pointer     :: rsf_tab(:,:,:,:,:) => null()
-      ! MPI shared-memory window handles for the tables above.
-      integer :: win_xsqy = -1, win_o2b = -1, win_o3a = -1, win_o3b = -1, win_rsf = -1
+      real(r4), allocatable :: rsf_tab(:,:,:,:,:)
       logical :: jlong_used = .false.
 
       contains
@@ -124,49 +113,8 @@
       endif
 
       jlong_used = .true.
-
+ 
       end subroutine jlong_init
-
-      subroutine jlong_final
-!------------------------------------------------------------------------------
-!     ... release the per-node shared-memory lookup tables and the small
-!         per-rank work arrays.  Collective over the node communicator
-!         (cam_shmem_free -> MPI_Win_free) and called on every rank from the
-!         chemistry finalize path, after the last photolysis timestep.
-!------------------------------------------------------------------------------
-      implicit none
-
-      if (.not. jlong_used) return    ! jlong_used is identical on all ranks
-
-      call cam_shmem_free( xsqy,    win_xsqy )
-      call cam_shmem_free( xs_o2b,  win_o2b )
-      call cam_shmem_free( xs_o3a,  win_o3a )
-      call cam_shmem_free( xs_o3b,  win_o3b )
-      call cam_shmem_free( rsf_tab, win_rsf )
-
-      ! small per-rank allocatables (allocated in get_xsqy / get_rsf)
-      if( allocated(prs)   ) deallocate(prs)
-      if( allocated(dprs)  ) deallocate(dprs)
-      if( allocated(wc)    ) deallocate(wc)
-      if( allocated(we)    ) deallocate(we)
-      if( allocated(wlintv)) deallocate(wlintv)
-      if( allocated(etfphot)) deallocate(etfphot)
-      if( allocated(bde_o2_b)) deallocate(bde_o2_b)
-      if( allocated(bde_o3_a)) deallocate(bde_o3_a)
-      if( allocated(bde_o3_b)) deallocate(bde_o3_b)
-      if( allocated(p)     ) deallocate(p)
-      if( allocated(del_p) ) deallocate(del_p)
-      if( allocated(sza)   ) deallocate(sza)
-      if( allocated(del_sza)) deallocate(del_sza)
-      if( allocated(alb)   ) deallocate(alb)
-      if( allocated(del_alb)) deallocate(del_alb)
-      if( allocated(o3rat) ) deallocate(o3rat)
-      if( allocated(del_o3rat)) deallocate(del_o3rat)
-      if( allocated(colo3) ) deallocate(colo3)
-
-      jlong_used = .false.
-
-      end subroutine jlong_final
 
       subroutine get_xsqy( xs_long_file, lng_indexer )
 !=============================================================================!
@@ -260,37 +208,22 @@
             end if
          end do
 
-      end if Masterproc_only
+         !------------------------------------------------------------------------------
+         !       ... allocate arrays
+         !------------------------------------------------------------------------------
 
-#ifdef SPMD
-      call mpibcast( numj,  1, mpiint, 0, mpicom )
-      call mpibcast( nt,    1, mpiint, 0, mpicom )
-      call mpibcast( nw,    1, mpiint, 0, mpicom )
-      call mpibcast( np_xs, 1, mpiint, 0, mpicom )
-#endif
-
-      !------------------------------------------------------------------------------
-      !       ... allocate the large read-only tables in per-node shared memory
-      !           (one copy per node); prs/dprs are small and kept per-rank.
-      !------------------------------------------------------------------------------
-      call cam_shmem_alloc_r4_4d( xsqy,   win_xsqy, numj, nw, nt, np_xs )
-      call cam_shmem_alloc_r8_3d( xs_o2b, win_o2b,  nw, nt, np_xs )
-      call cam_shmem_alloc_r8_3d( xs_o3a, win_o3a,  nw, nt, np_xs )
-      call cam_shmem_alloc_r8_3d( xs_o3b, win_o3b,  nw, nt, np_xs )
-      allocate( prs(np_xs), dprs(np_xs-1), stat=iret )
-      if( iret /= 0 ) call alloc_err( iret, 'get_xsqy', 'prs,dprs', np_xs )
-      if( masterproc .and. cam_shmem_enabled() ) then
-         write(iulog,*) 'mo_jlong: xsqy/xs_o2b/o3a/o3b held in per-node shared memory; ', &
-              cam_shmem_npes_per_node()-1, ' redundant copies/node avoided'
-      end if
-
-      ! Open the window epoch; node leaders then fill the shared tables below.
-      call cam_shmem_fence( win_xsqy )
-      call cam_shmem_fence( win_o2b )
-      call cam_shmem_fence( win_o3a )
-      call cam_shmem_fence( win_o3b )
-
-      Masterproc_read : if( masterproc ) then
+         allocate( xsqy(numj,nw,nt,np_xs),stat=iret )
+         if( iret /= 0 ) then 
+            call alloc_err( iret, 'get_xsqy', 'xsqy', numj*nt*np_xs*nw )
+         end if
+         allocate( prs(np_xs),dprs(np_xs-1),stat=iret )
+         if( iret /= 0 ) then 
+            call alloc_err( iret, 'get_xsqy', 'prs,dprs', np_xs )
+         end if
+         allocate( xs_o2b(nw,nt,np_xs),xs_o3a(nw,nt,np_xs),xs_o3b(nw,nt,np_xs),stat=iret )
+         if( iret /= 0 ) then 
+            call alloc_err( iret, 'get_xsqy', 'xs_o2b ... xs_o3b', np_xs )
+         end if
          !------------------------------------------------------------------------------
          !       ... read cross sections
          !------------------------------------------------------------------------------
@@ -333,25 +266,43 @@
          iret = nf90_inq_varid( ncid, 'pressure', varid )
          iret = nf90_get_var( ncid, varid, prs )
          iret = nf90_close( ncid )
-      end if Masterproc_read
+      end if Masterproc_only
 
 #ifdef SPMD
-      ! Distribute the tables to the leader of every other node (leaders only),
-      ! then publish to every rank on each node via the closing window fence.
-      if( cam_shmem_is_leader() ) then
-         call mpibcast( xsqy,   numj*nt*np_xs*nw, mpir4, 0, cam_shmem_leader_comm() )
-         call mpibcast( xs_o2b, nw*nt*np_xs,      mpir8, 0, cam_shmem_leader_comm() )
-         call mpibcast( xs_o3a, nw*nt*np_xs,      mpir8, 0, cam_shmem_leader_comm() )
-         call mpibcast( xs_o3b, nw*nt*np_xs,      mpir8, 0, cam_shmem_leader_comm() )
-      end if
+!        call mpibarrier( mpicom )
+      call mpibcast( numj,  1, mpiint, 0, mpicom )
+      call mpibcast( nt,    1, mpiint, 0, mpicom )
+      call mpibcast( nw,    1, mpiint, 0, mpicom )
+      call mpibcast( np_xs, 1, mpiint, 0, mpicom )
       call mpibcast( lng_indexer, phtcnt, mpiint, 0, mpicom )
-      call mpibcast( prs,         np_xs,  mpir8, 0, mpicom )
 #endif
-      ! Publish the filled tables to every rank on each node.
-      call cam_shmem_fence( win_xsqy )
-      call cam_shmem_fence( win_o2b )
-      call cam_shmem_fence( win_o3a )
-      call cam_shmem_fence( win_o3b )
+      if( .not. masterproc ) then
+         !------------------------------------------------------------------------------
+         !       ... allocate arrays
+         !------------------------------------------------------------------------------
+         allocate( xsqy(numj,nw,nt,np_xs),stat=iret )
+         if( iret /= nf90_noerr) then 
+            write(iulog,*) 'get_xsqy : failed to allocate xsqy ; error = ',iret
+            call endrun
+         end if
+         allocate( prs(np_xs),dprs(np_xs-1),stat=iret )
+         if( iret /= nf90_noerr) then 
+            write(iulog,*) 'get_xsqy : failed to allocate prs,dprs ; error = ',iret
+            call endrun
+         end if
+         allocate( xs_o2b(nw,nt,np_xs),xs_o3a(nw,nt,np_xs),xs_o3b(nw,nt,np_xs),stat=iret )
+         if( iret /= 0 ) then 
+            call alloc_err( iret, 'get_xsqy', 'xs_o2b ... xs_o3b', np_xs )
+         end if
+      end if
+#ifdef SPMD
+!        call mpibarrier( mpicom )
+      call mpibcast( prs, np_xs, mpir8, 0, mpicom )
+      call mpibcast( xsqy, numj*nt*np_xs*nw, mpir4, 0, mpicom )
+      call mpibcast( xs_o2b, nw*nt*np_xs, mpir8, 0, mpicom )
+      call mpibcast( xs_o3a, nw*nt*np_xs, mpir8, 0, mpicom )
+      call mpibcast( xs_o3b, nw*nt*np_xs, mpir8, 0, mpicom )
+#endif
       dprs(:np_xs-1) = 1._r8/(prs(1:np_xs-1) - prs(2:np_xs))
 
       end subroutine get_xsqy
@@ -464,14 +415,11 @@
       if( iret /= 0 ) then 
          call alloc_err( iret, 'get_rsf', 'colo3', nump )
       end if
-      ! rsf_tab is large and read-only; hold one copy per node in shared memory.
-      call cam_shmem_alloc_r4_5d( rsf_tab, win_rsf, nw, nump, numsza, numcolo3, numalb )
-      if( masterproc .and. cam_shmem_enabled() ) then
-         write(iulog,*) 'mo_jlong: rsf_tab held in per-node shared memory; ', &
-              cam_shmem_npes_per_node()-1, ' redundant copies/node avoided'
+      allocate( rsf_tab(nw,nump,numsza,numcolo3,numalb),stat=iret )
+      if( iret /= 0 ) then 
+         write(iulog,*) 'get_rsf : dimensions = ',nw,nump,numsza,numcolo3,numalb
+         call alloc_err( iret, 'get_rsf', 'rsf_tab', numalb*numcolo3*numsza*nump )
       end if
-      ! Open the window epoch before the node leaders fill rsf_tab below.
-      call cam_shmem_fence( win_rsf )
 
       Masterproc_only2 : if( masterproc ) then
          !------------------------------------------------------------------------------
@@ -522,15 +470,10 @@
       call mpibcast( alb,     numalb,   mpir8, 0, mpicom )
       call mpibcast( o3rat,   numcolo3, mpir8, 0, mpicom )
       call mpibcast( colo3,   nump,     mpir8, 0, mpicom )
-      ! Distribute rsf_tab to node leaders only (per wavelength slice), then publish.
-      if( cam_shmem_is_leader() ) then
-         do w = 1,nw
-            call mpibcast( rsf_tab(w,:,:,:,:), numalb*numcolo3*numsza*nump, mpir4, 0, cam_shmem_leader_comm() )
-         enddo
-      end if
+      do w = 1,nw
+         call mpibcast( rsf_tab(w,:,:,:,:), numalb*numcolo3*numsza*nump, mpir4, 0, mpicom )
+      enddo
 #endif
-      ! Publish the filled rsf_tab to every rank on each node.
-      call cam_shmem_fence( win_rsf )
 #ifdef USE_BDE
       if (masterproc) write(iulog,*) 'Jlong using bdes'
       bde_o2_b(:) = max( 0._r8, hc*(wc_o2_b - wc(:))/(wc_o2_b*wc(:)) )

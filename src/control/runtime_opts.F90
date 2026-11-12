@@ -22,7 +22,6 @@ contains
 subroutine read_namelist(nlfilename, single_column, scmlat, scmlon)
 
    use cam_initfiles,       only: cam_initfiles_readnl
-   use cam_shmem_mod,       only: cam_shmem_readnl
    use constituents,        only: cnst_readnl
 
    use phys_grid,           only: phys_grid_readnl
@@ -132,7 +131,6 @@ subroutine read_namelist(nlfilename, single_column, scmlat, scmlon)
    ! all processes receive the values.
 
    call spmd_utils_readnl(nlfilename)
-   call cam_shmem_readnl(nlfilename)
    call phys_grid_readnl(nlfilename)
    call air_composition_readnl(nlfilename)
    call physconst_readnl(nlfilename)
