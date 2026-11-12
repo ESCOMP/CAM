@@ -24,42 +24,25 @@ contains
     use interpolate_data, only: lininterp_init, lininterp, lininterp_finish, interp_type
     use ppgrid,           only: begchunk, endchunk, pcols
     use mo_constants,     only: pi, d2r
+    use pio,              only: file_desc_t,pio_inq_dimid,pio_inq_dimlen,pio_get_var,pio_inq_varid, PIO_NOWRITE
     use phys_grid,        only: get_ncols_p, get_rlat_all_p, get_rlon_all_p
-    use ioFileMod,        only: getfil
-    use netcdf,           only: nf90_open, nf90_nowrite, nf90_close, nf90_noerr,  &
-                                nf90_inq_dimid, nf90_inquire_dimension,           &
-                                nf90_inq_varid, nf90_get_var, nf90_strerror
-    use cam_shmem_mod,    only: cam_shmem_alloc_r8_2d, cam_shmem_fence,           &
-                                cam_shmem_free, cam_shmem_is_leader,              &
-                                cam_shmem_leader_comm, cam_shmem_npes_per_node,   &
-                                cam_shmem_enabled
-    use pio,              only: file_desc_t, pio_inq_dimid, pio_inq_dimlen, pio_get_var, &
-                                pio_inq_varid, PIO_NOWRITE
     use cam_pio_utils,    only: cam_pio_openfile
-#ifdef SPMD
-    use mpishorthand,     only: mpicom, mpiint, mpir8
-#endif
+    use ioFileMod,        only: getfil
 
     real(r8),         intent(in) :: dust_emis_fact
     character(len=*), intent(in) :: soil_erod_file
 
-    real(r8), pointer     ::  soil_erodibility_in(:,:)  ! node-shared input field
+    real(r8), allocatable ::  soil_erodibility_in(:,:)  ! temporary input array
     real(r8), allocatable :: dst_lons(:)
     real(r8), allocatable :: dst_lats(:)
     character(len=cl)     :: infile
     integer :: did, vid, nlat, nlon
-    integer :: ncid, iret
-    type(file_desc_t) :: pioid  ! original per-rank (PIO) read path
-    integer :: win_serod        ! per-node shared-memory window for soil_erodibility_in
+    type(file_desc_t) :: ncid
 
     type(interp_type) :: lon_wgts, lat_wgts
     real(r8) :: to_lats(pcols), to_lons(pcols)
     integer :: c, ncols, ierr
     real(r8), parameter :: zero=0._r8, twopi=2._r8*pi
-    character(len=*), parameter :: subname = 'soil_erod_init'
-
-    nullify(soil_erodibility_in)
-    win_serod = -1
 
     soil_erod_fact = dust_emis_fact
 
@@ -74,97 +57,27 @@ contains
 
     ! Get file name.  
     call getfil(soil_erod_file, infile, 0)
+    call cam_pio_openfile (ncid, trim(infile), PIO_NOWRITE)
 
-    if (cam_shmem_enabled()) then
-       ! Read the source-grid soil erodibility on masterproc only (serial NetCDF) and
-       ! hold it in per-node MPI-3 shared memory: one physical copy per node instead
-       ! of one per MPI rank.  At high resolution (e.g. ne1024) this removes
-       ! (ranks_per_node - 1) redundant nlon*nlat copies of the input field.
-       if (masterproc) then
-          iret = nf90_open(trim(infile), NF90_NOWRITE, ncid)
-          if (iret /= nf90_noerr) call endrun(subname//': nf90_open failed for '//trim(infile)//': '//trim(nf90_strerror(iret)))
-          iret = nf90_inq_dimid( ncid, 'lon', did )
-          if (iret /= nf90_noerr) call endrun(subname//': nf90_inq_dimid failed for lon: '//trim(nf90_strerror(iret)))
-          iret = nf90_inquire_dimension( ncid, did, len=nlon )
-          if (iret /= nf90_noerr) call endrun(subname//': nf90_inquire_dimension failed for lon: '//trim(nf90_strerror(iret)))
-          iret = nf90_inq_dimid( ncid, 'lat', did )
-          if (iret /= nf90_noerr) call endrun(subname//': nf90_inq_dimid failed for lat: '//trim(nf90_strerror(iret)))
-          iret = nf90_inquire_dimension( ncid, did, len=nlat )
-          if (iret /= nf90_noerr) call endrun(subname//': nf90_inquire_dimension failed for lat: '//trim(nf90_strerror(iret)))
-       end if
+    ! Get input data resolution.
+    ierr = pio_inq_dimid( ncid, 'lon', did )
+    ierr = pio_inq_dimlen( ncid, did, nlon )
 
-#ifdef SPMD
-       call mpibcast( nlon, 1, mpiint, 0, mpicom )
-       call mpibcast( nlat, 1, mpiint, 0, mpicom )
-#endif
+    ierr = pio_inq_dimid( ncid, 'lat', did )
+    ierr = pio_inq_dimlen( ncid, did, nlat )
 
-       allocate(dst_lons(nlon))
-       allocate(dst_lats(nlat))
-       call cam_shmem_alloc_r8_2d( soil_erodibility_in, win_serod, nlon, nlat )
-       if (masterproc) then
-          write(iulog,*) 'soil_erod_mod: soil_erodibility_in held in per-node shared memory; ', &
-               cam_shmem_npes_per_node()-1, ' redundant copies/node avoided'
-       end if
+    allocate(dst_lons(nlon))
+    allocate(dst_lats(nlat))
+    allocate(soil_erodibility_in(nlon,nlat))
 
-       ! Open the window epoch, fill on the node leader (masterproc), then publish.
-       call cam_shmem_fence( win_serod )
+    ierr = pio_inq_varid( ncid, 'lon', vid )
+    ierr = pio_get_var( ncid, vid, dst_lons  )
 
-       if (masterproc) then
-          iret = nf90_inq_varid( ncid, 'lon', vid )
-          if (iret /= nf90_noerr) call endrun(subname//': nf90_inq_varid failed for lon: '//trim(nf90_strerror(iret)))
-          iret = nf90_get_var( ncid, vid, dst_lons )
-          if (iret /= nf90_noerr) call endrun(subname//': nf90_get_var failed for lon: '//trim(nf90_strerror(iret)))
-          iret = nf90_inq_varid( ncid, 'lat', vid )
-          if (iret /= nf90_noerr) call endrun(subname//': nf90_inq_varid failed for lat: '//trim(nf90_strerror(iret)))
-          iret = nf90_get_var( ncid, vid, dst_lats )
-          if (iret /= nf90_noerr) call endrun(subname//': nf90_get_var failed for lat: '//trim(nf90_strerror(iret)))
-          iret = nf90_inq_varid( ncid, 'mbl_bsn_fct_geo', vid )
-          if (iret /= nf90_noerr) call endrun(subname//': nf90_inq_varid failed for mbl_bsn_fct_geo: '//trim(nf90_strerror(iret)))
-          iret = nf90_get_var( ncid, vid, soil_erodibility_in )
-          if (iret /= nf90_noerr) call endrun(subname//': nf90_get_var failed for mbl_bsn_fct_geo: '//trim(nf90_strerror(iret)))
-          iret = nf90_close( ncid )
-          if (iret /= nf90_noerr) call endrun(subname//': nf90_close failed for '//trim(infile)//': '//trim(nf90_strerror(iret)))
-       end if
+    ierr = pio_inq_varid( ncid, 'lat', vid )
+    ierr = pio_get_var( ncid, vid, dst_lats  )
 
-#ifdef SPMD
-       ! Source coordinates to every rank; the large field to every node leader.  The
-       ! closing fence then publishes it to every rank on each node.
-       call mpibcast( dst_lons, nlon, mpir8, 0, mpicom )
-       call mpibcast( dst_lats, nlat, mpir8, 0, mpicom )
-       if (cam_shmem_is_leader()) then
-          call mpibcast( soil_erodibility_in, nlon*nlat, mpir8, 0, cam_shmem_leader_comm() )
-       end if
-#endif
-       call cam_shmem_fence( win_serod )
-
-    else
-
-       ! Original per-rank path (node-shared memory off): every rank reads the
-       ! source-grid field through PIO into its own copy.
-       call cam_pio_openfile (pioid, trim(infile), PIO_NOWRITE)
-
-       ! Get input data resolution.
-       ierr = pio_inq_dimid( pioid, 'lon', did )
-       ierr = pio_inq_dimlen( pioid, did, nlon )
-
-       ierr = pio_inq_dimid( pioid, 'lat', did )
-       ierr = pio_inq_dimlen( pioid, did, nlat )
-
-       allocate(dst_lons(nlon))
-       allocate(dst_lats(nlat))
-       ! plain allocate when sharing is off (win_serod = -1)
-       call cam_shmem_alloc_r8_2d( soil_erodibility_in, win_serod, nlon, nlat )
-
-       ierr = pio_inq_varid( pioid, 'lon', vid )
-       ierr = pio_get_var( pioid, vid, dst_lons  )
-
-       ierr = pio_inq_varid( pioid, 'lat', vid )
-       ierr = pio_get_var( pioid, vid, dst_lats  )
-
-       ierr = pio_inq_varid( pioid, 'mbl_bsn_fct_geo', vid )
-       ierr = pio_get_var( pioid, vid, soil_erodibility_in )
-
-    end if
+    ierr = pio_inq_varid( ncid, 'mbl_bsn_fct_geo', vid )
+    ierr = pio_get_var( ncid, vid, soil_erodibility_in )
 
     !-----------------------------------------------------------------------
     !     	... convert to radians and setup regridding
@@ -194,9 +107,11 @@ contains
        call lininterp_finish(lat_wgts)
        call lininterp_finish(lon_wgts)
     end do
-    ! Release the input field: MPI_Win_free (collective over the node
-    ! communicator) if node-shared, otherwise deallocate.
-    call cam_shmem_free( soil_erodibility_in, win_serod )
+    deallocate( soil_erodibility_in, stat=ierr )
+    if( ierr /= 0 ) then
+       write(iulog,*) 'soil_erod_init: failed to deallocate soil_erodibility_in, ierr = ',ierr
+       call endrun('soil_erod_init: failed to deallocate soil_erodibility_in')
+    end if
 
     deallocate( dst_lats )
     deallocate( dst_lons )
