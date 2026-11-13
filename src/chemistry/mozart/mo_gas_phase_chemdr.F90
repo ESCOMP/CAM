@@ -876,6 +876,11 @@ contains
        call ghg_chem_set_rates( reaction_rates, latmapback, zen_angle, ncol, lchnk )
     endif
 
+    ! All non-photolysis rate constants should now be set (they were initialized to NaN above).
+    ! Abort with an informative message if any were missed, e.g., a "usr" reaction label in
+    ! the mechanism file that does not match any label handled in mo_usrrxt.F90.
+    call check_rxt_rates_set( reaction_rates, ncol, lchnk )
+
     do i = phtcnt+1,rxt_tag_cnt
        call outfld( tag_names(i), reaction_rates(:ncol,:,rxt_tag_map(i)), ncol, lchnk )
     enddo
@@ -1253,5 +1258,65 @@ contains
     endif
 
   end subroutine gas_phase_chemdr
+
+  !-----------------------------------------------------------------------
+  ! Verify that every non-photolysis reaction rate constant has been set.
+  ! reaction_rates is initialized to NaN at the start of gas_phase_chemdr.
+  ! A rate left unset usually means a reaction without a rate expression
+  ! (a "usr" reaction) in the mechanism file whose label does not match any
+  ! label handled in mo_usrrxt.F90 (or mo_sulf.F90, mo_ghg_chem.F90, ...).
+  ! Without this check the NaN propagates into the chemistry solver
+  ! and the model fails later with a non-specific error.
+  !-----------------------------------------------------------------------
+  subroutine check_rxt_rates_set( reaction_rates, ncol, lchnk )
+
+    use infnan,         only : isnan
+    use cam_logfile,    only : iulog
+    use cam_abortutils, only : endrun
+
+    real(r8), intent(in) :: reaction_rates(:,:,:)
+    integer,  intent(in) :: ncol
+    integer,  intent(in) :: lchnk
+
+    integer :: r, m, nbad
+    character(len=32) :: tag
+    character(len=32) :: first_bad_tag
+
+    nbad = 0
+    first_bad_tag = '(no label)'
+    do r = phtcnt+1, rxntot
+       if ( any( isnan( reaction_rates(:ncol,:,r) ) ) ) then
+          nbad = nbad + 1
+          tag = '(no label)'
+          do m = 1, rxt_tag_cnt
+             if ( rxt_tag_map(m) == r ) then
+                tag = rxt_tag_lst(m)
+                exit
+             end if
+          end do
+          if (nbad == 1) then
+             first_bad_tag = tag
+          end if
+          if ( all( isnan( reaction_rates(:ncol,:,r) ) ) ) then
+             write(iulog,'(a,i6,3a,i8)') 'check_rxt_rates_set: ERROR: rate constant for reaction ', &
+                  r, ' [', trim(tag), '] was never set; lchnk = ', lchnk
+          else
+             write(iulog,'(a,i6,3a,i8)') 'check_rxt_rates_set: ERROR: rate constant for reaction ', &
+                  r, ' [', trim(tag), '] is NaN at some grid points; lchnk = ', lchnk
+          end if
+       end if
+    end do
+
+    if (nbad > 0) then
+       write(iulog,*) 'check_rxt_rates_set: ', nbad, ' reaction rate constant(s) are undefined.'
+       write(iulog,*) '  Reactions without a rate expression in the chemistry mechanism file must have'
+       write(iulog,*) '  their rate set in code (mo_usrrxt.F90). Check that each such reaction label in'
+       write(iulog,*) '  the mechanism file exactly matches a label handled in mo_usrrxt.F90'
+       write(iulog,*) '  (e.g., usr_PPN vs usr_PPN_M). Reaction numbers refer to chem_mech.doc.'
+       call endrun('check_rxt_rates_set: undefined reaction rate constant for '//trim(first_bad_tag)// &
+                   ' -- see atm log for details')
+    end if
+
+  end subroutine check_rxt_rates_set
 
 end module mo_gas_phase_chemdr
