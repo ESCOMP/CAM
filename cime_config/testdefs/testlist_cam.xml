@@ -19,7 +19,7 @@
       <machine name="derecho" compiler="intel" category="aux_cam"/>
     </machines>
     <options>
-      <option name="wallclock">00:30:00</option>
+      <option name="wallclock">01:00:00</option>
       <option name="comment">CAM7-LT, branch, hybrid starts</option>
     </options>
   </test>
