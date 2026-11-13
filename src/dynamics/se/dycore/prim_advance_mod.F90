@@ -274,21 +274,34 @@ contains
     use fvm_control_volume_mod, only: fvm_struct
     use air_composition,        only: thermodynamic_active_species_idx_dycore
     use cam_thermo,             only: get_dp, MASS_MIXING_RATIO
+    use cam_history,            only: hist_fld_active
     type (element_t)     , intent(inout) :: elem(:)
     type(fvm_struct)     , intent(inout) :: fvm(:)
     real (kind=r8), intent(in) :: dt_dribble, dt_phys
     integer,  intent(in) :: np1,nets,nete,np1_qdp,nsubstep
 
     ! local
-    integer :: i,j,k,ie,q
+    integer :: i,j,k,ie,q,ierr
     real (kind=r8) :: v1,dt_local, dt_local_tracer,tmp
     real (kind=r8) :: dt_local_tracer_fvm
-    real (kind=r8) :: ftmp(np,np,nlev,qsize,nets:nete) !diagnostics
+    real (kind=r8), allocatable :: ftmp(:,:,:,:,:) !diagnostics
     real (kind=r8) :: pdel(np,np,nlev)
     real (kind=r8), allocatable :: ftmp_fvm(:,:,:,:,:) !diagnostics
+    logical :: pdc_active
 
     call t_startf('applyCAMforc')
-    if (use_cslam) allocate(ftmp_fvm(nc,nc,nlev,ntrac,nets:nete))
+    ! Must match the fields written by output_qdp_var_dynamics(...,'PDC')
+    pdc_active = hist_fld_active('WV_PDC') .or. hist_fld_active('WI_PDC') .or. &
+                 hist_fld_active('WL_PDC') .or. hist_fld_active('TT_PDC')
+    if (pdc_active) then
+      if (use_cslam) then
+        allocate(ftmp_fvm(nc,nc,nlev,ntrac,nets:nete), stat=ierr)
+        if (ierr /= 0) call endrun('applyCAMforcing: failed to allocate ftmp_fvm')
+      else
+        allocate(ftmp(np,np,nlev,qsize,nets:nete), stat=ierr)
+        if (ierr /= 0) call endrun('applyCAMforcing: failed to allocate ftmp')
+      end if
+    end if
 
     if (ftype==0) then
       !
@@ -360,14 +373,16 @@ contains
                   endif
                 endif
                 elem(ie)%state%Qdp(i,j,k,q,np1_qdp) = elem(ie)%state%Qdp(i,j,k,q,np1_qdp)+v1
-                ftmp(i,j,k,q,ie) = dt_local_tracer*&
-                     elem(ie)%derived%FQ(i,j,k,q)-v1 !Only used for diagnostics!
+                if (pdc_active .and. .not. use_cslam) then
+                  ftmp(i,j,k,q,ie) = dt_local_tracer*&
+                       elem(ie)%derived%FQ(i,j,k,q)-v1 !Only used for diagnostics!
+                end if
               enddo
             enddo
           enddo
         enddo
       else
-        ftmp(:,:,:,:,ie) = 0.0_r8
+        if (pdc_active .and. .not. use_cslam) ftmp(:,:,:,:,ie) = 0.0_r8
       end if
       if (use_cslam.and.dt_local_tracer_fvm>0) then
         !
@@ -387,13 +402,13 @@ contains
                   end if
                 end if
                 fvm(ie)%c(i,j,k,q) = fvm(ie)%c(i,j,k,q)+ v1
-                ftmp_fvm(i,j,k,q,ie) = (tmp-v1)*fvm(ie)%dp_fvm(i,j,k) !Only used for diagnostics!
+                if (pdc_active) ftmp_fvm(i,j,k,q,ie) = (tmp-v1)*fvm(ie)%dp_fvm(i,j,k) !Only used for diagnostics!
               end do
             end do
           end do
         end do
       else
-        if (use_cslam) ftmp_fvm(:,:,:,:,ie) = 0.0_r8
+        if (use_cslam .and. pdc_active) ftmp_fvm(:,:,:,:,ie) = 0.0_r8
       end if
 
       if (ftype_conserve==1.and..not.use_cslam) then
@@ -422,13 +437,16 @@ contains
              dt_local*elem(ie)%derived%FM(:,:,:,:)
       end if
     end do
-    if (use_cslam) then
-      call output_qdp_var_dynamics(ftmp_fvm(:,:,:,:,:),nc,ntrac,nets,nete,'PDC')
-    else
-      call output_qdp_var_dynamics(ftmp(:,:,:,:,:),np,qsize,nets,nete,'PDC')
+    if (pdc_active) then
+      if (use_cslam) then
+        call output_qdp_var_dynamics(ftmp_fvm(:,:,:,:,:),nc,ntrac,nets,nete,'PDC')
+        deallocate(ftmp_fvm)
+      else
+        call output_qdp_var_dynamics(ftmp(:,:,:,:,:),np,qsize,nets,nete,'PDC')
+        deallocate(ftmp)
+      end if
     end if
     if (ftype==1.and.nsubstep==1) call tot_energy_dyn(elem,fvm,nets,nete,np1,np1_qdp,'p2d')
-    if (use_cslam) deallocate(ftmp_fvm)
     call t_stopf('applyCAMforc')
   end subroutine applyCAMforcing
 

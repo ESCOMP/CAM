@@ -28,7 +28,7 @@ contains
   !   - second call computes and outputs the tendencies
   !----------------------------------------------------------------------
   subroutine compute_adv_tends_xyz(elem,fvm,nets,nete,qn0,n0)
-    use cam_history,            only: outfld
+    use cam_history,            only: outfld, hist_fld_active
     use time_manager,           only: get_step_size
     use constituents,           only: tottnam,pcnst
     use dimensions_mod,         only: nc,np,nlev,use_cslam
@@ -41,8 +41,18 @@ contains
     integer,          intent(in) :: nets,nete,qn0,n0
     real(r8) :: dt
     integer  :: i,j,ic,nx,ie
-    logical  :: init
+    logical  :: init, any_active
     real(r8), allocatable, dimension(:,:) :: ftmp
+
+    any_active = .false.
+    do ic = 1, pcnst
+      if (hist_fld_active(tottnam(ic))) then
+        any_active = .true.
+        exit
+      end if
+    end do
+    ! Nothing to do if no total advective tendency field is on a history tape
+    if (.not. any_active) return
 
     if (use_cslam) then
       nx=nc
