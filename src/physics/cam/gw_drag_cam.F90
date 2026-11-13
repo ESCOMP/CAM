@@ -1242,6 +1242,8 @@ subroutine gw_drag_cam_movmtn_diag_init(use_gw_movmtn_pbl, file_name, psteer, pl
           'Gravity Wave Moving Mountain - Steering level pressure')
      call addfld ('PLAUNCH_MOVMTN',horiz_only,'I','Pa', &
           'Gravity Wave Moving Mountain - Launch level pressure')
+     call addfld ('ROO_BLOCK_MOVMTN',horiz_only,'I','1', &
+          'Gravity Wave Moving Mountain - near-surface tilt-dominance (roo) criterion blocked the source')
      call addfld ('MMTAUE', (/ 'ilev' /), 'A', 'Pa', &
           'Gravity Wave Moving Mountain - Eastward Reynolds stress')
      call addfld ('MMTAUW', (/ 'ilev' /), 'A', 'Pa', &
@@ -1388,6 +1390,8 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
   real(r8) :: tilt(pcols,pver)     ! vortex tilting magnitude [s-2]
   real(r8) :: p_steer(pcols)       ! steering level pressure [Pa]
   real(r8) :: p_launch(pcols)      ! launch level pressure [Pa]
+  logical  :: roo_block(pcols)     ! source zeroed by the near-surface tilt-dominance (roo) criterion
+  real(r8) :: roo_block_out(pcols) ! roo_block as 1/0 for history output
   real(r8) :: prect(pcols)         ! total precipitation rate [m s-1]
   real(r8), pointer :: prec_dp(:)
   real(r8), pointer :: prec_sh(:)
@@ -1545,6 +1549,7 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
     tilt(:,:) = 0._r8
     p_steer(:) = 0._r8
     p_launch(:) = 0._r8
+    roo_block(:) = .false.
     hdepth(:) = 0._r8
     usteer(:) = 0._r8
     vsteer(:) = 0._r8
@@ -1612,6 +1617,7 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
       tilt                = tilt(:ncol,:pver), &
       p_steer             = p_steer(:ncol), &
       p_launch            = p_launch(:ncol), &
+      roo_block           = roo_block(:ncol), &
       taucd_west          = mm_taucd_west(:ncol,:pverp), &
       taucd_east          = mm_taucd_east(:ncol,:pverp), &
       taucd_south         = mm_taucd_south(:ncol,:pverp), &
@@ -1650,6 +1656,8 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
     call outfld('TILT_MOVMTN', tilt, pcols, lchnk)
     call outfld('PSTEER_MOVMTN', p_steer, pcols, lchnk)
     call outfld('PLAUNCH_MOVMTN', p_launch, pcols, lchnk)
+    roo_block_out = merge(1._r8, 0._r8, roo_block)
+    call outfld('ROO_BLOCK_MOVMTN', roo_block_out, pcols, lchnk)
     call outfld('MMTAUE', mm_taucd_east,  pcols, lchnk)
     call outfld('MMTAUW', mm_taucd_west,  pcols, lchnk)
     call outfld('MMTAUS', mm_taucd_south, pcols, lchnk)
