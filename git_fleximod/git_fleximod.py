@@ -366,6 +366,9 @@ def main():
             )
 
         root_dir = os.path.dirname(file_path)
+    # A relative root_dir (e.g. from -C .) must not be resolved against a
+    # changed working directory later on.
+    root_dir = os.path.abspath(root_dir)
     logger.info(
         "root_dir is {} includelist={} excludelist={}".format(
             root_dir, includelist, excludelist
