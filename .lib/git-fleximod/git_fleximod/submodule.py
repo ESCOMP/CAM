@@ -413,6 +413,8 @@ class Submodule:
 
         rgit.config_set_value("submodule." + self.name, "active", "true")
         rgit.config_set_value("submodule." + self.name, "url", self.url)
+        # self.path stays relative: it is the path recorded in the superproject, which
+        # other checkouts read
         rgit.config_set_value("submodule." + self.name, "path", self.path)
 
     async def update(self):
@@ -439,9 +441,7 @@ class Submodule:
         """
         git = GitInterface(self.root_dir, self.logger)
         repodir = os.path.join(self.root_dir, self.path)
-        self.logger.info(
-            "Checkout {} into {}/{}".format(self.name, self.root_dir, self.path)
-        )
+        self.logger.info("Checkout {} into {}".format(self.name, repodir))
         # if url is provided update to the new url
         tag = None
         repo_exists = False
@@ -464,7 +464,7 @@ class Submodule:
                 # opened with a GitModules object we don't need to worry about restoring the file here
                 # it will be done by the GitModules class
                 if self.url.startswith("git@"):
-                    git.git_operation("clone", self.url, self.path)
+                    git.git_operation("clone", self.url, repodir)
                     smgit = GitInterface(repodir, self.logger)
                     if not tag:
                         status, tag = smgit.git_operation(
@@ -494,11 +494,15 @@ class Submodule:
                 parent = os.path.dirname(repodir)
                 if not os.path.isdir(parent):
                     os.makedirs(parent)
+                # self.path must stay relative: git writes this argument verbatim as the
+                # path in .gitmodules, so an absolute path would commit a machine-specific
+                # path that breaks every other checkout
                 git.git_operation(
                     "submodule", "add", "--name", self.name, "--", self.url, self.path
                 )
 
             if not repo_exists:
+                # Relative like the add above; git would also accept the absolute repodir
                 git.git_operation("submodule", "init", "--", self.path)
                 await git.git_operation_async("submodule", "update", "--", self.path)
 
@@ -527,10 +531,9 @@ class Submodule:
                     f"Failed to checkout {self.name} {repo_exists} {repodir} {self.path}"
                 )
 
-        if os.path.exists(os.path.join(self.path, ".git")):
-            submoddir = os.path.join(self.root_dir, self.path)
-            with utils.pushd(submoddir):
-                git = GitInterface(submoddir, self.logger)
+        if os.path.exists(os.path.join(repodir, ".git")):
+            with utils.pushd(repodir):
+                git = GitInterface(repodir, self.logger)
                 # first make sure the url is correct
                 newremote = self._add_remote(git)
                 status, tags = git.git_operation("tag", "-l")
