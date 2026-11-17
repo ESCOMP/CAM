@@ -4012,16 +4012,16 @@ if (!$simple_phys) {
 	# (since vorticity needs to be passed to physics in dp_coupling)
 	#
 	if ( $dyn =~ /mpas|se/ ) {
-	    add_default($nl, 'use_gw_movmtn_pbl',        'val'=>'.true.');
+	    add_default($nl, 'use_gw_movmtn',            'val'=>'.true.');
 	} else {
-	    add_default($nl, 'use_gw_movmtn_pbl',        'val'=>'.false.');
+	    add_default($nl, 'use_gw_movmtn',            'val'=>'.false.');
 	}
     }
 
-    my $use_gw_movmtn_pbl = $nl->get_value('use_gw_movmtn_pbl');
-    if ($use_gw_movmtn_pbl =~ /$TRUE/io) {
+    my $use_gw_movmtn = $nl->get_value('use_gw_movmtn');
+    if ($use_gw_movmtn =~ /$TRUE/io) {
         if ( ! ($dyn =~ /mpas|se/) ) {
-            die "$ProgName - ERROR: use_gw_movmtn_pbl is only available with MPAS and SE dycore\n";
+            die "$ProgName - ERROR: use_gw_movmtn is only available with MPAS and SE dycore\n";
         }
     }
 
@@ -4088,7 +4088,7 @@ my $do_gw_front      = ($nl->get_value('use_gw_front')      =~ /$TRUE/io);
 my $do_gw_front_igw  = ($nl->get_value('use_gw_front_igw')  =~ /$TRUE/io);
 my $do_gw_convect_dp = ($nl->get_value('use_gw_convect_dp') =~ /$TRUE/io);
 my $do_gw_convect_sh = ($nl->get_value('use_gw_convect_sh') =~ /$TRUE/io);
-my $do_gw_movmtn_pbl = ($nl->get_value('use_gw_movmtn_pbl') =~ /$TRUE/io);
+my $do_gw_movmtn_pbl = ($nl->get_value('use_gw_movmtn')     =~ /$TRUE/io);
 my $do_gw_rdg_beta   = ($nl->get_value('use_gw_rdg_beta')   =~ /$TRUE/io);
 my $do_gw_rdg_gamma  = ($nl->get_value('use_gw_rdg_gamma')  =~ /$TRUE/io);
 my $do_gw_rdg_resid  = ($nl->get_value('use_gw_rdg_resid')  =~ /$TRUE/io);
@@ -4146,7 +4146,7 @@ if ($do_gw_convect_sh) {
 if ($do_gw_movmtn_pbl) {
     add_default($nl, 'gw_drag_file_mm');
     add_default($nl, 'alpha_gw_movmtn');
-    add_default($nl, 'effgw_movmtn_pbl');
+    add_default($nl, 'gwcli_movmtn');
     add_default($nl, 'movmtn_source');
     add_default($nl, 'movmtn_psteer');
     add_default($nl, 'movmtn_plaunch');
@@ -4157,8 +4157,8 @@ if ($do_gw_rdg_beta) {
         die "$ProgName - ERROR: beta ridge scheme requires data from a topo file.\n";
     }
     add_default($nl, 'n_rdg_beta',          'val'=>'10');
-    add_default($nl, 'effgw_rdg_beta');
-    add_default($nl, 'effgw_rdg_beta_max');
+    add_default($nl, 'gwcli_rdg_beta');
+    add_default($nl, 'gwcli_rdg_beta_max');
     add_default($nl, 'trpd_leewv_rdg_beta', 'val'=>'.false.');
     add_default($nl, 'rdg_beta_cd_llb',     'val'=>'1.0D0');
 }
@@ -4175,8 +4175,8 @@ if ($do_gw_rdg_resid) {
 
 if ($do_gw_rdg_gamma) {
     add_default($nl, 'n_rdg_gamma',           'val'=>'-1');
-    add_default($nl, 'effgw_rdg_gamma',       'val'=>'1.0D0');
-    add_default($nl, 'effgw_rdg_gamma_max',   'val'=>'1.0D0');
+    add_default($nl, 'gwcli_rdg_gamma',       'val'=>'1.0D0');
+    add_default($nl, 'gwcli_rdg_gamma_max',   'val'=>'1.0D0');
     add_default($nl, 'trpd_leewv_rdg_gamma',  'val'=>'.true.');
     add_default($nl, 'rdg_gamma_cd_llb',      'val'=>'1.0D0');
     add_default($nl, 'bnd_rdggm');
