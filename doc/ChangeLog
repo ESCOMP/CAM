@@ -1,6 +1,131 @@
 
 ===============================================================
 
+Tag name: cam6_4_222
+Originator(s): cacraigucar, nusbaume, jtruesdal, fvitt, samsrabin
+Date: Nov 17, 2026
+One-line Summary: More misc changes
+Github PR URL: https://github.com/ESCOMP/CAM/pull/1752
+
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+  - build-namelist hangs (infinite loop) on #-commented line in user_nl_cam - https://github.com/ESCOMP/CAM/issues/1701
+  - Fix issue with extended CO2 cooling scheme - https://github.com/ESCOMP/CAM/pull/1736
+  - Start MPAS dycore clock at current date on restarts - https://github.com/ESCOMP/pull/1733
+  - typo in ACNUM (is ACNUNM) in snapshot code - https://github.com/ESCOMP/CAM/issues/1744
+  - Fix broken location of rttov for regression testing - https://github.com/ESCOMP/CAM/issues/1745
+  - fleximod-test workflow job now actually tests Python 3.7 and latest -  https://github.com/ESCOMP/CAM/pull/1746
+  - Rename some GW namelists - https://github.com/ESCOMP/CAM/issues/1742
+
+Describe any changes made to build system: N/A
+
+Describe any changes made to the namelist:
+   use_gw_movmtn_pbl   -> use_gw_movmtn
+   effgw_movmtn_pbl    -> gwcli_movmtn
+   effgw_rdg_beta      -> gwcli_rdg_beta
+   effgw_rdg_beta_max  -> gwcli_rdg_beta_max
+   effgw_rdg_gamma     -> gwcli_rdg_gamma
+   effgw_rdg_gamma_max -> gwcli_rdg_gamma_max
+
+List any changes to the defaults for the boundary datasets: N/A
+
+Describe any substantial timing or memory changes: N/A
+
+Code reviewed by: jimmielin, adamrher (MPAS dycore clock)
+
+List all files eliminated: N/A
+
+List all files added and what they do: N/A
+
+List all existing files that have been modified, and describe the changes:
+
+
+M  .github/workflows/fleximod_test.yaml
+  - PR #1746 (fleximod-test workflow now actually tests Python 3.7 and latest)
+  - Use a python-version/os matrix (Python 3.7 on ubuntu-22.04, 3.x on ubuntu-latest)
+    and add an actions/setup-python step so the requested Python version is used
+
+M  .gitmodules
+M  src/atmos_phys
+  - Issue #1742 (Rename some GW namelists)
+  - Update atmos_phys to atmos_phys0_34_002, which contains the matching GW renames
+    (atmospheric_physics PR #479)
+
+M  bld/build-namelist
+M  bld/namelist_files/namelist_defaults_cam.xml
+M  bld/namelist_files/namelist_definition.xml
+  - Issue #1742 (Rename some GW namelists)
+  - Rename namelist variables:
+      use_gw_movmtn_pbl   -> use_gw_movmtn
+      effgw_movmtn_pbl    -> gwcli_movmtn
+      effgw_rdg_beta      -> gwcli_rdg_beta
+      effgw_rdg_beta_max  -> gwcli_rdg_beta_max
+      effgw_rdg_gamma     -> gwcli_rdg_gamma
+      effgw_rdg_gamma_max -> gwcli_rdg_gamma_max
+
+M  bld/perl5lib/Build/Namelist.pm
+  - Issue #1701 (build-namelist hangs (infinite loop) on #-commented line in user_nl_cam)
+  - Stop with an error instead of looping forever when the parser consumes nothing
+    (for example, a '#' comment or a missing quote)
+
+M  cime_config/buildlib
+M  cime_config/testdefs/testmods_dirs/cam/outfrq9s_rttov/user_nl_cam
+  - Issue #1745 (Fix broken location of rttov for regression testing)
+  - Point the RTTOV source directory and the instrument namelist file to
+    /glade/campaign/cesm/amwg/soft_eng/rttov/RTTOV
+
+M  cime_config/testdefs/testlist_cam.xml
+  - Raise the wallclock of the derecho/intel aux_cam test with the "CAM7-LT, branch,
+    hybrid starts" comment from 00:30:00 to 01:00:00
+
+M  src/control/cam_snapshot_common.F90
+  - Issue #1744 (typo in ACNUM (is ACNUNM) in snapshot code)
+  - Change 'ACNUNM' to 'ACNUM' in the integer pbuf field check
+
+M  src/dynamics/mpas/dyn_comp.F90
+  - Set MPAS config_start_time from get_curr_date instead of get_start_date
+  - Set MPAS config_run_duration to 'none' so the MPAS clock stop time
+    comes from config_stop_time
+  - Issue #1742 (Rename some GW namelists)
+    - use_gw_movmtn_pbl -> use_gw_movmtn
+
+M  src/dynamics/mpas/dp_coupling.F90
+M  src/dynamics/se/dp_coupling.F90
+M  src/dynamics/se/dyn_comp.F90
+M  src/physics/cam/phys_control.F90
+  - Issue #1742 (Rename some GW namelists)
+  - use_gw_movmtn_pbl -> use_gw_movmtn
+
+M  src/physics/cam/gw_drag_cam.F90
+  - Issue #1742 (Rename some GW namelists)
+  - Rename use_gw_movmtn_pbl, effgw_movmtn_pbl, effgw_rdg_beta(_max) and
+    effgw_rdg_gamma(_max) to the new names, including the namelist read, the
+    broadcasts, the error messages and the calls into atmos_phys
+
+M  src/physics/waccm/nlte_extco2.F90
+  - PR #1736 (Fix issue with extended CO2 cooling scheme)
+  - Add an extra level at 1000 hPa (pverp) to the column passed to co2_nlte_cool,
+    copying the bottom-level values, so the scheme does not extrapolate temperature
+    below the model's lowest level
+If there were any failures reported from running test_driver.sh on any test
+platform, and checkin with these failures has been OK'd by the gatekeeper,
+then copy the lines from the td.*.status files for the failed tests to the
+appropriate machine below.  All failed tests must be justified.
+
+All tests with GW namelists had namelist names changes, but no answer diffs due to those changes
+
+derecho/intel/aux_cam:
+  SMS_D_Ln9.f19_f19_mt233.FWma2000climo.derecho_intel.cam-outfrq9s_waccm_ma_mam4 (Overall: DIFF) details:
+   - answer differences expected when nlt_use_extco2=.true. which this test uses, due to changes in nlte_extco2.F90
+
+derecho/nvhpc/aux_cam: all BFB
+
+izumi/nag/aux_cam: all BFB
+
+izumi/gnu/aux_cam: all BFB
+
+===============================================================
+===============================================================
+
 Tag name: cam6_4_221
 Originator(s): jtruesdal
 Date: Nov 12, 2026
@@ -1054,7 +1179,6 @@ izumi/gnu/aux_cam:
   ERC_D_Ln9.C48_C48_mt233.QPC6.izumi_gnu.cam-outfrq9s (Overall: NLFAIL) details:
      - update fv3 tests to use mt233 mask
 
-===============================================================
 ===============================================================
 
 Tag name: cam6_4_213

@@ -849,13 +849,13 @@
 
 <effgw_rdg_resid                   >1.0D0</effgw_rdg_resid>
 
-<effgw_rdg_beta                    >1.0D0</effgw_rdg_beta>
-<effgw_rdg_beta model_top="lt"     >0.75D0</effgw_rdg_beta>
-<effgw_rdg_beta model_top="mt"     >0.75D0</effgw_rdg_beta>
+<gwcli_rdg_beta                    >1.0D0</gwcli_rdg_beta>
+<gwcli_rdg_beta model_top="lt"     >0.75D0</gwcli_rdg_beta>
+<gwcli_rdg_beta model_top="mt"     >0.75D0</gwcli_rdg_beta>
 
-<effgw_rdg_beta_max                >1.0D0</effgw_rdg_beta_max>
-<effgw_rdg_beta_max model_top="lt" >0.75D0</effgw_rdg_beta_max>
-<effgw_rdg_beta_max model_top="mt" >0.75D0</effgw_rdg_beta_max>
+<gwcli_rdg_beta_max                >1.0D0</gwcli_rdg_beta_max>
+<gwcli_rdg_beta_max model_top="lt" >0.75D0</gwcli_rdg_beta_max>
+<gwcli_rdg_beta_max model_top="mt" >0.75D0</gwcli_rdg_beta_max>
 
 <!-- setting for gravity waves from shallow convection. -->
 <effgw_beres_sh>0.03D0</effgw_beres_sh>
@@ -926,8 +926,8 @@
 <gw_rdg_orostratmin                     > 0.002d0</gw_rdg_orostratmin>
 <gw_rdg_orom2min                        > 0.1d0  </gw_rdg_orom2min>
 <alpha_gw_movmtn                        > 0.01d0  </alpha_gw_movmtn>
-<effgw_movmtn_pbl                       > 1.0d0   </effgw_movmtn_pbl>
-<effgw_movmtn_pbl phys="cam7"           > 1.5d0   </effgw_movmtn_pbl>
+<gwcli_movmtn                           > 1.0d0   </gwcli_movmtn>
+<gwcli_movmtn phys="cam7"               > 1.5d0   </gwcli_movmtn>
 <movmtn_psteer                          > 65000.0d0  </movmtn_psteer>
 <movmtn_plaunch                         > 32500.0d0  </movmtn_plaunch>
 <movmtn_source                          > 1       </movmtn_source>

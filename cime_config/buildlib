@@ -102,7 +102,7 @@ def _build_cam(caseroot, libroot, bldroot):
 
         if "-rttov" in config_opts:
             # RTTOV source directory (currently hardcoded to a specific ACL-controlled directory on Derecho)
-            rttov_src_dir = "/glade/campaign/cesm/community/amwg/rttov/RTTOV"
+            rttov_src_dir = "/glade/campaign/cesm/amwg/soft_eng/rttov/RTTOV"
 
             # Set environment variable needed by COSP Makefile
             env_vars = f"env RTTOV=true RTTOV_SRC_DIR={rttov_src_dir} "
