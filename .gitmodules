@@ -157,11 +157,11 @@ fxrequired = ToplevelRequired
 fxDONOTUSEurl = https://github.com/ESCOMP/CDEPS.git
 
 [submodule "share"]
-        path = share
-        url = https://github.com/ESCOMP/EPS_Share
-        fxDONOTUSEurl = https://github.com/ESCOMP/EPS_Share
-        fxtag = share1.1.23
-        fxrequired = ToplevelRequired
+path = share
+url = https://github.com/ESCOMP/EPS_Share
+fxDONOTUSEurl = https://github.com/ESCOMP/EPS_Share
+fxtag = share1.1.23
+fxrequired = ToplevelRequired
 
 [submodule "parallelio"]
 path = libraries/parallelio
