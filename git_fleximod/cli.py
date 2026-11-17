@@ -86,7 +86,11 @@ def get_parser():
         "-C",
         "--path",
         default=find_root_dir(),
-        help="Toplevel repository directory.  Defaults to top git directory relative to current.",
+        # We are removing this flag from the help message until
+        # https://github.com/ESMCI/git-fleximod/issues/97 is resolved
+        #
+        # help="Toplevel repository directory.  Defaults to top git directory relative to current.",
+        help=argparse.SUPPRESS,
     )
 
     parser.add_argument(
