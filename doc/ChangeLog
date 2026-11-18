@@ -1,3 +1,57 @@
+===============================================================
+
+Tag name: cam6_4_2xx
+Originator(s): pel
+Date: <merge date>
+One-line Summary: Fix RRTMGP diagnostic band indices (AODVIS band; dust asphericity band)
+Github PR URL:
+
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+
+  Fixing issue https://github.com/ESCOMP/CAM/issues/1765 - RRTMGP diagnostic
+  band indices applied to RRTMG-ordered optics (AODVIS samples ~390 nm).
+  Convert idx_sw_diag/idx_nir_diag/idx_uv_diag to the optics-dataset (RRTMG)
+  band order at radconstants init; AOD diagnostics sample the documented
+  wavelengths and the dust asphericity enhancement acts in the right band.
+
+  Found by an AI code audit of CAM (Claude, claude-fable-5); fix authored
+  with AI assistance and reviewed/confirmed by a human.
+
+Describe any changes made to build system: none
+
+Describe any changes made to the namelist: none
+
+List any changes to the defaults for the boundary datasets: none
+
+Describe any substantial timing or memory changes: none
+
+Code reviewed by: Brian Medeiros
+
+List all files eliminated: none
+
+List all files added and what they do: none
+
+List all existing files that have been modified, and describe the changes:
+
+M src/physics/rrtmgp/radconstants.F90
+M src/physics/rrtmgp/radiation.F90
+M src/physics/rrtmgp/rrtmgp_inputs_cam.F90
+  - store diagnostic SW band indices in optics-dataset (RRTMG) order
+
+derecho/intel/aux_cam: <fill at merge>
+
+derecho/nvhpc/aux_cam: <fill at merge>
+
+izumi/nag/aux_cam: <fill at merge>
+
+izumi/gnu/aux_cam: <fill at merge>
+
+Summarize any changes to answers:
+- what code configurations: RRTMGP builds only (RRTMG unaffected)
+- what platforms/compilers: all
+- nature of change: larger than roundoff (dust asphericity SW band; AOD
+  diagnostics shift to the documented wavelengths); same climate expected
+
 
 ===============================================================
 
