@@ -2404,12 +2404,12 @@
 <do_clubb_mf_invswitch             > .true.  </do_clubb_mf_invswitch>
 
 <!-- Set radiation intervals based on mpas hgrids -->
-<iradlw hgrid="mpasa15"  > 10 </iradlw>
-<iradsw hgrid="mpasa15"  > 10 </iradsw>
-<iradlw hgrid="mpasa7p5" > 10 </iradlw>
-<iradsw hgrid="mpasa7p5" > 10 </iradsw>
-<iradlw hgrid="mpas3p75" > 10 </iradlw>
-<iradsw hgrid="mpas3p75" > 10 </iradsw>
+<iradlw hgrid="mpasa15"   > 10 </iradlw>
+<iradsw hgrid="mpasa15"   > 10 </iradsw>
+<iradlw hgrid="mpasa7p5"  > 10 </iradlw>
+<iradsw hgrid="mpasa7p5"  > 10 </iradsw>
+<iradlw hgrid="mpasa3p75" > 10 </iradlw>
+<iradsw hgrid="mpasa3p75" > 10 </iradsw>
 
 <!-- Microphysics scheme -->
 <micro_mg_do_hail                       > .false. </micro_mg_do_hail>
