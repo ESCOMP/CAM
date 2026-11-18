@@ -13,6 +13,9 @@ Purpose of changes (include the issue number and title text for each relevant Gi
   Accumulate the interface pressure with the same moist layer thickness as
   the midpoint so the frontogenesis function uses consistent moist pressures.
 
+  Found by an AI code audit of CAM (Claude, claude-fable-5); fix authored
+  with AI assistance and reviewed/confirmed by a human.
+
 Describe any changes made to build system: none
 
 Describe any changes made to the namelist: none
