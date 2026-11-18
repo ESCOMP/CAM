@@ -327,7 +327,7 @@ CONTAINS
         end do
         p(:,:,k) = pint(:,:,k) + 0.5_r8*sum_water(:,:)*elem(ie)%state%dp3d(:,:,k,tl)
         ! moist pressure at interface for next iteration
-        pint(:,:,k+1) = pint(:,:,k)+elem(ie)%state%dp3d(:,:,k,tl)
+        pint(:,:,k+1) = pint(:,:,k)+sum_water(:,:)*elem(ie)%state%dp3d(:,:,k,tl)
         !
         theta(:,:,k) = elem(ie)%state%T(:,:,k,tl)*(psurf_ref / p(:,:,k))**cappa
       end do
