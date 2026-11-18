@@ -1,6 +1,432 @@
 
 ===============================================================
 
+Tag name: cam6_4_223
+Originator(s): cacraigucar, peverwhee, billsacks
+Date: Nov 18, 2026
+One-line Summary: Update externals to match cesm_alpha11f and fix prealpha/prebeta test failures
+Github PR URL: https://github.com/ESCOMP/CAM/pull/1757
+
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+  - Update externals to match cesm_alpha11f (except for ccs_config needed for 1755 below)
+  - Update to the new share repo: EPS_Share from CESM_share
+  - Fix failing prealpha/prebeta tests - https://github.com/ESCOMP/CAM/pull/1755
+  - Update to latest git-fleximod - https://github.com/ESCOMP/CAM/issues/1756
+
+Describe any changes made to build system: N/A
+
+Describe any changes made to the namelist: N/A
+
+List any changes to the defaults for the boundary datasets: N/A
+
+Describe any substantial timing or memory changes: N/A
+
+Code reviewed by: jimmielin
+
+List all files eliminated: N/A
+
+List all files added and what they do: N/A
+
+List all existing files that have been modified, and describe the changes:
+M       .gitmodules
+M       ccs_config
+M       cime
+M       components/cdeps
+M       components/clm
+M       components/cmeps
+M       share
+M       src/dynamics/mpas/dycore
+M       tools/CUPiD
+          - update externals
+
+M       bld/namelist_files/namelist_defaults_cam.xml
+M       cime_config/testdefs/testmods_dirs/cam/outfrq9s_camchem_mam4/shell_commands
+M       cime_config/testdefs/testmods_dirs/cam/outfrq9s_waccm_mam4/shell_commands
+           - fixes for prealpha and prebeta tests
+
+M       .lib/git-fleximod/git_fleximod/cli.py
+           - update to latest git-fleximod
+
+If there were any failures reported from running test_driver.sh on any test
+platform, and checkin with these failures has been OK'd by the gatekeeper,
+then copy the lines from the td.*.status files for the failed tests to the
+appropriate machine below.  All failed tests must be justified.
+
+derecho/intel/aux_cam:
+  ERC_D_Ln9.f09_f09_mt233.FHIST_BDRD.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+     - cprnc diffs due to externals update (CLM has two extra history fields)
+
+derecho/nvhpc/aux_cam:
+  ERS_Ln9.ne3pg3_ne3pg3_mt233.FHISTC_LTso.derecho_nvhpc.cam-outfrq9s_gpu_ne3 (Overall: DIFF) details:
+     - answer differences due to updated externals, most likely due to compiler changes for nvhpc in ccs_config
+
+izumi/nag/aux_cam: all BFB
+
+izumi/gnu/aux_cam: all BFB
+
+===============================================================
+===============================================================
+
+Tag name: cam6_4_222
+Originator(s): cacraigucar, nusbaume, jtruesdal, fvitt, samsrabin
+Date: Nov 17, 2026
+One-line Summary: More misc changes
+Github PR URL: https://github.com/ESCOMP/CAM/pull/1752
+
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+  - build-namelist hangs (infinite loop) on #-commented line in user_nl_cam - https://github.com/ESCOMP/CAM/issues/1701
+  - Fix issue with extended CO2 cooling scheme - https://github.com/ESCOMP/CAM/pull/1736
+  - Start MPAS dycore clock at current date on restarts - https://github.com/ESCOMP/pull/1733
+  - typo in ACNUM (is ACNUNM) in snapshot code - https://github.com/ESCOMP/CAM/issues/1744
+  - Fix broken location of rttov for regression testing - https://github.com/ESCOMP/CAM/issues/1745
+  - fleximod-test workflow job now actually tests Python 3.7 and latest -  https://github.com/ESCOMP/CAM/pull/1746
+  - Rename some GW namelists - https://github.com/ESCOMP/CAM/issues/1742
+
+Describe any changes made to build system: N/A
+
+Describe any changes made to the namelist:
+   use_gw_movmtn_pbl   -> use_gw_movmtn
+   effgw_movmtn_pbl    -> gwcli_movmtn
+   effgw_rdg_beta      -> gwcli_rdg_beta
+   effgw_rdg_beta_max  -> gwcli_rdg_beta_max
+   effgw_rdg_gamma     -> gwcli_rdg_gamma
+   effgw_rdg_gamma_max -> gwcli_rdg_gamma_max
+
+List any changes to the defaults for the boundary datasets: N/A
+
+Describe any substantial timing or memory changes: N/A
+
+Code reviewed by: jimmielin, adamrher (MPAS dycore clock)
+
+List all files eliminated: N/A
+
+List all files added and what they do: N/A
+
+List all existing files that have been modified, and describe the changes:
+
+
+M  .github/workflows/fleximod_test.yaml
+  - PR #1746 (fleximod-test workflow now actually tests Python 3.7 and latest)
+  - Use a python-version/os matrix (Python 3.7 on ubuntu-22.04, 3.x on ubuntu-latest)
+    and add an actions/setup-python step so the requested Python version is used
+
+M  .gitmodules
+M  src/atmos_phys
+  - Issue #1742 (Rename some GW namelists)
+  - Update atmos_phys to atmos_phys0_34_002, which contains the matching GW renames
+    (atmospheric_physics PR #479)
+
+M  bld/build-namelist
+M  bld/namelist_files/namelist_defaults_cam.xml
+M  bld/namelist_files/namelist_definition.xml
+  - Issue #1742 (Rename some GW namelists)
+  - Rename namelist variables:
+      use_gw_movmtn_pbl   -> use_gw_movmtn
+      effgw_movmtn_pbl    -> gwcli_movmtn
+      effgw_rdg_beta      -> gwcli_rdg_beta
+      effgw_rdg_beta_max  -> gwcli_rdg_beta_max
+      effgw_rdg_gamma     -> gwcli_rdg_gamma
+      effgw_rdg_gamma_max -> gwcli_rdg_gamma_max
+
+M  bld/perl5lib/Build/Namelist.pm
+  - Issue #1701 (build-namelist hangs (infinite loop) on #-commented line in user_nl_cam)
+  - Stop with an error instead of looping forever when the parser consumes nothing
+    (for example, a '#' comment or a missing quote)
+
+M  cime_config/buildlib
+M  cime_config/testdefs/testmods_dirs/cam/outfrq9s_rttov/user_nl_cam
+  - Issue #1745 (Fix broken location of rttov for regression testing)
+  - Point the RTTOV source directory and the instrument namelist file to
+    /glade/campaign/cesm/amwg/soft_eng/rttov/RTTOV
+
+M  cime_config/testdefs/testlist_cam.xml
+  - Raise the wallclock of the derecho/intel aux_cam test with the "CAM7-LT, branch,
+    hybrid starts" comment from 00:30:00 to 01:00:00
+
+M  src/control/cam_snapshot_common.F90
+  - Issue #1744 (typo in ACNUM (is ACNUNM) in snapshot code)
+  - Change 'ACNUNM' to 'ACNUM' in the integer pbuf field check
+
+M  src/dynamics/mpas/dyn_comp.F90
+  - Set MPAS config_start_time from get_curr_date instead of get_start_date
+  - Set MPAS config_run_duration to 'none' so the MPAS clock stop time
+    comes from config_stop_time
+  - Issue #1742 (Rename some GW namelists)
+    - use_gw_movmtn_pbl -> use_gw_movmtn
+
+M  src/dynamics/mpas/dp_coupling.F90
+M  src/dynamics/se/dp_coupling.F90
+M  src/dynamics/se/dyn_comp.F90
+M  src/physics/cam/phys_control.F90
+  - Issue #1742 (Rename some GW namelists)
+  - use_gw_movmtn_pbl -> use_gw_movmtn
+
+M  src/physics/cam/gw_drag_cam.F90
+  - Issue #1742 (Rename some GW namelists)
+  - Rename use_gw_movmtn_pbl, effgw_movmtn_pbl, effgw_rdg_beta(_max) and
+    effgw_rdg_gamma(_max) to the new names, including the namelist read, the
+    broadcasts, the error messages and the calls into atmos_phys
+
+M  src/physics/waccm/nlte_extco2.F90
+  - PR #1736 (Fix issue with extended CO2 cooling scheme)
+  - Add an extra level at 1000 hPa (pverp) to the column passed to co2_nlte_cool,
+    copying the bottom-level values, so the scheme does not extrapolate temperature
+    below the model's lowest level
+If there were any failures reported from running test_driver.sh on any test
+platform, and checkin with these failures has been OK'd by the gatekeeper,
+then copy the lines from the td.*.status files for the failed tests to the
+appropriate machine below.  All failed tests must be justified.
+
+All tests with GW namelists had namelist names changes, but no answer diffs due to those changes
+
+derecho/intel/aux_cam:
+  SMS_D_Ln9.f19_f19_mt233.FWma2000climo.derecho_intel.cam-outfrq9s_waccm_ma_mam4 (Overall: DIFF) details:
+   - answer differences expected when nlt_use_extco2=.true. which this test uses, due to changes in nlte_extco2.F90
+
+derecho/nvhpc/aux_cam: all BFB
+
+izumi/nag/aux_cam: all BFB
+
+izumi/gnu/aux_cam: all BFB
+
+===============================================================
+===============================================================
+
+Tag name: cam6_4_221
+Originator(s): jtruesdal
+Date: Nov 12, 2026
+One-line Summary: Revert PR #1643 (cam6_4_220): remove node-shared memory code
+Github PR URL: https://github.com/ESCOMP/CAM/pull/1754
+
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+  - Reverts the merge of #1643 (cam6_4_220, merge commit 00e7349f) with git revert -m 1 00e7349f,
+    as agreed with the CAM maintainers. The node-shared memory code has several unhandled
+    failure modes (startup aborts or hangs, and possibly silently wrong data, depending on the MPI
+    library and system), while its benefit at production resolutions is small. It will be developed
+    and tested further in NSF StormSPEED and may return later as a module shared by CAM and CTSM.
+  - The code is identical to cam6_4_219. doc/ChangeLog keeps the cam6_4_220 entry.
+  - Reopens #1640 (Out of memory issue in CAM at ne1024).
+  - The two #1643 improvements that do not depend on shared memory (tracer_data record
+    carry-forward; closing the initial and topography files after initialization) may return as a
+    separate PR.
+
+Describe any changes made to build system: N/A
+
+Describe any changes made to the namelist:
+  - stream_ndep_mapalgo and cam_shmem_force_private (group cam_shmem_nl) removed, as in cam6_4_219
+
+List any changes to the defaults for the boundary datasets: N/A
+
+Describe any substantial timing or memory changes:
+  - Memory during initialization as in cam6_4_219 (one copy of the tables per MPI rank)
+
+Code reviewed by: cacraigucar, peverwhee
+
+List all files eliminated:
+D       src/utils/cam_shmem_mod.F90
+
+List all files added and what they do: N/A
+
+List all existing files that have been modified, and describe the changes:
+M       bld/build-namelist
+M       bld/namelist_files/namelist_defaults_cam.xml
+M       bld/namelist_files/namelist_definition.xml
+M       src/chemistry/aerosol/soil_erod_mod.F90
+M       src/chemistry/mozart/chemistry.F90
+M       src/chemistry/mozart/mo_jlong.F90
+M       src/chemistry/mozart/mo_photo.F90
+M       src/chemistry/utils/tracer_data.F90
+M       src/control/cam_comp.F90
+M       src/control/runtime_opts.F90
+M       src/cpl/nuopc/atm_stream_ndep.F90
+M       src/physics/cam/phys_prop.F90
+M       src/physics/cam/physpkg.F90
+M       src/physics/cam7/physpkg.F90
+          - all restored to their cam6_4_219 versions
+
+If there were any failures reported from running test_driver.sh on any test
+platform, and checkin with these failures has been OK'd by the gatekeeper,
+then copy the lines from the td.*.status files for the failed tests to the
+appropriate machine below.  All failed tests must be justified.
+
+  No tests were run: the code tree is identical to cam6_4_219, which passed the full regression
+  suites on all platforms (and cam6_4_220 was bit-for-bit with cam6_4_219). Verified with
+  git diff cam6_4_219 against the revert commit and with diff -r of the cam6_4_219 and reverted
+  working trees: only doc/ChangeLog differs.
+
+  Baselines: the cam6_4_221 baselines are links to the cam6_4_219 baselines
+  (derecho: cam6_4_221_intel, cam6_4_221_nvhpc in /glade/campaign/cesm/amwg/soft_eng/cam_baselines;
+  izumi: cam6_4_221_gnu, cam6_4_221_nag in /fs/cgd/csm/models/atm/cam/pretag_bl).
+
+derecho/intel/aux_cam: not run (code identical to cam6_4_219)
+
+derecho/nvhpc/aux_cam: not run (code identical to cam6_4_219)
+
+izumi/nag/aux_cam: not run (code identical to cam6_4_219)
+
+izumi/gnu/aux_cam: not run (code identical to cam6_4_219)
+
+CAM tag used for the baseline comparison tests if different than previous
+tag: N/A (no tests run; cam6_4_221 baselines copied from cam6_4_219)
+
+Summarize any changes to answers: bit-for-bit unchanged (code identical to cam6_4_219)
+
+===============================================================
+
+Tag name: cam6_4_220
+Originator(s): sjsprecious
+Date: Nov 11, 2026
+One-line Summary: Reduce CAM init memory: node-shared read-only tables (with safe per-rank fallback), ndep mapalgo option
+Github PR URL: https://github.com/ESCOMP/CAM/pull/1643
+
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+  - Closes #1640 (Out of memory issue in CAM at ne1024)
+  - Reduce memory use during CAM initialization at very high resolution. Large read-only tables
+    (aerosol optics in phys_prop, photolysis tables in mo_jlong, soil erodibility in soil_erod_mod,
+    lat-lon source fields in tracer_data) are held once per node in MPI-3 shared memory instead of
+    once per MPI rank.
+  - At init, a small probe checks that MPI-3 shared windows work on every node. If they do not
+    (e.g. MVAPICH2 < 2.3.4, whose MPI_Win_shared_query returns a bad address; the izumi NAG and
+    Intel builds use 2.3.3), or if the new namelist option cam_shmem_force_private is .true.,
+    node-shared memory is off and CAM uses the original per-rank data paths (allocation, file reads
+    and broadcasts). The only additions in that mode are the init-time probe (skipped with
+    cam_shmem_force_private) and the release of the tables at finalization; answers are unchanged.
+  - New namelist option stream_ndep_mapalgo for the nitrogen-deposition stream (default bilinear,
+    as before; redist for an ndep file already on the model grid).
+  - Close the initial-condition and topography files at the end of cam_init (after their last use)
+    instead of in cam_final; avoid re-reading unchanged time slices in tracer_data.
+
+Describe any changes made to build system: N/A
+
+Describe any changes made to the namelist:
+  - stream_ndep_mapalgo (new; default 'bilinear', same as the previous hard-coded value)
+  - cam_shmem_force_private in new group cam_shmem_nl (default .false.; fail-safe only, not written
+    to atm_in unless set in user_nl_cam)
+
+List any changes to the defaults for the boundary datasets: N/A
+
+Describe any substantial timing or memory changes:
+  - Lower per-node memory for the tables above: one copy per node instead of one per MPI rank.
+  - No measurable timing change on derecho GPU nodes (SMS_Ln9 ne30pg3 FHISTC_LTso nvhpc gpu_default:
+    0.04 SYPD with and without node-shared tables; history files identical).
+
+Code reviewed by: jtruesdal, cacraigucar, bdobbins
+
+List all files eliminated: N/A
+
+List all files added and what they do:
+A       src/utils/cam_shmem_mod.F90
+          - node-shared memory for read-only tables: probe, allocation, fences, free;
+            plain per-rank allocation when sharing is off
+
+List all existing files that have been modified, and describe the changes:
+M       bld/build-namelist
+M       bld/namelist_files/namelist_defaults_cam.xml
+M       bld/namelist_files/namelist_definition.xml
+          - add stream_ndep_mapalgo; add cam_shmem_force_private (cam_shmem_nl)
+
+M       src/chemistry/aerosol/soil_erod_mod.F90
+          - soil erodibility input in node-shared memory; original PIO read when sharing is off
+
+M       src/chemistry/mozart/chemistry.F90
+M       src/chemistry/mozart/mo_jlong.F90
+M       src/chemistry/mozart/mo_photo.F90
+          - photolysis tables in node-shared memory; photo_final/jlong_final release them
+
+M       src/chemistry/utils/tracer_data.F90
+          - lat-lon source fields in a node-shared buffer when sharing is on (original PIO read
+            otherwise); skip re-reading unchanged time slices
+
+M       src/control/cam_comp.F90
+          - call cam_shmem_init after read_namelist; close initial/topo files at end of cam_init
+
+M       src/control/runtime_opts.F90
+          - read cam_shmem_nl
+
+M       src/cpl/nuopc/atm_stream_ndep.F90
+          - stream_ndep_mapalgo namelist option
+
+M       src/physics/cam/phys_prop.F90
+          - aerosol optics tables in node-shared memory; physprop_final
+
+M       src/physics/cam/physpkg.F90
+M       src/physics/cam7/physpkg.F90
+          - call physprop_final; initial-file close moved to cam_init
+
+If there were any failures reported from running test_driver.sh on any test
+platform, and checkin with these failures has been OK'd by the gatekeeper,
+then copy the lines from the td.*.status files for the failed tests to the
+appropriate machine below.  All failed tests must be justified.
+
+derecho/intel/aux_cam:
+  ERC_D_Ln9.ne3_ne3_mg37.QPC7.derecho_intel.cam-outfrq9s_rttov (Overall: FAIL) details:
+     - pre-existing failure: rttov library location moved by CISL (https://github.com/ESCOMP/CAM/issues/1745)
+
+  ERC_D_Ln9.f09_f09_mt233.FHIST_BDRD.derecho_intel.cam-outfrq9s (Overall: NLFAIL) details:
+  ERC_D_Ln9.mpasa120_mpasa120.F2000climo.derecho_intel.cam-outfrq9s_mpasa120 (Overall: NLFAIL) details:
+  ERC_D_Ln9.mpasa120_mpasa120.FHISTC_LTso.derecho_intel.cam-outfrq9s_mpasa120 (Overall: NLFAIL) details:
+  ERC_D_Ln9.ne30pg3_ne30pg3_mt233.F1850C_LTso.derecho_intel.cam-outfrq9s (Overall: NLFAIL) details:
+  ERC_D_Ln9.ne3pg3_ne3pg3_mt233.FHISTC_LTso.derecho_intel.cam-outfrq9s_mcsp (Overall: NLFAIL) details:
+  ERC_D_Ln9_P128x4.ne30pg3_ne30pg3_mt233.F1850C_LTso.derecho_intel.cam-outfrq9s (Overall: NLFAIL) details:
+  ERC_Ln9.C96_C96_mt233.F2000climo.derecho_intel.cam-outfrq9s (Overall: NLFAIL) details:
+  ERI_D_Ln18.f09_f09_mt233.FHIST.derecho_intel.cam-outfrq3s_eri (Overall: NLFAIL) details:
+  ERI_D_Ln18.f19_f19_mt233.FHIST_C5.derecho_intel.cam-outfrq3s_eri (Overall: NLFAIL) details:
+  ERI_D_Ln18.ne16pg3_ne16pg3_mt233.FHIST_C4.derecho_intel.cam-outfrq3s_eri (Overall: NLFAIL) details:
+  ERI_D_Ln18.ne30pg3_ne30pg3_mt233.FHISTC_LTso.derecho_intel.cam-outfrq3s_eri (Overall: NLFAIL) details:
+  ERP_D_Ln9.ne30pg3_ne30pg3_mt233.F1850C_MTso.derecho_intel.cam-outfrq9s (Overall: NLFAIL) details:
+  ERP_Ln9.f19_f19_mt233.FWsc1850.derecho_intel.cam-outfrq9s (Overall: NLFAIL) details:
+  ERR_Ld3.ne16pg3_ne16pg3_mt233.FHISTC_LTso.derecho_intel.cam-outfrq1d_bwic_newyear (Overall: NLFAIL) details:
+  SMS_D_Ld5.f09_f09_mt233.PC6.derecho_intel.cam-cam6_port_f09 (Overall: NLFAIL) details:
+  SMS_D_Ld5.f19_f19_mt233.PC4.derecho_intel.cam-cam4_port5d (Overall: NLFAIL) details:
+  SMS_D_Ln9.f09_f09_mt233.FSD.derecho_intel.cam-outfrq9s (Overall: NLFAIL) details:
+  SMS_D_Ln9.f19_f19_mt233.FHIST_C5.derecho_intel.cam-mam7 (Overall: NLFAIL) details:
+  SMS_D_Ln9.ne0ARCTICne30x4_ne0ARCTICne30x4_mt12.FHIST.derecho_intel.cam-outfrq9s (Overall: NLFAIL) details:
+  SMS_D_Ln9.ne30pg3_ne30pg3_mt233.FHISTC_MTso.derecho_intel.cam-outfrq9s (Overall: NLFAIL) details:
+  SMS_Ld1.f09_f09_mt233.FCHIST_GC.derecho_intel.cam-outfrq1d (Overall: NLFAIL) details:
+  SMS_Ln9.f09_f09_mt233.F2010climo.derecho_intel.cam-nudging (Overall: NLFAIL) details:
+  SMS_Ln9.f19_f19_mt233.F2000climo.derecho_intel.cam-silhs (Overall: NLFAIL) details:
+     - new namelist variable stream_ndep_mapalgo written to atm_in; answers bit-for-bit
+
+derecho/nvhpc/aux_cam:
+  ERS_Ln9.ne3pg3_ne3pg3_mt233.FHISTC_LTso.derecho_nvhpc.cam-outfrq9s_gpu_ne3 (Overall: NLFAIL) details:
+     - new namelist variable stream_ndep_mapalgo written to atm_in; answers bit-for-bit
+
+izumi/nag/aux_cam:
+  ERC_D_Ln9.f10_f10_mt233.FHIST_C5.izumi_nag.cam-outfrq3s_subcol (Overall: NLFAIL) details:
+  ERC_D_Ln9.ne3pg3_ne3pg3_mt233.FHISTC_LTso.izumi_nag.cam-cosp_rad_diags (Overall: NLFAIL) details:
+  ERC_D_Ln9.ne3pg3_ne3pg3_mt233.FHISTC_LTso.izumi_nag.cam-outfrq9s_nochem (Overall: NLFAIL) details:
+  SMS_D_Ld2.f45_f45_mg37.PC5.izumi_nag.cam-outfrq24h_port (Overall: NLFAIL) details:
+  SMS_D_Ln9.f10_f10_mt233.F1850.izumi_nag.cam-outfrq9s (Overall: NLFAIL) details:
+  TMC_D_Ln9.f10_f10_mt233.FHIST_C5.izumi_nag.cam-mc_ttrac (Overall: NLFAIL) details:
+  ERC_D_Ln9.f10_f10_mt233.FHIST.izumi_nag.cam-outfrq3s_cospsathist (Overall: NLFAIL) details:
+     - new namelist variable stream_ndep_mapalgo written to atm_in; answers bit-for-bit
+
+izumi/gnu/aux_cam:
+  ERC_D_Ln9.f10_f10_mt233.FHIST_C5.izumi_gnu.cam-rad_diag (Overall: NLFAIL) details:
+  ERC_D_Ln9.f19_f19_mt233.FHIST.izumi_gnu.cam-lonlat_fv_diags (Overall: NLFAIL) details:
+  ERC_D_Ln9.mpasa480_mpasa480_mt233.FHISTC_LTso.izumi_gnu.cam-outfrq9s_mpasa480 (Overall: NLFAIL) details:
+  ERC_D_Ln9.ne3pg3_ne3pg3_mt233.F1850_C4.izumi_gnu.cam-co2rmp (Overall: NLFAIL) details:
+  ERC_D_Ln9.ne3pg3_ne3pg3_mt233.FHIST_C5.izumi_gnu.cam-carma_cosp_rad_diag_mam (Overall: NLFAIL) details:
+  ERC_D_Ln9.ne3pg3_ne3pg3_mt233.FHISTC_LTso.izumi_gnu.cam-nochem_clubbmf (Overall: NLFAIL) details:
+  ERC_D_Ln9.ne3pg3_ne3pg3_mt233.FHISTC_LTso.izumi_gnu.cam-sat_lcltod (Overall: NLFAIL) details:
+  ERS_Ln9_P24x1.mpasa480_mpasa480.F2000climo.izumi_gnu.cam-outfrq9s_mpasa480 (Overall: NLFAIL) details:
+  PLB_D_Ln9.f10_f10_mt233.FHIST_C5.izumi_gnu.cam-ttrac_loadbal0 (Overall: NLFAIL) details:
+  PLB_D_Ln9.f10_f10_mt233.FHIST_C5.izumi_gnu.cam-ttrac_loadbal1 (Overall: NLFAIL) details:
+  PLB_D_Ln9.f10_f10_mt233.FHIST_C5.izumi_gnu.cam-ttrac_loadbal3 (Overall: NLFAIL) details:
+  SMS_D_Ln3.ne3pg3_ne3pg3_mt233.PC7.izumi_gnu.cam-pc7_ne3pg3 (Overall: NLFAIL) details:
+  SUB_D_Ln9.ne3pg3_ne3pg3_mt233.FHIST.izumi_gnu.cam-outfrq9s (Overall: NLFAIL) details:
+     - new namelist variable stream_ndep_mapalgo written to atm_in; answers bit-for-bit
+
+Summarize any changes to answers, i.e.,
+- what code configurations: N/A (all bit-for-bit)
+- what platforms/compilers: N/A
+    - Node-shared tables are used on derecho (Cray MPICH) and izumi GNU (MVAPICH2 2.3.7); on izumi
+      NAG (MVAPICH2 2.3.3) the probe fails and the original per-rank paths are used. Both are
+      bit-for-bit with cam6_4_219.
+
+===============================================================
+===============================================================
+
 Tag name: cam6_4_219
 Originator(s): cacraigucar, bdobbins, brianpm
 Date: Nov 5, 2026
@@ -819,7 +1245,6 @@ izumi/gnu/aux_cam:
   ERC_D_Ln9.C48_C48_mt233.QPC6.izumi_gnu.cam-outfrq9s (Overall: NLFAIL) details:
      - update fv3 tests to use mt233 mask
 
-===============================================================
 ===============================================================
 
 Tag name: cam6_4_213

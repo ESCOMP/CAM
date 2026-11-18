@@ -46,7 +46,7 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
    use cam_history,    only: hist_fld_active
    use dyn_comp,       only: frontgf_idx, frontga_idx, vort4gw_idx
    use mpas_constants, only: Rv_over_Rd => rvord
-   use phys_control,   only: use_gw_front, use_gw_front_igw, use_gw_movmtn_pbl
+   use phys_control,   only: use_gw_front, use_gw_front_igw, use_gw_movmtn
    use cam_budget,     only : thermo_budget_history
 
    ! arguments
@@ -197,7 +197,7 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
                                plev, nCellsSolve )
    end if
 
-   if (use_gw_movmtn_pbl) then
+   if (use_gw_movmtn) then
       call cam_mpas_vertex_to_cell_relative_vorticities(vort4gw)
 
       allocate(vort4gw_phys(pcols, pver, begchunk:endchunk), stat=ierr)
@@ -238,7 +238,7 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
             frontga_phys(icol_p, k, lchnk) = frontogenesisAngle(kk, i)
          end if
 
-         if (use_gw_movmtn_pbl) then
+         if (use_gw_movmtn) then
             vort4gw_phys(icol_p, k, lchnk) = vort4gw(kk, i)
          end if
       end do
@@ -277,7 +277,7 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
       deallocate(frontogenesisAngle)
    end if
 
-   if (use_gw_movmtn_pbl) then
+   if (use_gw_movmtn) then
       !$omp parallel do private (lchnk, ncols, icol, k, pbuf_chnk, pbuf_vort4gw)
       do lchnk = begchunk, endchunk
          ncols = get_ncols_p(lchnk)
