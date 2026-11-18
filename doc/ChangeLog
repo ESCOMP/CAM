@@ -1,3 +1,51 @@
+===============================================================
+
+Tag name: cam6_4_2xx
+Originator(s): pel
+Date: <merge date>
+One-line Summary: Broadcast clubb_l_stability_correct_tau_zm as mpi_logical
+Github PR URL: https://github.com/ESCOMP/CAM/pull/1768
+
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+
+  Fixing issue https://github.com/ESCOMP/CAM/issues/1767 -
+  clubb_l_stability_correct_tau_zm broadcast with mpi_real8 instead of
+  mpi_logical (8 bytes into a 4-byte logical). Use mpi_logical, removing
+  undefined behavior on receiving ranks.
+
+  Found by an AI code audit of CAM (Claude, claude-fable-5); fix authored
+  with AI assistance and reviewed/confirmed by a human.
+
+Describe any changes made to build system: none
+
+Describe any changes made to the namelist: none
+
+List any changes to the defaults for the boundary datasets: none
+
+Describe any substantial timing or memory changes: none
+
+Code reviewed by: Adam Herrington
+
+List all files eliminated: none
+
+List all files added and what they do: none
+
+List all existing files that have been modified, and describe the changes:
+
+M src/physics/cam/clubb_intr.F90
+  - mpi_bcast datatype mpi_real8 -> mpi_logical for
+    clubb_l_stability_correct_tau_zm
+
+derecho/intel/aux_cam: <fill at merge>
+
+derecho/nvhpc/aux_cam: <fill at merge>
+
+izumi/nag/aux_cam: <fill at merge>
+
+izumi/gnu/aux_cam: <fill at merge>
+
+Summarize any changes to answers: bit-for-bit
+
 
 ===============================================================
 
