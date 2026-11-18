@@ -47,7 +47,8 @@ public :: &
    rrtmgp_inputs_cam_init, &
    rrtmgp_get_gas_mmrs, &
    rrtmgp_set_aer_lw,   &
-   rrtmgp_set_aer_sw
+   rrtmgp_set_aer_sw,   &
+   rrtmg_to_rrtmgp_swbands
 
 
 ! This value is to match the arbitrary small value used in RRTMG to decide

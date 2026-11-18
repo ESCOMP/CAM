@@ -29,6 +29,9 @@ logical :: wavenumber_boundaries_set = .true.
 integer, public, protected :: band2gpt_sw(2,nswbands)
 
 ! These are indices to specific bands for diagnostic output and COSP input.
+! The SW indices are positions in the RRTMG band order of the CAM optics datasets
+! (the order of the arrays in aer_rad_props/aerosol_optics_cam/cloud_rad_props),
+! not the RRTMGP band order; see rrtmg_to_rrtmgp_swbands in rrtmgp_inputs_cam.
 integer, public, protected :: idx_sw_diag = -1     ! band contains 500-nm wave
 integer, public, protected :: idx_nir_diag = -1    ! band contains 1000-nm wave
 integer, public, protected :: idx_uv_diag = -1     ! band contains 400-nm wave
