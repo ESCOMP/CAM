@@ -1,3 +1,51 @@
+===============================================================
+
+Tag name: cam6_4_2xx
+Originator(s): pel
+Date: <merge date>
+One-line Summary: Use moist layer thickness for the frontogenesis interface pressure
+Github PR URL:
+
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+
+  Fixing issue https://github.com/ESCOMP/CAM/issues/1759 - SE dycore
+  frontogenesis mixes dry interface pressure with moist midpoint pressure.
+  Accumulate the interface pressure with the same moist layer thickness as
+  the midpoint so the frontogenesis function uses consistent moist pressures.
+
+Describe any changes made to build system: none
+
+Describe any changes made to the namelist: none
+
+List any changes to the defaults for the boundary datasets: none
+
+Describe any substantial timing or memory changes: none
+
+Code reviewed by: pel
+
+List all files eliminated: none
+
+List all files added and what they do: none
+
+List all existing files that have been modified, and describe the changes:
+
+M src/dynamics/se/gravity_waves_sources.F90
+  - accumulate moist (not dry) layer thickness in the frontogenesis
+    interface pressure
+
+derecho/intel/aux_cam: <fill at merge>
+
+derecho/nvhpc/aux_cam: <fill at merge>
+
+izumi/nag/aux_cam: <fill at merge>
+
+izumi/gnu/aux_cam: <fill at merge>
+
+Summarize any changes to answers:
+- what code configurations: SE dycore with frontal GW sources (cam7)
+- what platforms/compilers: all
+- nature of change: larger than roundoff; same climate expected
+
 
 ===============================================================
 
