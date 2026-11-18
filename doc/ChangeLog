@@ -1,6 +1,83 @@
 
 ===============================================================
 
+Tag name: cam6_4_2xx
+Originator(s): g8j39
+Date: <merge date>
+One-line Summary: Skip inactive SE tracer advection and PDC tendency diagnostic buffers
+Github PR URL: <fill at merge>
+
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+- Fixes #1761: SE: compute_adv_tends_xyz and applyCAMforcing allocate and copy 141-200 tracer arrays when tendency diagnostics are inactive
+
+Describe any changes made to build system:
+None.
+
+Describe any changes made to the namelist:
+None.
+
+List any changes to the defaults for the boundary datasets:
+None.
+
+Describe any substantial timing or memory changes:
+When TA<constituent> and *_PDC history fields are inactive on cesm3_0_beta10 (gfortran 13.4.0 -O2): comp_adv_tends1+2 drops from 4.98 s to 0.0009 s and applyCAMforc drops from 3.55 s to 2.28 s on 3-hour 32-task B1850CM (measured alongside two other SE changes, skipping about 150 MiB/rank of transient ftmp_fvm allocation; 2-pair whole-run coupled delta sits under 1%, near spread). On single-column ne3 runs, stock comp_adv_tends1+2 drops from 11.0 s (of 121.0 s TOT) on 695h FSCAMARM97 and 12.5 s (of 75.5 s TOT) on 120h FCSCAM to 0.03-0.04 s.
+
+Code reviewed by:
+
+List all files eliminated:
+None.
+
+List all files added and what they do:
+None.
+
+List all existing files that have been modified, and describe the changes:
+M  src/dynamics/se/advect_tend.F90
+   - Return early in compute_adv_tends_xyz when no tottnam history field is active.
+M  src/dynamics/se/dycore/prim_advance_mod.F90
+   - Make ftmp allocatable with checked allocate stat alongside ftmp_fvm, and guard ftmp/ftmp_fvm allocation, clipping-loss diagnostic stores, and output_qdp_var_dynamics in applyCAMforcing on WV_PDC, WI_PDC, WL_PDC, or TT_PDC being active.
+
+If there were any failures reported from running test_driver.sh on any test
+platform, and checkin with these failures has been OK'd by the gatekeeper,
+then copy the lines from the td.*.status files for the failed tests to the
+appropriate machine below.  All failed tests must be justified.
+
+derecho/intel/aux_cam:
+
+derecho/nvhpc/aux_cam:
+
+izumi/nag/aux_cam:
+
+izumi/gnu/aux_cam:
+
+CAM tag used for the baseline comparison tests if different than previous
+tag:
+
+Summarize any changes to answers, i.e.,
+- what code configurations: none, bit-for-bit unchanged
+- what platforms/compilers: N/A
+- nature of change (roundoff; larger than roundoff but same climate; new
+  climate): none (bit-for-bit)
+
+If bitwise differences were observed, how did you show they were no worse
+than roundoff?
+N/A
+
+If this tag changes climate describe the run(s) done to evaluate the new
+climate in enough detail that it(they) could be reproduced, i.e.,
+- source tag (all code used must be in the repository): N/A
+- platform/compilers: N/A
+- configure commandline: N/A
+- build-namelist command (or complete namelist): N/A
+- MSS location of output: N/A
+
+MSS location of control simulations used to validate new climate:
+N/A
+
+URL for AMWG diagnostics output used to validate new climate:
+N/A
+
+===============================================================
+
 Tag name: cam6_4_223
 Originator(s): cacraigucar, peverwhee, billsacks
 Date: Nov 18, 2026
