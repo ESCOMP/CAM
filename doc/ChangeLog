@@ -1,3 +1,55 @@
+===============================================================
+
+Tag name: cam6_4_2xx
+Originator(s): pel, kgohil
+Date: <merge date>
+One-line Summary: Average graupel cloud fraction into cldfgrau_grid under subcolumns
+Github PR URL: https://github.com/ESCOMP/CAM/pull/1771
+
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+
+  Fixing issue https://github.com/ESCOMP/CAM/issues/1770 - cam7 subcolumn
+  averaging puts graupel cloud fraction into cldfsnow_grid. Average cldfgrau
+  into cldfgrau_grid so radiation sees the correct snow and graupel cloud
+  fractions in subcolumn runs.
+
+  Found and fixed by Kanishk Gohil while reviewing the AI code audit of CAM
+  (Claude, claude-fable-5).
+
+Describe any changes made to build system: none
+
+Describe any changes made to the namelist: none
+
+List any changes to the defaults for the boundary datasets: none
+
+Describe any substantial timing or memory changes: none
+
+Code reviewed by: pel
+
+List all files eliminated: none
+
+List all files added and what they do: none
+
+List all existing files that have been modified, and describe the changes:
+
+M src/physics/cam7/micro_pumas_cam.F90
+  - average cldfgrau into cldfgrau_grid (was cldfsnow_grid)
+
+derecho/intel/aux_cam: <fill at merge>
+
+derecho/nvhpc/aux_cam: <fill at merge>
+
+izumi/nag/aux_cam: <fill at merge>
+
+izumi/gnu/aux_cam: <fill at merge>
+
+Summarize any changes to answers:
+- what code configurations: subcolumn microphysics with graupel
+  (use_subcol_microp and micro_mg_version > 2); all others bit-for-bit
+- what platforms/compilers: all
+- nature of change: larger than roundoff where active (radiation snow/graupel
+  cloud fractions were swapped/stale)
+
 
 ===============================================================
 
