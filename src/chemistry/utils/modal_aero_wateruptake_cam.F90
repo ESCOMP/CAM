@@ -124,7 +124,6 @@ contains
 
       call addfld('PM25',     (/ 'lev' /), 'A', 'kg/m3', 'PM2.5 mass concentration')
       call addfld('PM25_SRF', horiz_only,  'A', 'kg/m3', 'surface PM2.5 mass concentration')
-      ! dmleung added a few more below, 20 Nov 2023
       call addfld('PM25_MMR',     (/ 'lev' /), 'A', 'kg/kg', 'PM2.5 mass mixing ratio')
       call addfld('PM1_SRF',      horiz_only,  'A', 'kg/m3', 'surface PM1 mass concentration')
       call addfld('PM1_MMR',      (/ 'lev' /), 'A', 'kg/kg', 'PM1 mass mixing ratio')
@@ -137,7 +136,6 @@ contains
       call add_default('PM25_SRF', 1, ' ')
       call add_default('PM25_MMR',  1, ' ')
       call add_default('PM10_MMR',  1, ' ')
-      ! dmleung --
 
       if (is_first_step()) then
          ! initialize fields in physics buffer
@@ -221,18 +219,35 @@ contains
       real(r8), allocatable :: sulden(:,:,:) ! sulfate aerosol mass density (g/cm3)
 
       real(r8), allocatable :: alnsg(:)
+      real(r8) :: daero_a  ! mass median aerodynamic diameter (m), per grid box temporary
       real(r8), pointer :: maer(:,:,:)      ! accumulated aerosol mode MRs
 
       real(r8) :: pm25(pcols,pver)      ! PM2.5 diagnostics
       real(r8) :: rhoair(pcols,pver)
-      ! dmleung 20 Oct 2025 ++
-      real(r8) :: pm25_mmr(pcols,pver)      ! PM2.5 mass mixing ratio     dmleung, 20 Nov 2023
+      real(r8) :: pm25_mmr(pcols,pver)      ! PM2.5 mass mixing ratio
       real(r8) :: pm1(pcols,pver)           ! PM1 mass conc
-      real(r8) :: pm1_mmr(pcols,pver)       ! PM1 mass mixing ratio     dmleung, 20 Nov 2023
+      real(r8) :: pm1_mmr(pcols,pver)       ! PM1 mass mixing ratio
       real(r8) :: pm10(pcols,pver)          ! PM10 mass conc
-      real(r8) :: pm10_mmr(pcols,pver)      ! PM10 mass mixing ratio     dmleung, 20 Nov 2023
+      real(r8) :: pm10_mmr(pcols,pver)      ! PM10 mass mixing ratio
       real(r8) :: pmtot_mmr(pcols,pver)      ! total PM mass mixing ratio
-      ! dmleung --
+      real(r8) :: massfrac1, massfrac25, massfrac10   ! mode mass fraction below PM1, PM2.5, PM10 cuts
+      real(r8) :: sqrt2_alnsg                         ! sqrt(2)*ln(sigma_g) of the current mode
+
+      ! aerodynamic cut diameters defining the PM1, PM2.5, PM10 diagnostics (m)
+      real(r8), parameter :: pm1_cut_diameter  =  1.0e-6_r8
+      real(r8), parameter :: pm25_cut_diameter =  2.5e-6_r8
+      real(r8), parameter :: pm10_cut_diameter = 10.0e-6_r8
+
+      ! Reference density defining the aerodynamic diameter (kg/m3):
+      ! The diameter of a unit-density (1 g/cm3) sphere with the same settling velocity as the particle.
+      ! See Seinfeld and Pandis, 2ed. 9.7.3 Classical aerodynamic diameter. eq. (9.112)
+      ! This conventional unit density only coincidentally equals the density of water (rhoh2o)
+      ! but is actually a separate definition.
+      real(r8), parameter :: rho0_aero = 1000._r8
+
+      ! minimum mode dry volume for which an aerodynamic diameter is computed (m3)
+      real(r8), parameter :: dryvol_min = 1.0e-30_r8
+      real(r8), parameter :: sqrt2 = sqrt(2._r8)
 
       character(len=3) :: trnum       ! used to hold mode number (as characters)
 
@@ -378,14 +393,12 @@ contains
       end do
 
       pm25(:,:)=0._r8
-      ! dmleung 20 Oct 2025 ++
       pm25_mmr(:,:)=0._r8
       pm1(:,:)=0._r8
       pm1_mmr(:,:)=0._r8
       pm10(:,:)=0._r8
       pm10_mmr(:,:)=0._r8
       pmtot_mmr(:,:)=0._r8
-      ! dmleung --
 
       do m = 1, nmodes
          ! output to history
@@ -394,31 +407,36 @@ contains
          call outfld( 'dgnd_a'//trnum(2:3), dgncur_a(:,:,m),    pcols, lchnk)
          call outfld( 'dgnw_a'//trnum(2:3), dgncur_awet(:,:,m), pcols, lchnk)
 
-         ! calculate PM2.5 diagnostics -- dgncur_a is zero above top_lev
+         ! calculate PM diagnostics -- dgncur_a is zero above top_lev
+         ! PM is the *mass* fraction below an *aerodynamic* cut,
+         ! so use the mass median aerodynamic diameter of the mode:
+         !   daero_a = dgncur_a*exp(3*ln^2(sigma_g))*sqrt(rhop/rho0_aero)
+         ! rhop is the mode-mean dry particle density; spherical particles assumed.
+         sqrt2_alnsg = sqrt2*alnsg(m)
          do k = top_lev, pver
             do i=1,ncol
-               pm25(i,k) = pm25(i,k)+maer(i,k,m)*(1._r8-(0.5_r8 - 0.5_r8*erf(log(2.5e-6_r8/dgncur_a(i,k,m))/ &
-                                                 (2._r8**0.5_r8*alnsg(m)))))*rhoair(i,k)
-               ! dmleung 20 Oct 2025: calculate other PM diagnostics ++
-               pm25_mmr(i,k) = pm25_mmr(i,k)+maer(i,k,m)*(1._r8-(0.5_r8 - 0.5_r8*erf(log(2.5e-6_r8/dgncur_a(i,k,m))/ &
-                                                 (2._r8**0.5_r8*alnsg(m)))))    ! PM2.5 mass mixing ratio, dmleung
-               pm1(i,k) = pm1(i,k)+maer(i,k,m)*(1._r8-(0.5_r8 - 0.5_r8*erf(log(1.0e-6_r8/dgncur_a(i,k,m))/ &
-                                                 (2._r8**0.5_r8*alnsg(m)))))*rhoair(i,k)
-               pm1_mmr(i,k) = pm1_mmr(i,k)+maer(i,k,m)*(1._r8-(0.5_r8 - 0.5_r8*erf(log(1.0e-6_r8/dgncur_a(i,k,m))/ &
-                                                 (2._r8**0.5_r8*alnsg(m)))))    ! PM1 mass mixing ratio, dmleung
-               pm10(i,k) = pm10(i,k)+maer(i,k,m)*(1._r8-(0.5_r8 - 0.5_r8*erf(log(10.0e-6_r8/dgncur_a(i,k,m))/ &
-                                                 (2._r8**0.5_r8*alnsg(m)))))*rhoair(i,k)
-               pm10_mmr(i,k) = pm10_mmr(i,k)+maer(i,k,m)*(1._r8-(0.5_r8 - 0.5_r8*erf(log(10.0e-6_r8/dgncur_a(i,k,m))/ &
-                                                 (2._r8**0.5_r8*alnsg(m)))))    ! PM10 mass mixing ratio, dmleung
-               pmtot_mmr(i,k) = pmtot_mmr(i,k)+maer(i,k,m)                        ! toal PM mass mixing ratio, dmleung
-               ! dmleung --
+               if (dgncur_a(i,k,m) > 0._r8 .and. dryvol(i,k,m) > dryvol_min) then
+                  ! convert from number median geometric diameter to mass median aerodynamic diameter
+                  daero_a    = dgncur_a(i,k,m)*exp(3._r8*alnsg(m)**2) &
+                               * sqrt(drymass(i,k,m)/(rho0_aero*dryvol(i,k,m)))
+                  massfrac1  = 0.5_r8*(1._r8 + erf(log(pm1_cut_diameter /daero_a)/sqrt2_alnsg))
+                  massfrac25 = 0.5_r8*(1._r8 + erf(log(pm25_cut_diameter/daero_a)/sqrt2_alnsg))
+                  massfrac10 = 0.5_r8*(1._r8 + erf(log(pm10_cut_diameter/daero_a)/sqrt2_alnsg))
+
+                  pm25(i,k)      = pm25(i,k)      + maer(i,k,m)*massfrac25*rhoair(i,k)
+                  pm25_mmr(i,k)  = pm25_mmr(i,k)  + maer(i,k,m)*massfrac25
+                  pm1(i,k)       = pm1(i,k)       + maer(i,k,m)*massfrac1*rhoair(i,k)
+                  pm1_mmr(i,k)   = pm1_mmr(i,k)   + maer(i,k,m)*massfrac1
+                  pm10(i,k)      = pm10(i,k)      + maer(i,k,m)*massfrac10*rhoair(i,k)
+                  pm10_mmr(i,k)  = pm10_mmr(i,k)  + maer(i,k,m)*massfrac10
+               end if
+               pmtot_mmr(i,k) = pmtot_mmr(i,k) + maer(i,k,m)
             end do
          end do
       end do
 
       call outfld('PM25',     pm25(:,:),     pcols, lchnk)
       call outfld('PM25_SRF', pm25(:,pver),  pcols, lchnk)
-      ! dmleung 20 Oct 2025 added history fields below ++
       call outfld('PM25_MMR', pm25_mmr(:,:), pcols, lchnk)
       call outfld('PM1_SRF',  pm1(:,pver), pcols, lchnk)
       call outfld('PM1_MMR',  pm1_mmr(:,:),  pcols, lchnk)
@@ -426,7 +444,6 @@ contains
       call outfld('PM10_MMR', pm10_mmr(:,:), pcols, lchnk)
       call outfld('PMTOT_MMR',pmtot_mmr(:,:),pcols, lchnk)
       call outfld('RHO_AIR',  rhoair(:,:),   pcols, lchnk)
-      ! dmleung --
 
       deallocate(maer, alnsg)
       deallocate( &
