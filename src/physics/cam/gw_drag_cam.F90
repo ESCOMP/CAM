@@ -2065,6 +2065,7 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
       pi                      = pi, &
       cpair                   = cpair, &
       rair                    = rair, &
+      gravit                  = gravit, &
       vramp                   = vramp, &
       p                       = p, &
       n_rdg_beta              = n_rdg_beta, &
@@ -2145,6 +2146,7 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
       pi                      = pi, &
       cpair                   = cpair, &
       rair                    = rair, &
+      gravit                  = gravit, &
       vramp                   = vramp, &
       p                       = p, &
       n_rdg_gamma             = n_rdg_gamma, &
