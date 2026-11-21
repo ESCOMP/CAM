@@ -10,6 +10,10 @@ module modal_aerosol_properties_mod
 
   public :: modal_aerosol_properties
 
+  type :: refindex_ptr_t
+     complex(r8), pointer :: p(:) => null()
+  end type refindex_ptr_t
+
   type, extends(aerosol_properties) :: modal_aerosol_properties
      private
      real(r8), allocatable :: exp45logsig_(:)
@@ -25,6 +29,13 @@ module modal_aerosol_properties_mod
      integer,  allocatable :: porganic_mode_ndxs_(:,:)
      integer,  allocatable :: sorganic_mode_ndxs_(:,:)
      integer,  allocatable :: mode_size_order_(:)
+     ! Per-species properties cached at construction, indexed (species, mode);
+     ! valid because physprop and mode definitions are fixed after rad_aer_init.
+     real(r8), allocatable :: spec_dens_(:,:)
+     real(r8), allocatable :: spec_hygro_(:,:)
+     character(len=aero_name_len), allocatable :: spec_type_(:,:)
+     type(refindex_ptr_t), allocatable :: spec_ref_sw_(:,:)
+     type(refindex_ptr_t), allocatable :: spec_ref_lw_(:,:)
      integer :: num_soa_ = 0
      integer :: num_poa_ = 0
      integer :: num_bc_ = 0
@@ -70,7 +81,7 @@ contains
     integer, optional, intent(in) :: list_idx ! radiation list index (0=climate)
     type(modal_aerosol_properties), pointer :: newobj
 
-    integer :: l, m, nmodes, ncnst_tot, mm, itmp
+    integer :: l, m, nmodes, ncnst_tot, mm, itmp, max_nspec
     integer :: list_idx_loc
     real(r8) :: dgnumlo_val
     real(r8) :: dgnumhi_val
@@ -204,6 +215,27 @@ contains
     call newobj%initialize(nmodes,ncnst_tot,nspecies,nspecies,alogsig,f1,f2,ierr,list_idx_loc, &
                            dgnum=dgnum_arr,dgnumhi=dgnumhi_arr,dgnumlo=dgnumlo_arr, &
                            rhcrystal=rhcrystal_arr,rhdeliques=rhdeliques_arr)
+
+    max_nspec = maxval(nspecies)
+    allocate(newobj%spec_dens_(max_nspec,nmodes), newobj%spec_hygro_(max_nspec,nmodes), &
+             newobj%spec_type_(max_nspec,nmodes), newobj%spec_ref_sw_(max_nspec,nmodes), &
+             newobj%spec_ref_lw_(max_nspec,nmodes), stat=ierr)
+    if (ierr /= 0) then
+       nullify(newobj)
+       return
+    end if
+    newobj%spec_dens_ = -huge(1._r8)
+    newobj%spec_hygro_ = -huge(1._r8)
+    newobj%spec_type_ = 'UNSET'
+
+    do m = 1, nmodes
+       do l = 1, nspecies(m)
+          call rad_aer_get_props(list_idx_loc, m, l, density_aer=newobj%spec_dens_(l,m), &
+                                 hygro_aer=newobj%spec_hygro_(l,m), spectype=newobj%spec_type_(l,m), &
+                                 refindex_aer_sw=newobj%spec_ref_sw_(l,m)%p, &
+                                 refindex_aer_lw=newobj%spec_ref_lw_(l,m)%p)
+       end do
+    end do
 
     npoa = 0
     nsoa = 0
@@ -383,6 +415,11 @@ contains
     if (allocated(self%bcarbon_mode_ndxs_)) then
        deallocate(self%bcarbon_mode_ndxs_)
     end if
+    if (allocated(self%spec_dens_))   deallocate(self%spec_dens_)
+    if (allocated(self%spec_hygro_))  deallocate(self%spec_hygro_)
+    if (allocated(self%spec_type_))   deallocate(self%spec_type_)
+    if (allocated(self%spec_ref_sw_)) deallocate(self%spec_ref_sw_)
+    if (allocated(self%spec_ref_lw_)) deallocate(self%spec_ref_lw_)
 
     call self%final()
 
@@ -426,9 +463,11 @@ contains
     real(r8), optional, intent(out) :: num_to_mass_aer ! ratio of number to mass concentration
     real(r8), optional, intent(out) :: dryrad  ! dry radius (m)
 
-    call rad_aer_get_props(self%list_idx_, bin_ndx, species_ndx, &
-                                density_aer=density, hygro_aer=hygro, spectype=spectype, &
-                                refindex_aer_sw=refindex_sw, refindex_aer_lw=refindex_lw)
+    if (present(density))     density     =  self%spec_dens_(species_ndx, bin_ndx)
+    if (present(hygro))       hygro       =  self%spec_hygro_(species_ndx, bin_ndx)
+    if (present(spectype))    spectype    =  self%spec_type_(species_ndx, bin_ndx)
+    if (present(refindex_sw)) refindex_sw => self%spec_ref_sw_(species_ndx, bin_ndx)%p
+    if (present(refindex_lw)) refindex_lw => self%spec_ref_lw_(species_ndx, bin_ndx)%p
 
     if (present(spec_mw)) then
        spec_mw = specmw_amode(species_ndx,bin_ndx)
@@ -564,7 +603,7 @@ contains
     integer, intent(in) :: species_ndx       ! species number
     character(len=*), intent(out) :: spectype ! species type
 
-    call rad_aer_get_info(self%list_idx_, bin_ndx, species_ndx, spec_type=spectype)
+    spectype = self%spec_type_(species_ndx, bin_ndx)
 
   end subroutine species_type
 

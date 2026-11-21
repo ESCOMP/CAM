@@ -458,6 +458,7 @@ contains
   subroutine aerosol_optics_cam_sw(list_idx, state, pbuf, nnite, idxnite, tauxar, wa, ga, fa)
 
     use aerosol_optics_core, only: dustaspherical_opts
+    use aerosol_state_mod,   only: ptr2d_t
 
     ! calculates aerosol sw radiative properties
 
@@ -588,6 +589,8 @@ contains
     real(r8) :: pabs_vis(pcols,pver)      ! specific absorption at vis band (from core, for BFB diagnostics)
     real(r8) :: dopaer0_vis(pcols,pver)   ! pre-asphericity tau at vis band (from core, for BFB diagnostics)
 
+    type(ptr2d_t), allocatable :: mmr_ptr(:) ! ambient MMR field per species of the current bin
+    integer :: nspec_bin, astat
     integer :: ispec
 
     character(len=512)   :: errmsg
@@ -744,6 +747,15 @@ contains
 
           ! Diagnostic accumulation using tau_bin (asphericity already applied by core)
           do iwav = 1, nswbands
+             if (iwav == idx_sw_diag) then
+                ! Ambient MMR field pointers depend only on (ibin, ispec); look them up once per bin.
+                nspec_bin = aeroprops%nspecies(ibin)
+                allocate(mmr_ptr(nspec_bin), stat=astat)
+                if (astat /= 0) call endrun(prefix//'array allocation error: mmr_ptr')
+                do ispec = 1, nspec_bin
+                   call aerostate%get_ambient_mmr(species_ndx=ispec, bin_ndx=ibin, mmr=mmr_ptr(ispec)%fld)
+                end do
+             end if
              do ilev = top_lev, pver
 
                 ! Initialize per-species diagnostic accumulators for this (iwav, ilev)
@@ -789,10 +801,10 @@ contains
                       ! The below block is for diagnostics only.
                       ! To edit the computation, change the code in
                       ! species loop in aerosol_optics_core.F90.
-                      do ispec = 1, aeroprops%nspecies(ibin)
+                      do ispec = 1, nspec_bin
                          call aeroprops%get(ibin, ispec, density=specdens, &
                               spectype=spectype, refindex_sw=specrefindex, hygro=hygro_aer)
-                         call aerostate%get_ambient_mmr(species_ndx=ispec, bin_ndx=ibin, mmr=specmmr)
+                         specmmr => mmr_ptr(ispec)%fld
 
                          burden(icol) = burden(icol) + specmmr(icol,ilev)*mass(icol,ilev)
 
@@ -948,6 +960,7 @@ contains
 
                 end do ! icol
              end do ! ilev
+             if (iwav == idx_sw_diag) deallocate(mmr_ptr)
           end do ! iwav
 
           ! BAM diagnostics

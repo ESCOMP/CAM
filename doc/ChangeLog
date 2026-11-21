@@ -236,6 +236,83 @@ Summarize any changes to answers: PM diagnostic fields expected difference due t
 
 ===============================================================
 
+Tag name: cam6_4_2xx
+Originator(s): g8j39
+Date: <merge date>
+One-line Summary: Cache static species optical properties in modal_aerosol_properties and hoist SW diagnostic MMR pointers
+Github PR URL: <fill at merge>
+
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+- Fixes #1763: modal_aerosol_properties / aerosol_optics_cam: repeated static physprop lookups and per-column SW MMR pointer calls
+
+Describe any changes made to build system:
+None.
+
+Describe any changes made to the namelist:
+None.
+
+List any changes to the defaults for the boundary datasets:
+None.
+
+Describe any substantial timing or memory changes:
+On cesm3_0_beta10 (gfortran 13.4.0 -O2, 32 MPI ranks, measured with other local optimization patches active in both arms): an earlier, slightly broader version of modal_aerosol_properties caching saved 1.15% total run time on 3-hour B1850CM (896.18 to 885.87 s, 2 pairs; 1.38% ATM), and hoisting aerostate%get_ambient_mmr on iwav == idx_sw_diag in aerosol_optics_cam_sw saved 1.51% on 6-hour F2000climo (173.39 to 170.78 s, 3 pairs; 1.53% ATM; within 2-pair spread on 3-hour B1850CM). Negligible memory overhead.
+
+Code reviewed by:
+
+List all files eliminated:
+None.
+
+List all files added and what they do:
+None.
+
+List all existing files that have been modified, and describe the changes:
+M  src/chemistry/aerosol/modal_aerosol_properties_mod.F90
+   - Cache per-species density, hygroscopicity, species type, and SW/LW refractive-index pointers in constructor after rad_aer_init, deallocate in destructor, and serve hot get() and species_type() queries from the cache.
+M  src/physics/cam/aerosol_optics_cam.F90
+   - Look up per-bin aerostate%get_ambient_mmr pointers once on entering iwav == idx_sw_diag in aerosol_optics_cam_sw.
+
+If there were any failures reported from running test_driver.sh on any test
+platform, and checkin with these failures has been OK'd by the gatekeeper,
+then copy the lines from the td.*.status files for the failed tests to the
+appropriate machine below.  All failed tests must be justified.
+
+derecho/intel/aux_cam:
+
+derecho/nvhpc/aux_cam:
+
+izumi/nag/aux_cam:
+
+izumi/gnu/aux_cam:
+
+CAM tag used for the baseline comparison tests if different than previous
+tag:
+
+Summarize any changes to answers, i.e.,
+- what code configurations: none, bit-for-bit unchanged
+- what platforms/compilers: N/A
+- nature of change (roundoff; larger than roundoff but same climate; new
+  climate): none (bit-for-bit)
+
+If bitwise differences were observed, how did you show they were no worse
+than roundoff?
+N/A
+
+If this tag changes climate describe the run(s) done to evaluate the new
+climate in enough detail that it(they) could be reproduced, i.e.,
+- source tag (all code used must be in the repository): N/A
+- platform/compilers: N/A
+- configure commandline: N/A
+- build-namelist command (or complete namelist): N/A
+- MSS location of output: N/A
+
+MSS location of control simulations used to validate new climate:
+N/A
+
+URL for AMWG diagnostics output used to validate new climate:
+N/A
+
+===============================================================
+
 Tag name: cam6_4_223
 Originator(s): cacraigucar, peverwhee, billsacks
 Date: Nov 18, 2026
