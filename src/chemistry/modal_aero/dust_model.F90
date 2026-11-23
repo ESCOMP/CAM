@@ -28,7 +28,7 @@ module dust_model
   real(r8), allocatable :: dust_emis_sclfctr(:)
 
   integer , protected, allocatable :: dust_indices(:)
-  real(r8), allocatable :: dust_dmt_vwr(:)
+  real(r8), allocatable :: dust_dmt_av(:)  ! diameter of average volume per bin (m), for mass-to-number conversion
 
   real(r8)          :: dust_emis_fact = 0._r8     ! tuning parameter for dust emissions
   character(len=cl) :: soil_erod_file = 'none'    ! full pathname for soil erodibility dataset
@@ -121,7 +121,7 @@ module dust_model
     allocate( dust_names(2*ndst) )
     allocate( dust_indices(2*ndst) )
     allocate( dust_emis_sclfctr(ndst) )
-    allocate( dust_dmt_vwr(ndst) )
+    allocate( dust_dmt_av(ndst) )
 
     ! Find modal properties object from factory
     aero_props_modal => null()
@@ -157,7 +157,7 @@ module dust_model
     call modal_dust_emissions_init( ntot_amode=ntot_amode, dust_nbin=dust_nbin,   &
                                     pi=pi, rair=rair, gravit=gravit,              &
                                     dust_emis_sclfctr=dust_emis_sclfctr,          &
-                                    dust_dmt_vwr=dust_dmt_vwr,                    &
+                                    dust_dmt_av=dust_dmt_av,                      &
                                     errmsg=errmsg, errflg=errflg )
     if (errflg /= 0) then
        call endrun('dust_init: '//trim(errmsg))
@@ -194,7 +194,7 @@ module dust_model
     call modal_dust_emissions_run( ncol=ncol, dust_nbin=dust_nbin,                    &
                                    dust_indices=dust_indices,                         &
                                    dust_emis_sclfctr=dust_emis_sclfctr,               &
-                                   dust_dmt_vwr=dust_dmt_vwr,                         &
+                                   dust_dmt_av=dust_dmt_av,                           &
                                    dust_emis_fact=dust_emis_fact,                     &
                                    zender_soil_erod_from_atm=zender_soil_erod_from_atm, &
                                    soil_erodibility=soil_erod_in,                     &
