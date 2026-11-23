@@ -113,6 +113,9 @@ contains
     integer :: n
     character(len=256) :: errmsg
     integer :: errflg
+    ! diameter of average volume, for emitted mass-to-number conversion;
+    ! unused here because bulk dust carries no number constituents
+    real(r8) :: dust_dmt_av(dust_nbin)
 
     do n = 1, dust_nbin
        call cnst_get_ind(dust_names(n), dust_indices(n),abort=.false.)
@@ -124,7 +127,7 @@ contains
        call  soil_erod_init( dust_emis_fact, soil_erod_file )
     endif
 
-    call dust_set_params( dust_nbin, dust_dmt_grd, dust_dmt_vwr, dust_stk_crc, &
+    call dust_set_params( dust_nbin, dust_dmt_grd, dust_dmt_vwr, dust_stk_crc, dust_dmt_av, &
                           pi, rair, gravit, errmsg, errflg )
     if (errflg /= 0) then
        call endrun('dust_init: '//trim(errmsg))
