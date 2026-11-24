@@ -1,5 +1,84 @@
 ===============================================================
 
+Tag name: cam6_4_2xx
+Originator(s): g8j39
+Date: <merge date>
+One-line Summary: Hoist tracer-invariant SE-CSLAM reconstruction, Lagrange mapping, and swept-flux work
+Github PR URL: <fill at merge>
+
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+- Fixes #1776: SE-CSLAM: per-tracer work in reconstruction, fvm-to-GLL mapping, and swept flux that can be shared or skipped
+
+Describe any changes made to build system:
+None.
+
+Describe any changes made to the namelist:
+None.
+
+List any changes to the defaults for the boundary datasets:
+None.
+
+Describe any substantial timing or memory changes:
+Measured on cesm3_0_beta10 (gfortran 13.4.0 -O2, 32 MPI tasks): commits 1 and 2 were each worth about 1% of total run time or less on 6-hour QPC6 (earlier revisions; close to run-to-run spread); commits 3 and 4 together with the separate SE diagnostic-buffer change saved 3.64% total run time (899.98 to 867.23 s, 4.21% less atmosphere time) on 3-hour 141-tracer B1850CM with commits 1 and 2 and other local optimization patches active in both arms. Resident memory is unchanged.
+
+Code reviewed by:
+
+List all files eliminated:
+None.
+
+List all files added and what they do:
+None.
+
+List all existing files that have been modified, and describe the changes:
+M  src/dynamics/se/dycore/fvm_reconstruction_mod.F90
+   - Hoist cell-invariant metric integrals and corner weights outside the tracer loop in slope_limiter case(6), fuse the part#3 origin shift, pass interior cubed-sphere elements directly to get_gradients with npanel=1, and pre-screen quadratic extremum numerators against cell half-widths before division.
+M  src/dynamics/se/dycore/fvm_mapping.F90
+   - Split lagrange_1d into pure lagrange_1d_weights and lagrange_1d_apply helpers and precompute 1D stencil indices and weights once per element in tensor_lagrange_interp.
+M  src/dynamics/se/dycore/fvm_consistent_se_cslam.F90
+   - Scale ctracer contiguously in swept_flux and lazily initialize inv_dp_area and c_tmp inside large_courant_number_increment when a face exceeds eps.
+
+If there were any failures reported from running test_driver.sh on any test
+platform, and checkin with these failures has been OK'd by the gatekeeper,
+then copy the lines from the td.*.status files for the failed tests to the
+appropriate machine below.  All failed tests must be justified.
+
+derecho/intel/aux_cam:
+
+derecho/nvhpc/aux_cam:
+
+izumi/nag/aux_cam:
+
+izumi/gnu/aux_cam:
+
+CAM tag used for the baseline comparison tests if different than previous
+tag:
+
+Summarize any changes to answers, i.e.,
+- what code configurations: none, bit-for-bit unchanged
+- what platforms/compilers: N/A
+- nature of change (roundoff; larger than roundoff but same climate; new
+  climate): none (bit-for-bit under stock CIME flags)
+
+If bitwise differences were observed, how did you show they were no worse
+than roundoff?
+N/A
+
+If this tag changes climate describe the run(s) done to evaluate the new
+climate in enough detail that it(they) could be reproduced, i.e.,
+- source tag (all code used must be in the repository): N/A
+- platform/compilers: N/A
+- configure commandline: N/A
+- build-namelist command (or complete namelist): N/A
+- MSS location of output: N/A
+
+MSS location of control simulations used to validate new climate:
+N/A
+
+URL for AMWG diagnostics output used to validate new climate:
+N/A
+
+===============================================================
+
 Tag name: cam6_4_225
 Originator(s): JulioTBacmeister, PeterHjortLauritzen, jimmielin
 Date: Nov 20, 2026
